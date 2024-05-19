@@ -1,0 +1,106 @@
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QFileDialog, QMessageBox, QVBoxLayout, QWidget, QHBoxLayout
+import logging
+from utils.data_processor import DataProcessor
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setWindowTitle("Req1")
+        
+        # Initialize the data processor
+        self.processor = DataProcessor()
+
+        # Create layout
+        layout = QVBoxLayout()
+
+        # Input file location
+        self.input_file_label = QLabel("Input File Location:")
+        self.input_file_edit = QLineEdit()
+        self.input_file_button = QPushButton("Browse...")
+        self.input_file_button.clicked.connect(self.select_input_file)
+        
+        # Creation date range
+        self.creation_date_from_label = QLabel("Creation Date From (YYYY-MM-DD):")
+        self.creation_date_from_edit = QLineEdit()
+        
+        self.creation_date_to_label = QLabel("Creation Date To (YYYY-MM-DD):")
+        self.creation_date_to_edit = QLineEdit()
+
+        # Output file path
+        self.output_file_label = QLabel("Output File Path:")
+        self.output_file_edit = QLineEdit()
+        self.output_file_button = QPushButton("Browse...")
+        self.output_file_button.clicked.connect(self.select_output_file)
+        
+        # Process button
+        self.process_button = QPushButton("Process Data")
+        self.process_button.clicked.connect(self.process_data)
+        
+        # Add widgets to layout
+        layout.addWidget(self.input_file_label)
+        layout.addWidget(self.input_file_edit)
+        
+        input_file_layout = QHBoxLayout()
+        input_file_layout.addWidget(self.input_file_edit)
+        input_file_layout.addWidget(self.input_file_button)
+        layout.addLayout(input_file_layout)
+        
+        layout.addWidget(self.creation_date_from_label)
+        layout.addWidget(self.creation_date_from_edit)
+        layout.addWidget(self.creation_date_to_label)
+        layout.addWidget(self.creation_date_to_edit)
+        
+        output_file_layout = QHBoxLayout()
+        output_file_layout.addWidget(self.output_file_edit)
+        output_file_layout.addWidget(self.output_file_button)
+        layout.addLayout(output_file_layout)
+
+        layout.addWidget(self.process_button)
+        
+        # Set layout to central widget
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+
+        self.input_file = ""
+        self.output_file = ""
+
+    def select_input_file(self):
+        options = QFileDialog.Options()
+        file, _ = QFileDialog.getOpenFileName(self, "Select Input Excel File", "", "Excel Files (*.xlsx)", options=options)
+        if file:
+            self.input_file = file
+            self.input_file_edit.setText(file)
+            self.statusBar().showMessage(f"Selected file: {file}")
+
+    def select_output_file(self):
+        options = QFileDialog.Options()
+        file, _ = QFileDialog.getSaveFileName(self, "Save Processed File As", "", "Excel Files (*.xlsx)", options=options)
+        if file:
+            self.output_file = file
+            self.output_file_edit.setText(file)
+            self.statusBar().showMessage(f"Save location: {file}")
+
+    def process_data(self):
+        creation_date_from = self.creation_date_from_edit.text()
+        creation_date_to = self.creation_date_to_edit.text()
+
+        if not self.input_file or not self.output_file:
+            QMessageBox.warning(self, "Warning", "Please select input and output files.")
+            return
+        
+        try:
+            self.processor.load_data(self.input_file)
+            self.processor.filter_data()
+            self.processor.clean_data()
+            self.processor.process_legal_phrases()
+            self.processor.aggregate_check()
+            self.processor.apply_legal_check()
+            self.processor.apply_aggregate_check()
+            self.processor.apply_loss_check()
+            self.processor.apply_language_check()
+            self.processor.save_output(self.output_file)
+            QMessageBox.information(self, "Success", "Data processing complete")
+        except Exception as e:
+            logging.error(f"Processing failed: {e}")
+            QMessageBox.critical(self, "Error", "Data processing failed")

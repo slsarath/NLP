@@ -1,0 +1,50 @@
+import logging
+import os
+import sys
+
+LEVELS = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
+}
+
+class LogData:
+    def __init__(self, FullPath=None, logname=None, level_name='info', show_msecs=False):
+        if FullPath:
+            self.fullpath = FullPath
+        else:
+            if getattr(sys, 'frozen', False):
+                self.fullpath = os.path.dirname(sys.executable) + '\\Logs\\'
+            else:
+                self.fullpath = os.path.dirname(os.path.abspath(__file__)) + '\\Logs\\'
+        
+        if not os.path.exists(self.fullpath):
+            os.makedirs(self.fullpath)
+        
+        self.logname = logname if logname else os.path.join(self.fullpath, 'LogFile.log')
+        self.level = LEVELS.get(level_name, logging.NOTSET)
+        self.CurrentUser = os.getlogin()
+        
+        if show_msecs:
+            self.format = '%(asctime)s,%(msecs)d,%(name)s,%(levelname)s,%(message)s'
+        else:
+            self.format = '%(asctime)s,%(name)s,%(levelname)s,%(message)s'
+
+    def SetupTheLogger(self):
+        logging.basicConfig(
+            filename=self.logname,
+            filemode='a',
+            format=self.format,
+            datefmt='%Y-%m-%d %H:%M:%S',
+            level=self.level
+        )
+        return logging
+
+    def ChangeTheLevel(self, the_level):
+        self.level = LEVELS.get(the_level, logging.NOTSET)
+        logging.getLogger().setLevel(self.level)
+
+    def TheLog(self):
+        return logging

@@ -7,7 +7,7 @@ from config.config import LEGAL_PHRASES
 
 class DataProcessor:
     def __init__(self):
-        self.nlp = spacy.load(r'C:\Users\shhhhhhhhh\Documents\Models\en_core_web_sm', disable=['ner', 'textcat'])
+        self.nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
         self.df = None
         self.filtered_df = None
         self.legal_phrases = LEGAL_PHRASES
@@ -131,4 +131,7 @@ class DataProcessor:
     def save_output(self, output_path):
         logging.info(f"Saving output to {output_path}")
         try:
-            self.filtered_df.to_excel(output_path,
+            self.filtered_df.to_excel(output_path, index=False)
+        except Exception as e:
+            logging.error(f"Error saving output: {e}")
+            raise

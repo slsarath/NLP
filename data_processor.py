@@ -4,9 +4,6 @@ import spacy
 from langdetect import detect
 import logging
 import os
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
-from openpyxl.utils import get_column_letter
 import win32com.client as win32
 from config.config import LEGAL_PHRASES
 
@@ -147,20 +144,26 @@ class DataProcessor:
     def apply_color_coding(self, file_path):
         logging.info(f"Applying color coding to {file_path}")
         try:
-            wb = load_workbook(file_path)
-            ws = wb.active
+            excel = win32.Dispatch('Excel.Application')
+            excel.Visible = False
+            wb = excel.Workbooks.Open(file_path)
+            ws = wb.ActiveSheet
 
-            green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
-            amber_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+            green_rgb = 0x00FF00  # Green color in RGB
+            amber_rgb = 0xFFC000  # Amber color in RGB
 
-            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=ws.min_column, max_col=ws.max_column):
-                for cell in row:
-                    if cell.value == "PASS":
-                        cell.fill = green_fill
-                    elif cell.value == "FAIL":
-                        cell.fill = amber_fill
+            # Iterate through the rows and apply color coding
+            for row in range(2, ws.UsedRange.Rows.Count + 1):
+                for col in range(1, ws.UsedRange.Columns.Count + 1):
+                    cell = ws.Cells(row, col)
+                    if cell.Value == "PASS":
+                        cell.Interior.Color = green_rgb
+                    elif cell.Value == "FAIL":
+                        cell.Interior.Color = amber_rgb
 
-            wb.save(file_path)
+            wb.Save()
+            wb.Close()
+            excel.Quit()
         except Exception as e:
             logging.error(f"Error applying color coding: {e}")
             raise
@@ -174,7 +177,7 @@ class DataProcessor:
             ws = wb.Sheets(1)
 
             # Define the source range and target range for the pivot table
-            source_range = f"{ws.Name}!A1:{get_column_letter(ws.max_column)}{ws.max_row}"
+            source_range = f"{ws.Name}!A1:{get_column_letter(ws.UsedRange.Columns.Count)}{ws.UsedRange.Rows.Count}"
             pivot_target_cell = "L1"
 
             # Create PivotCache
@@ -194,7 +197,7 @@ class DataProcessor:
             # Set PivotTable style
             pivot_table.TableStyle2 = "PivotStyleMedium9"
 
-            # Add fields to the PivotTable
+            # Add fields to the PivotTable (example)
             pivot_table.PivotFields("Field1").Orientation = win32.constants.xlRowField
             pivot_table.PivotFields("Field2").Orientation = win32.constants.xlColumnField
             pivot_table.AddDataField(pivot_table.PivotFields("Field3"), "Sum of Field3", win32.constants.xlSum)
@@ -202,3 +205,6 @@ class DataProcessor:
             wb.Save()
             wb.Close()
             excel.Quit()
+        except Exception as e:
+            logging.error(f"Error creating pivot tables: {e}")
+            raise

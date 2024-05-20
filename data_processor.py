@@ -7,9 +7,7 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from openpyxl.utils import get_column_letter
-from openpyxl.workbook import Workbook
-from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.worksheet.datavalidation import DataValidation
+import win32com.client as win32
 from config.config import LEGAL_PHRASES
 
 class DataProcessor:
@@ -155,7 +153,7 @@ class DataProcessor:
             green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
             amber_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
 
-            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=ws.min_column, max_col=ws.max_column):
                 for cell in row:
                     if cell.value == "PASS":
                         cell.fill = green_fill
@@ -170,32 +168,37 @@ class DataProcessor:
     def create_pivot_tables(self, file_path):
         logging.info(f"Creating pivot tables in {file_path}")
         try:
-            wb = load_workbook(file_path)
-            ws = wb.create_sheet(title="Summary")
+            excel = win32.Dispatch('Excel.Application')
+            excel.Visible = False
+            wb = excel.Workbooks.Open(file_path)
+            ws = wb.Sheets(1)
 
-            # Pivot table for Managed by Legal Function Check
-            self.create_pivot_table(
-                wb, ws, "Managed by Legal Function Check", "Data!A1:AX100", "Data!A1:A100", "Data!AY1:AY100", 1, 1
-            )
-            
-            # Pivot table for Aggregate Check
-            self.create_pivot_table(
-                wb, ws, "Aggregate Check", "Data!A1:AX100", "Data!A1:A100", "Data!AZ1:AZ100", 1, 15
-            )
+            # Define the source range and target range for the pivot table
+            source_range = f"{ws.Name}!A1:{get_column_letter(ws.max_column)}{ws.max_row}"
+            pivot_target_cell = "L1"
 
-            # Pivot table for AADL Check
-            self.create_pivot_table(
-                wb, ws, "AADL Check", "Data!A1:AX100", "Data!A1:A100", "Data!BA1:BA100", 1, 29
+            # Create PivotCache
+            pivot_cache = wb.PivotCaches().Create(
+                SourceType=win32.constants.xlDatabase,
+                SourceData=source_range,
+                Version=win32.constants.xlPivotTableVersion14
             )
 
-            wb.save(file_path)
-        except Exception as e:
-            logging.error(f"Error creating pivot tables: {e}")
-            raise
+            # Create PivotTable
+            pivot_table = pivot_cache.CreatePivotTable(
+                TableDestination=f"{ws.Name}!{pivot_target_cell}",
+                TableName="PivotTable1",
+                DefaultVersion=win32.constants.xlPivotTableVersion14
+            )
 
-    def create_pivot_table(self, wb, ws, title, data_range, row_range, col_range, start_row, start_col):
-        # Note: Openpyxl does not directly support pivot tables, 
-        # so this is a placeholder for the logic.
-        # You might need to use a library like xlwings or manipulate
-        # the file with Excel VBA macros.
-        pass
+            # Set PivotTable style
+            pivot_table.TableStyle2 = "PivotStyleMedium9"
+
+            # Add fields to the PivotTable
+            pivot_table.PivotFields("Field1").Orientation = win32.constants.xlRowField
+            pivot_table.PivotFields("Field2").Orientation = win32.constants.xlColumnField
+            pivot_table.AddDataField(pivot_table.PivotFields("Field3"), "Sum of Field3", win32.constants.xlSum)
+
+            wb.Save()
+            wb.Close()
+            excel.Quit()

@@ -3,6 +3,13 @@ import re
 import spacy
 from langdetect import detect
 import logging
+import os
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.workbook import Workbook
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.worksheet.datavalidation import DataValidation
 from config.config import LEGAL_PHRASES
 
 class DataProcessor:
@@ -15,7 +22,8 @@ class DataProcessor:
     def load_data(self, file_path):
         logging.info(f"Loading data from {file_path}")
         try:
-            self.df = pd.read_excel(file_path)
+            normalized_path = os.path.normpath(file_path)
+            self.df = pd.read_excel(normalized_path)
         except Exception as e:
             logging.error(f"Error loading data: {e}")
             raise
@@ -132,6 +140,62 @@ class DataProcessor:
         logging.info(f"Saving output to {output_path}")
         try:
             self.filtered_df.to_excel(output_path, index=False)
+            self.apply_color_coding(output_path)
+            self.create_pivot_tables(output_path)
         except Exception as e:
             logging.error(f"Error saving output: {e}")
             raise
+
+    def apply_color_coding(self, file_path):
+        logging.info(f"Applying color coding to {file_path}")
+        try:
+            wb = load_workbook(file_path)
+            ws = wb.active
+
+            green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+            amber_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+                for cell in row:
+                    if cell.value == "PASS":
+                        cell.fill = green_fill
+                    elif cell.value == "FAIL":
+                        cell.fill = amber_fill
+
+            wb.save(file_path)
+        except Exception as e:
+            logging.error(f"Error applying color coding: {e}")
+            raise
+
+    def create_pivot_tables(self, file_path):
+        logging.info(f"Creating pivot tables in {file_path}")
+        try:
+            wb = load_workbook(file_path)
+            ws = wb.create_sheet(title="Summary")
+
+            # Pivot table for Managed by Legal Function Check
+            self.create_pivot_table(
+                wb, ws, "Managed by Legal Function Check", "Data!A1:AX100", "Data!A1:A100", "Data!AY1:AY100", 1, 1
+            )
+            
+            # Pivot table for Aggregate Check
+            self.create_pivot_table(
+                wb, ws, "Aggregate Check", "Data!A1:AX100", "Data!A1:A100", "Data!AZ1:AZ100", 1, 15
+            )
+
+            # Pivot table for AADL Check
+            self.create_pivot_table(
+                wb, ws, "AADL Check", "Data!A1:AX100", "Data!A1:A100", "Data!BA1:BA100", 1, 29
+            )
+
+            wb.save(file_path)
+        except Exception as e:
+            logging.error(f"Error creating pivot tables: {e}")
+            raise
+
+    def create_pivot_table(self, wb, ws, title, data_range, row_range, col_range, start_row, start_col):
+        # Note: Openpyxl does not directly support pivot tables, 
+        # so this is a placeholder for the logic.
+        # You might need to use a library like xlwings or manipulate
+        # the file with Excel VBA macros.
+        pass

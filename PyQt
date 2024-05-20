@@ -1,17 +1,25 @@
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QFileDialog, QMessageBox, QVBoxLayout, QWidget, QHBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QFileDialog, QMessageBox, QVBoxLayout, QWidget, QHBoxLayout, QComboBox
 import logging
 from utils.data_processor import DataProcessor
+from utils.another_processor import AnotherProcessor  # Import other processors as needed
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setWindowTitle("Req1")
-        
-        # Initialize the data processor
+        self.setWindowTitle("Select Requirement")
+
+        # Initialize the data processors
         self.processor = DataProcessor()
+        self.another_processor = AnotherProcessor()
 
         # Create layout
         layout = QVBoxLayout()
+
+        # Dropdown for selecting requirement
+        self.requirement_label = QLabel("Select Requirement:")
+        self.requirement_combo = QComboBox()
+        self.requirement_combo.addItems(["Req1", "Req2"])  # Add more requirements as needed
+        self.requirement_combo.currentIndexChanged.connect(self.update_fields_visibility)
 
         # Input file location
         self.input_file_label = QLabel("Input File Location:")
@@ -26,6 +34,24 @@ class MainWindow(QMainWindow):
         self.creation_date_to_label = QLabel("Creation Date To (YYYY-MM-DD):")
         self.creation_date_to_edit = QLineEdit()
 
+        # Risk library file path
+        self.risk_library_file_label = QLabel("Risk Library File Path:")
+        self.risk_library_file_edit = QLineEdit()
+        self.risk_library_file_button = QPushButton("Browse...")
+        self.risk_library_file_button.clicked.connect(self.select_risk_library_file)
+        
+        # PROC library file path
+        self.proc_library_file_label = QLabel("PROC Library File Path:")
+        self.proc_library_file_edit = QLineEdit()
+        self.proc_library_file_button = QPushButton("Browse...")
+        self.proc_library_file_button.clicked.connect(self.select_proc_library_file)
+
+        # OR file path
+        self.or_file_label = QLabel("OR File Path:")
+        self.or_file_edit = QLineEdit()
+        self.or_file_button = QPushButton("Browse...")
+        self.or_file_button.clicked.connect(self.select_or_file)
+
         # Output file path
         self.output_file_label = QLabel("Output File Path:")
         self.output_file_edit = QLineEdit()
@@ -37,9 +63,10 @@ class MainWindow(QMainWindow):
         self.process_button.clicked.connect(self.process_data)
         
         # Add widgets to layout
-        layout.addWidget(self.input_file_label)
-        layout.addWidget(self.input_file_edit)
+        layout.addWidget(self.requirement_label)
+        layout.addWidget(self.requirement_combo)
         
+        layout.addWidget(self.input_file_label)
         input_file_layout = QHBoxLayout()
         input_file_layout.addWidget(self.input_file_edit)
         input_file_layout.addWidget(self.input_file_button)
@@ -49,7 +76,29 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.creation_date_from_edit)
         layout.addWidget(self.creation_date_to_label)
         layout.addWidget(self.creation_date_to_edit)
+
+        # Add risk library file fields
+        layout.addWidget(self.risk_library_file_label)
+        risk_library_file_layout = QHBoxLayout()
+        risk_library_file_layout.addWidget(self.risk_library_file_edit)
+        risk_library_file_layout.addWidget(self.risk_library_file_button)
+        layout.addLayout(risk_library_file_layout)
+
+        # Add PROC library file fields
+        layout.addWidget(self.proc_library_file_label)
+        proc_library_file_layout = QHBoxLayout()
+        proc_library_file_layout.addWidget(self.proc_library_file_edit)
+        proc_library_file_layout.addWidget(self.proc_library_file_button)
+        layout.addLayout(proc_library_file_layout)
+
+        # Add OR file fields
+        layout.addWidget(self.or_file_label)
+        or_file_layout = QHBoxLayout()
+        or_file_layout.addWidget(self.or_file_edit)
+        or_file_layout.addWidget(self.or_file_button)
+        layout.addLayout(or_file_layout)
         
+        layout.addWidget(self.output_file_label)
         output_file_layout = QHBoxLayout()
         output_file_layout.addWidget(self.output_file_edit)
         output_file_layout.addWidget(self.output_file_button)
@@ -64,6 +113,27 @@ class MainWindow(QMainWindow):
 
         self.input_file = ""
         self.output_file = ""
+        self.risk_library_file = ""
+        self.proc_library_file = ""
+        self.or_file = ""
+
+        self.update_fields_visibility()
+
+    def update_fields_visibility(self):
+        requirement = self.requirement_combo.currentText()
+        is_req2 = requirement == "Req2"
+
+        self.risk_library_file_label.setVisible(is_req2)
+        self.risk_library_file_edit.setVisible(is_req2)
+        self.risk_library_file_button.setVisible(is_req2)
+
+        self.proc_library_file_label.setVisible(is_req2)
+        self.proc_library_file_edit.setVisible(is_req2)
+        self.proc_library_file_button.setVisible(is_req2)
+
+        self.or_file_label.setVisible(is_req2)
+        self.or_file_edit.setVisible(is_req2)
+        self.or_file_button.setVisible(is_req2)
 
     def select_input_file(self):
         options = QFileDialog.Options()
@@ -71,6 +141,30 @@ class MainWindow(QMainWindow):
         if file:
             self.input_file = file
             self.input_file_edit.setText(file)
+            self.statusBar().showMessage(f"Selected file: {file}")
+
+    def select_risk_library_file(self):
+        options = QFileDialog.Options()
+        file, _ = QFileDialog.getOpenFileName(self, "Select Risk Library Excel File", "", "Excel Files (*.xlsx)", options=options)
+        if file:
+            self.risk_library_file = file
+            self.risk_library_file_edit.setText(file)
+            self.statusBar().showMessage(f"Selected file: {file}")
+
+    def select_proc_library_file(self):
+        options = QFileDialog.Options()
+        file, _ = QFileDialog.getOpenFileName(self, "Select PROC Library Excel File", "", "Excel Files (*.xlsx)", options=options)
+        if file:
+            self.proc_library_file = file
+            self.proc_library_file_edit.setText(file)
+            self.statusBar().showMessage(f"Selected file: {file}")
+
+    def select_or_file(self):
+        options = QFileDialog.Options()
+        file, _ = QFileDialog.getOpenFileName(self, "Select OR Excel File", "", "Excel Files (*.xlsx)", options=options)
+        if file:
+            self.or_file = file
+            self.or_file_edit.setText(file)
             self.statusBar().showMessage(f"Selected file: {file}")
 
     def select_output_file(self):
@@ -82,6 +176,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Save location: {file}")
 
     def process_data(self):
+        requirement = self.requirement_combo.currentText()
         creation_date_from = self.creation_date_from_edit.text()
         creation_date_to = self.creation_date_to_edit.text()
 
@@ -90,16 +185,26 @@ class MainWindow(QMainWindow):
             return
         
         try:
-            self.processor.load_data(self.input_file)
-            self.processor.filter_data()
-            self.processor.clean_data()
-            self.processor.process_legal_phrases()
-            self.processor.aggregate_check()
-            self.processor.apply_legal_check()
-            self.processor.apply_aggregate_check()
-            self.processor.apply_loss_check()
-            self.processor.apply_language_check()
-            self.processor.save_output(self.output_file)
+            if requirement == "Req1":
+                self.processor.load_data(self.input_file)
+                self.processor.filter_data(creation_date_from, creation_date_to)
+                self.processor.clean_data()
+                self.processor.process_legal_phrases()
+                self.processor.aggregate_check()
+                self.processor.apply_legal_check()
+                self.processor.apply_aggregate_check()
+                self.processor.apply_loss_check()
+                self.processor.apply_language_check()
+                self.processor.save_output(self.output_file)
+            elif requirement == "Req2":
+                self.another_processor.load_data(self.input_file)
+                self.another_processor.load_risk_library(self.risk_library_file)
+                self.another_processor.load_proc_library(self.proc_library_file)
+                self.another_processor.load_or_file(self.or_file)
+                self.another_processor.process_data(creation_date_from, creation_date_to)
+                self.another_processor.save_output(self.output_file)
+            # Add more requirements as needed
+
             QMessageBox.information(self, "Success", "Data processing complete")
         except Exception as e:
             logging.error(f"Processing failed: {e}")

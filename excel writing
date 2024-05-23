@@ -1,0 +1,36 @@
+import win32com.client as win32
+import pandas as pd
+import time
+
+def save_dataframes_to_excel_sheets_win32(file_path, **dfs):
+    excel = win32.gencache.EnsureDispatch('Excel.Application')
+    wb = excel.Workbooks.Add()
+
+    for i, (sheet_name, df) in enumerate(dfs.items(), start=1):
+        if i == 1:
+            ws = wb.ActiveSheet
+            ws.Name = sheet_name
+        else:
+            ws = wb.Sheets.Add(After=wb.Sheets(wb.Sheets.Count))
+            ws.Name = sheet_name
+
+        for col_num, col_name in enumerate(df.columns, 1):
+            ws.Cells(1, col_num).Value = col_name
+        for row_num, row in enumerate(df.itertuples(index=False), 2):
+            for col_num, value in enumerate(row, 1):
+                ws.Cells(row_num, col_num).Value = value
+
+        ws.Columns.AutoFit()
+
+    wb.SaveAs(file_path)
+    wb.Close()
+    excel.Quit()
+
+# Sample dataframes
+df1 = pd.DataFrame({'A': range(1000), 'B': range(1000)})
+df2 = pd.DataFrame({'X': range(1000), 'Y': range(1000)})
+df3 = pd.DataFrame({'M': range(1000), 'N': range(1000)})
+
+start_time = time.time()
+save_dataframes_to_excel_sheets_win32('test_win32.xlsx', Sheet1=df1, Sheet2=df2, Sheet3=df3)
+print(f"win32com.client took {time.time() - start_time:.2f} seconds")

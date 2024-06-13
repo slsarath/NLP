@@ -1,0 +1,11 @@
+•	Overall Summary: Provides a chart-type visualization of root cause categorization and the net direct financial impact attributed to each root cause category.
+	•	Data: Contains the output dataset with all the original extract columns and model-generated columns.
+	•	Root Cause: This sheet is linked to the Overall Summary sheet, allowing you to filter data based on root cause categorization.
+	•	Quarter-wise Summary: This sheet is also linked to the Overall Summary, enabling data filtering based on quarter-wise creation dates.
+
+Note:
+Both the Root Cause Top Theme and L3 slicer are connected to the visualization chart, and the data will adjust accordingly.
+
+Please review the attached file. In the meantime, I will schedule a meeting for Tuesday to discuss the output in detail.
+
+Feel free to reach out if you have any questions or need further clarification.

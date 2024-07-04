@@ -1,19 +1,42 @@
+# Function to apply the criteria
 def categorize_row(row):
     reasons = []
     fail_score = 0
 
-    if row['Wordcount'] < 20:
-        reasons.append("Word count less than 20")
-        fail_score += 20
+    def check_criteria(wordcount, rating, interlock_comments):
+        local_reasons = []
+        local_fail_score = 0
+
+        if wordcount < 20:
+            local_reasons.append("Word count less than 20")
+            local_fail_score += 20
+        if interlock_comments and wordcount < 50:
+            local_reasons.append("Interlock comments detected with word count less than 50")
+            local_fail_score += 20
+
+        return local_reasons, local_fail_score
+
+    # Check criteria for Finance Rationale
+    finance_reasons, finance_fail_score = check_criteria(
+        row['Finance Wordcount'],
+        row['Finance Rating'],
+        row['Finance Interlock comments']
+    )
+    reasons.extend(finance_reasons)
+    fail_score += finance_fail_score
+
+    # Check criteria for Non-Finance Rationale
+    non_finance_reasons, non_finance_fail_score = check_criteria(
+        row['Non-Finance Wordcount'],
+        row['Non-Finance Rating'],
+        row['Non-Finance Interlock comments']
+    )
+    reasons.extend(non_finance_reasons)
+    fail_score += non_finance_fail_score
+
+    # Check if rationale are identical
     if row['Identical rationale'] == 'rationale are identical':
         reasons.append("Rationale are identical")
-        fail_score += 20
-    if row['Interlock comments'] and row['Wordcount'] < 50:
-        reasons.append("Interlock comments detected with word count less than 50")
-        fail_score += 20
-    # Assuming we want to check if the rating changes but the rationale did not change
-    if row['Rating'] in ['high', 'low', 'medium', 'no impact'] and row['Identical rationale'] == 'rationale are identical':
-        reasons.append("Rating changed but rationale did not change")
         fail_score += 20
 
     if reasons:

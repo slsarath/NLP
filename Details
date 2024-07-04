@@ -3,15 +3,15 @@ def categorize_row(row):
     reasons = []
     fail_score = 0
 
-    def check_criteria(wordcount, rating, interlock_comments):
+    def check_criteria(wordcount, rating, interlock_comments, rationale_type):
         local_reasons = []
         local_fail_score = 0
 
         if wordcount < 20:
-            local_reasons.append("Word count less than 20")
+            local_reasons.append(f"{rationale_type} word count less than 20")
             local_fail_score += 20
         if interlock_comments and wordcount < 50:
-            local_reasons.append("Interlock comments detected with word count less than 50")
+            local_reasons.append(f"{rationale_type} interlock comments detected with word count less than 50")
             local_fail_score += 20
 
         return local_reasons, local_fail_score
@@ -20,7 +20,8 @@ def categorize_row(row):
     finance_reasons, finance_fail_score = check_criteria(
         row['Finance Wordcount'],
         row['Finance Rating'],
-        row['Finance Interlock comments']
+        row['Finance Interlock comments'],
+        'Finance'
     )
     reasons.extend(finance_reasons)
     fail_score += finance_fail_score
@@ -29,7 +30,8 @@ def categorize_row(row):
     non_finance_reasons, non_finance_fail_score = check_criteria(
         row['Non-Finance Wordcount'],
         row['Non-Finance Rating'],
-        row['Non-Finance Interlock comments']
+        row['Non-Finance Interlock comments'],
+        'Non-Finance'
     )
     reasons.extend(non_finance_reasons)
     fail_score += non_finance_fail_score

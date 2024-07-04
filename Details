@@ -1,11 +1,25 @@
-•	Overall Summary: Provides a chart-type visualization of root cause categorization and the net direct financial impact attributed to each root cause category.
-	•	Data: Contains the output dataset with all the original extract columns and model-generated columns.
-	•	Root Cause: This sheet is linked to the Overall Summary sheet, allowing you to filter data based on root cause categorization.
-	•	Quarter-wise Summary: This sheet is also linked to the Overall Summary, enabling data filtering based on quarter-wise creation dates.
+def categorize_row(row):
+    reasons = []
+    fail_score = 0
 
-Note:
-Both the Root Cause Top Theme and L3 slicer are connected to the visualization chart, and the data will adjust accordingly.
+    if row['Wordcount'] < 20:
+        reasons.append("Word count less than 20")
+        fail_score += 20
+    if row['Identical rationale'] == 'rationale are identical':
+        reasons.append("Rationale are identical")
+        fail_score += 20
+    if row['Interlock comments'] and row['Wordcount'] < 50:
+        reasons.append("Interlock comments detected with word count less than 50")
+        fail_score += 20
+    # Assuming we want to check if the rating changes but the rationale did not change
+    if row['Rating'] in ['high', 'low', 'medium', 'no impact'] and row['Identical rationale'] == 'rationale are identical':
+        reasons.append("Rating changed but rationale did not change")
+        fail_score += 20
 
-Please review the attached file. In the meantime, I will schedule a meeting for Tuesday to discuss the output in detail.
+    if reasons:
+        return 'Bad', fail_score, ", ".join(reasons)
+    else:
+        return 'Good', 0, ""
 
-Feel free to reach out if you have any questions or need further clarification.
+# Apply the function to the DataFrame
+df[['Category', 'Fail Score', 'Reasons']] = df.apply(lambda row: pd.Series(categorize_row(row)), axis=1)

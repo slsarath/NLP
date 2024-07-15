@@ -14,7 +14,8 @@ data = {
     'Non-Financial Categories': [['cat1', 'cat2', 'cat3', 'cat4', 'cat5'], ['cat1', 'cat2', 'cat3', 'cat4'], ['cat1', 'cat2', 'cat3'], ['cat1']],
     'Identical rationale': ['rationale are identical', 'rationale are not identical', 'rationale are identical', 'rationale are not identical'],
     'Unexplained count': [0, 1, 2, 10],
-    'CurrencyFinder_Rationale (F)': [[], ['$', '€'], [], ['$', '€']]
+    'CurrencyFinder_Rationale (F)': [[], ['$', '€'], [], ['$', '€']],
+    'Rationale_OutOfDateCheck (F)': ['', 'Rationale contains out of date information', '', '']
 }
 
 df = pd.DataFrame(data)
@@ -23,37 +24,53 @@ df = pd.DataFrame(data)
 def categorize_row(row):
     reasons = []
     fail_score = 0
-    core_fail_flag = False
 
     def check_criteria(wordcount, interlock_comments, previous_rating, current_rating, previous_rationale, current_rationale, unexplained_acronyms_count, out_of_date, rationale_type):
         local_reasons = []
         local_fail_score = 0
-        local_core_fail_flag = False
+        criteria_failed = {
+            'word_count': False,
+            'interlock_comments': False,
+            'rating_change': False,
+            'unexplained_acronyms': False,
+            'out_of_date': False
+        }
 
         if wordcount < 20:
             local_reasons.append(f"{rationale_type} word count less than 20")
-            local_fail_score += 20
-            local_core_fail_flag = True
+            local_fail_score = max(local_fail_score, 20)
+            criteria_failed['word_count'] = True
         if len(interlock_comments) > 0 and wordcount < 50:
             local_reasons.append(f"{rationale_type} interlock comments detected with word count less than 50")
-            local_fail_score += 20
-            local_core_fail_flag = True
+            local_fail_score = max(local_fail_score, 20)
+            criteria_failed['interlock_comments'] = True
         if previous_rating != current_rating and previous_rationale == current_rationale:
             local_reasons.append(f"{rationale_type} rating changed but rationale remains same")
-            local_fail_score += 20
-            local_core_fail_flag = True
+            local_fail_score = max(local_fail_score, 20)
+            criteria_failed['rating_change'] = True
         if unexplained_acronyms_count > 0:
             local_reasons.append(f"{rationale_type} has some unexplained acronyms")
-            local_fail_score += 2
+            local_fail_score = max(local_fail_score, 2)
+            criteria_failed['unexplained_acronyms'] = True
         if out_of_date == "Rationale contains out of date information":
             local_reasons.append(f"{rationale_type} contains out of date information")
-            local_fail_score += 5
+            local_fail_score = max(local_fail_score, 5)
+            criteria_failed['out_of_date'] = True
 
-        return local_reasons, local_fail_score, local_core_fail_flag
+        return local_reasons, local_fail_score, criteria_failed
+
+    # Initialize criteria_failed tracking for finance and non-finance
+    criteria_failed = {
+        'word_count': False,
+        'interlock_comments': False,
+        'rating_change': False,
+        'unexplained_acronyms': False,
+        'out_of_date': False
+    }
 
     # Check criteria for Finance Rationale only if the rationale type is 'Fraud' or 'Technology'
     if row['Finance Rationale Type'] in ['Fraud', 'Technology']:
-        finance_reasons, finance_fail_score, finance_core_fail_flag = check_criteria(
+        finance_reasons, finance_fail_score, finance_criteria_failed = check_criteria(
             row['Finance Wordcount'],
             row['Finance Interlock comments'],
             row['Finance Rating'],
@@ -61,15 +78,16 @@ def categorize_row(row):
             row['Finance Rationale'],
             row['Finance Rationale'],
             row['Unexplained count'],
-            row['CurrencyFinder_Rationale (F)'],
+            row['Rationale_OutOfDateCheck (F)'],
             'Finance rationale'
         )
         reasons.extend(finance_reasons)
+        for key in criteria_failed:
+            criteria_failed[key] = criteria_failed[key] or finance_criteria_failed[key]
         fail_score += finance_fail_score
-        core_fail_flag = core_fail_flag or finance_core_fail_flag
 
     # Check criteria for Non-Finance Rationale
-    non_finance_reasons, non_finance_fail_score, non_finance_core_fail_flag = check_criteria(
+    non_finance_reasons, non_finance_fail_score, non_finance_criteria_failed = check_criteria(
         row['Non-Finance Wordcount'],
         row['Non-Finance Interlock comments'],
         row['Non-Finance Rating'],
@@ -77,21 +95,20 @@ def categorize_row(row):
         row['Non-Finance Rationale'],
         row['Non-Finance Rationale'],
         row['Unexplained count'],
-        row['CurrencyFinder_Rationale (F)'],
+        row['Rationale_OutOfDateCheck (F)'],
         'Non-Finance rationale'
     )
 
     # Add check for Non-Financial Categories
     categories_count = len(row['Non-Financial Categories'])
-    if categories_count == 5:
-        non_finance_reasons.append("All 5 Non-Fin categories detected")
-    else:
+    if categories_count < 5:
         non_finance_reasons.append(f"Non-Fin categories detected: {categories_count} values")
-        non_finance_fail_score += 5 - categories_count
+        non_finance_fail_score = max(non_finance_fail_score, 5 - categories_count)
 
     reasons.extend(non_finance_reasons)
+    for key in criteria_failed:
+        criteria_failed[key] = criteria_failed[key] or non_finance_criteria_failed[key]
     fail_score += non_finance_fail_score
-    core_fail_flag = core_fail_flag or non_finance_core_fail_flag
 
     # Check for Monetary Funds
     if len(row['CurrencyFinder_Rationale (F)']) > 0:
@@ -103,8 +120,10 @@ def categorize_row(row):
         reasons.append("Rationale are identical")
         fail_score += 20
 
-    if core_fail_flag:
-        fail_score = max(fail_score, 20)
+    # Calculate the final fail score
+    for key, value in criteria_failed.items():
+        if value:
+            fail_score = max(fail_score, 20)
 
     if reasons:
         return 'Bad', fail_score, ", ".join(reasons)

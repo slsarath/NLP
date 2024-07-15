@@ -1,1 +1,120 @@
-=ROUND((SUM(A2:A10) + SUM(B2:B10) + SUM(C2:C10)) * 100 / (SUM(A2:A10) + SUM(D2:D10) + SUM(B2:B10) + SUM(E2:E10) + SUM(F2:F10) + SUM(C2:C10)), 2)
+import pandas as pd
+
+# Sample DataFrame
+data = {
+    'Finance Rationale': ['Finance explanation 1', 'Finance explanation 2', 'Short finance', 'Another finance explanation'],
+    'Finance Wordcount': [50, 10, 5, 100],
+    'Finance Rating': ['high', 'low', 'medium', 'no impact'],
+    'Finance Interlock comments': [['a', 'b'], [], ['a'], ['a', 'b', 'c']],
+    'Finance Rationale Type': ['Fraud', 'Technology', 'Other', 'Technology'],
+    'Non-Finance Rationale': ['Non-finance explanation 1', 'Non-finance explanation 2', 'Short non-finance', 'Another non-finance explanation'],
+    'Non-Finance Wordcount': [50, 10, 5, 100],
+    'Non-Finance Rating': ['high', 'low', 'medium', 'no impact'],
+    'Non-Finance Interlock comments': [['a', 'b'], [], ['a'], ['a', 'b', 'c']],
+    'Non-Financial Categories': [['cat1', 'cat2', 'cat3', 'cat4', 'cat5'], ['cat1', 'cat2', 'cat3', 'cat4'], ['cat1', 'cat2', 'cat3'], ['cat1']],
+    'Identical rationale': ['rationale are identical', 'rationale are not identical', 'rationale are identical', 'rationale are not identical'],
+    'Unexplained count': [0, 1, 2, 10],
+    'CurrencyFinder_Rationale (F)': [[], ['$', '€'], [], ['$', '€']]
+}
+
+df = pd.DataFrame(data)
+
+# Function to apply the criteria
+def categorize_row(row):
+    reasons = []
+    fail_score = 0
+    core_fail_flag = False
+
+    def check_criteria(wordcount, interlock_comments, previous_rating, current_rating, previous_rationale, current_rationale, unexplained_acronyms_count, out_of_date, rationale_type):
+        local_reasons = []
+        local_fail_score = 0
+        local_core_fail_flag = False
+
+        if wordcount < 20:
+            local_reasons.append(f"{rationale_type} word count less than 20")
+            local_fail_score += 20
+            local_core_fail_flag = True
+        if len(interlock_comments) > 0 and wordcount < 50:
+            local_reasons.append(f"{rationale_type} interlock comments detected with word count less than 50")
+            local_fail_score += 20
+            local_core_fail_flag = True
+        if previous_rating != current_rating and previous_rationale == current_rationale:
+            local_reasons.append(f"{rationale_type} rating changed but rationale remains same")
+            local_fail_score += 20
+            local_core_fail_flag = True
+        if unexplained_acronyms_count > 0:
+            local_reasons.append(f"{rationale_type} has some unexplained acronyms")
+            local_fail_score += 2
+        if out_of_date == "Rationale contains out of date information":
+            local_reasons.append(f"{rationale_type} contains out of date information")
+            local_fail_score += 5
+
+        return local_reasons, local_fail_score, local_core_fail_flag
+
+    # Check criteria for Finance Rationale only if the rationale type is 'Fraud' or 'Technology'
+    if row['Finance Rationale Type'] in ['Fraud', 'Technology']:
+        finance_reasons, finance_fail_score, finance_core_fail_flag = check_criteria(
+            row['Finance Wordcount'],
+            row['Finance Interlock comments'],
+            row['Finance Rating'],
+            row['Finance Rating'],
+            row['Finance Rationale'],
+            row['Finance Rationale'],
+            row['Unexplained count'],
+            row['CurrencyFinder_Rationale (F)'],
+            'Finance rationale'
+        )
+        reasons.extend(finance_reasons)
+        fail_score += finance_fail_score
+        core_fail_flag = core_fail_flag or finance_core_fail_flag
+
+    # Check criteria for Non-Finance Rationale
+    non_finance_reasons, non_finance_fail_score, non_finance_core_fail_flag = check_criteria(
+        row['Non-Finance Wordcount'],
+        row['Non-Finance Interlock comments'],
+        row['Non-Finance Rating'],
+        row['Non-Finance Rating'],
+        row['Non-Finance Rationale'],
+        row['Non-Finance Rationale'],
+        row['Unexplained count'],
+        row['CurrencyFinder_Rationale (F)'],
+        'Non-Finance rationale'
+    )
+
+    # Add check for Non-Financial Categories
+    categories_count = len(row['Non-Financial Categories'])
+    if categories_count == 5:
+        non_finance_reasons.append("All 5 Non-Fin categories detected")
+    else:
+        non_finance_reasons.append(f"Non-Fin categories detected: {categories_count} values")
+        non_finance_fail_score += 5 - categories_count
+
+    reasons.extend(non_finance_reasons)
+    fail_score += non_finance_fail_score
+    core_fail_flag = core_fail_flag or non_finance_core_fail_flag
+
+    # Check for Monetary Funds
+    if len(row['CurrencyFinder_Rationale (F)']) > 0:
+        reasons.append("Finance Rationale detected with monetary amount")
+        fail_score += 2
+
+    # Check if rationale are identical
+    if row['Identical rationale'] == 'rationale are identical':
+        reasons.append("Rationale are identical")
+        fail_score += 20
+
+    if core_fail_flag:
+        fail_score = max(fail_score, 20)
+
+    if reasons:
+        return 'Bad', fail_score, ", ".join(reasons)
+    else:
+        return 'Good', 0, ""
+
+# Apply the function to the DataFrame
+df[['Category', 'Fail Score', 'Reasons']] = df.apply(lambda row: pd.Series(categorize_row(row)), axis=1)
+
+# Display the resulting DataFrame
+import ace_tools as tools; tools.display_dataframe_to_user(name="Categorized DataFrame with Reasons for Finance and Non-Finance", dataframe=df)
+
+print(df)

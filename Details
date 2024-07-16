@@ -1,59 +1,32 @@
-def combine_phrases(semantic_phrases, description_results, impact_results):
-    combined_results = []
-    included_categories = set()
+def combine_semantic_phrases(description_results, impact_results, semantic_phrases):
+    combined_phrases = []
 
-    # Process description results
-    for phrase, score in description_results:
-        for category, phrases in semantic_phrases.items():
-            if phrase in phrases and category not in included_categories:
-                combined_results.append((phrase, score))
-                included_categories.add(category)
-                break
+    # Add phrases from description_results if it exists and is not empty
+    if description_results:
+        for phrase, score in description_results:
+            if phrase:
+                found = False
+                for key, phrases in semantic_phrases.items():
+                    if phrase in phrases:
+                        found = True
+                        break
+                if not found:
+                    combined_phrases.append((phrase, score))
 
-    # Process impact results
-    for phrase, score in impact_results:
-        for category, phrases in semantic_phrases.items():
-            if phrase in phrases and category not in included_categories:
-                combined_results.append((phrase, score))
-                included_categories.add(category)
-                break
+    # Add phrases from impact_results if it exists and is not empty
+    if impact_results:
+        for phrase, score in impact_results:
+            if phrase:
+                found = False
+                for key, phrases in semantic_phrases.items():
+                    if phrase in phrases:
+                        found = True
+                        break
+                if not found:
+                    combined_phrases.append((phrase, score))
 
-    # Sort combined results by similarity score in descending order
-    combined_results.sort(key=lambda x: x[1], reverse=True)
+    # Sort combined_phrases by score in descending order
+    combined_phrases.sort(key=lambda x: x[1], reverse=True)
 
-    # Take top three unique entries based on categories
-    final_combined = []
-    included_phrases = set()
-    for phrase, score in combined_results:
-        category_found = False
-        for category, phrases in semantic_phrases.items():
-            if phrase in phrases and category not in included_categories:
-                final_combined.append((phrase, score))
-                included_categories.add(category)
-                category_found = True
-                break
-        if category_found:
-            break
-
-    return final_combined[:3]  # Return top three entries
-
-# Example usage:
-semantic_phrases = {
-    'Indebtness': ['customer impacted due to operational failure', 'firms providing poor Consumer Support which includes delays in customer service'],
-    'Fair Value': ['customer not provided with fair amount'],
-}
-
-description_results = [
-    ('customers are receiving required notifications through app which may result in them not being able to manage their finances', 0.3794984221458435),
-    ('customers borrow more money than they can afford to repay', 0.3701545000076294),
-    ('firms providing poor Consumer Support which includes delays in customer service', 0.35735374689102173)
-]
-
-impact_results = [
-    ('customers are receiving required notifications through app which may result in them not being able to manage their finances', 0.3794984221458435),
-    ('customers borrow more money than they can afford to repay', 0.3701545000076294),
-    ('customer not provided with fair amount', 0.3452987422943115)
-]
-
-combined_top_phrases = combine_phrases(semantic_phrases, description_results, impact_results)
-print(combined_top_phrases)
+    # Return top unique phrases up to 3
+    return combined_phrases[:3]

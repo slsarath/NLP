@@ -1,32 +1,36 @@
 def combine_semantic_phrases(description_results, impact_results, semantic_phrases):
     combined_phrases = []
 
-    # Add phrases from description_results if it exists and is not empty
+    # Process description_results if it exists and is not empty
     if description_results:
-        for phrase, score in description_results:
-            if phrase:
-                found = False
-                for key, phrases in semantic_phrases.items():
-                    if phrase in phrases:
-                        found = True
-                        break
-                if not found:
-                    combined_phrases.append((phrase, score))
+        for result in description_results:
+            if isinstance(result, tuple) and len(result) == 2:
+                phrase, score = result
+                if phrase:
+                    found = False
+                    for key, phrases in semantic_phrases.items():
+                        if phrase in phrases:
+                            found = True
+                            break
+                    if not found:
+                        combined_phrases.append((phrase, score))
 
-    # Add phrases from impact_results if it exists and is not empty
+    # Process impact_results if it exists and is not empty
     if impact_results:
-        for phrase, score in impact_results:
-            if phrase:
-                found = False
-                for key, phrases in semantic_phrases.items():
-                    if phrase in phrases:
-                        found = True
-                        break
-                if not found:
-                    combined_phrases.append((phrase, score))
+        for result in impact_results:
+            if isinstance(result, tuple) and len(result) == 2:
+                phrase, score = result
+                if phrase:
+                    found = False
+                    for key, phrases in semantic_phrases.items():
+                        if phrase in phrases:
+                            found = True
+                            break
+                    if not found:
+                        combined_phrases.append((phrase, score))
 
     # Sort combined_phrases by score in descending order
     combined_phrases.sort(key=lambda x: x[1], reverse=True)
 
     # Return top unique phrases up to 3
-    return combined_phrases[:3]
+    return combined_phrases[:3] if combined_phrases else []

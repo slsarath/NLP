@@ -5,34 +5,50 @@ def combine_semantic_phrases(description_results_str, impact_results_str, semant
     description_results = ast.literal_eval(description_results_str)
     impact_results = ast.literal_eval(impact_results_str)
 
-    combined_phrases = []
+    # Initialize a dictionary to collect phrases by category
+    combined_phrases_by_category = {}
 
     # Process description_results
     if description_results:
-        for result in description_results[:3]:  # Limit to top three results
-            phrase, score = result[0], result[1]
-            found = False
+        for phrase, score in description_results[:3]:  # Limit to top three results
+            added = False
             for category, phrases in semantic_phrases.items():
                 if phrase in phrases:
-                    found = True
+                    if category not in combined_phrases_by_category:
+                        combined_phrases_by_category[category] = []
+                    combined_phrases_by_category[category].append((phrase, score))
+                    added = True
                     break
-            if not found:
-                combined_phrases.append((phrase, score))
+            if not added:
+                combined_phrases_by_category['Others'] = [(phrase, score)]
 
     # Process impact_results
     if impact_results:
-        for result in impact_results[:3]:  # Limit to top three results
-            phrase, score = result[0], result[1]
-            found = False
+        for phrase, score in impact_results[:3]:  # Limit to top three results
+            added = False
             for category, phrases in semantic_phrases.items():
                 if phrase in phrases:
-                    found = True
+                    if category not in combined_phrases_by_category:
+                        combined_phrases_by_category[category] = []
+                    combined_phrases_by_category[category].append((phrase, score))
+                    added = True
                     break
-            if not found:
+            if not added:
+                combined_phrases_by_category['Others'] = [(phrase, score)]
+
+    # Combine phrases from different categories based on score
+    combined_phrases = []
+    seen_phrases = set()
+
+    for category, phrases_scores in combined_phrases_by_category.items():
+        phrases_scores.sort(key=lambda x: x[1], reverse=True)
+        for phrase, score in phrases_scores:
+            if phrase not in seen_phrases:
                 combined_phrases.append((phrase, score))
+                seen_phrases.add(phrase)
+            if len(combined_phrases) >= 3:
+                break
+        if len(combined_phrases) >= 3:
+            break
 
-    # Sort combined_phrases by score in descending order
-    combined_phrases.sort(key=lambda x: x[1], reverse=True)
-
-    # Return top three unique phrases with their scores
     return combined_phrases[:3]

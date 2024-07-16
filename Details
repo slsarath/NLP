@@ -1,9 +1,10 @@
 def combine_semantic_phrases(description_results, impact_results, semantic_phrases):
     combined_phrases = []
 
-    # Collect phrases and scores from description_results
+    # Process description_results
     if description_results:
-        for phrase, score in description_results[:3]:  # Limit to top three results
+        for result in description_results[:3]:  # Limit to top three results
+            phrase, score = result[0], result[1]
             found = False
             for category, phrases in semantic_phrases.items():
                 if phrase in phrases:
@@ -12,9 +13,10 @@ def combine_semantic_phrases(description_results, impact_results, semantic_phras
             if not found:
                 combined_phrases.append((phrase, score))
 
-    # Collect phrases and scores from impact_results
+    # Process impact_results
     if impact_results:
-        for phrase, score in impact_results[:3]:  # Limit to top three results
+        for result in impact_results[:3]:  # Limit to top three results
+            phrase, score = result[0], result[1]
             found = False
             for category, phrases in semantic_phrases.items():
                 if phrase in phrases:

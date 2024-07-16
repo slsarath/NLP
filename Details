@@ -1,112 +1,59 @@
-import pandas as pd
+def combine_phrases(semantic_phrases, description_results, impact_results):
+    combined_results = []
+    included_categories = set()
 
-# Sample DataFrame
-data = {
-    'Finance Rationale': ['Finance explanation 1', 'Finance explanation 2', 'Short finance', 'Another finance explanation'],
-    'Finance Wordcount': [50, 10, 5, 100],
-    'Finance Rating': ['high', 'low', 'medium', 'no impact'],
-    'Finance Interlock comments': [['a', 'b'], [], ['a'], ['a', 'b', 'c']],
-    'Finance Rationale Type': ['Fraud', 'Technology', 'Other', 'Technology'],
-    'Non-Finance Rationale': ['Non-finance explanation 1', 'Non-finance explanation 2', 'Short non-finance', 'Another non-finance explanation'],
-    'Non-Finance Wordcount': [50, 10, 5, 100],
-    'Non-Finance Rating': ['high', 'low', 'medium', 'no impact'],
-    'Non-Finance Interlock comments': [['a', 'b'], [], ['a'], ['a', 'b', 'c']],
-    'Non-Financial Categories': [['cat1', 'cat2', 'cat3', 'cat4', 'cat5'], ['cat1', 'cat2', 'cat3', 'cat4'], ['cat1', 'cat2', 'cat3'], ['cat1']],
-    'Identical rationale': ['rationale are identical', 'rationale are not identical', 'rationale are identical', 'rationale are not identical'],
-    'Unexplained count': [0, 1, 2, 10],
-    'CurrencyFinder_Rationale (F)': [[], ['$', '€'], [], ['$', '€']],
-    'Rationale_OutOfDateCheck (F)': ['', 'Rationale contains out of date information', '', '']
+    # Process description results
+    for phrase, score in description_results:
+        for category, phrases in semantic_phrases.items():
+            if phrase in phrases and category not in included_categories:
+                combined_results.append((phrase, score))
+                included_categories.add(category)
+                break
+
+    # Process impact results
+    for phrase, score in impact_results:
+        for category, phrases in semantic_phrases.items():
+            if phrase in phrases and category not in included_categories:
+                combined_results.append((phrase, score))
+                included_categories.add(category)
+                break
+
+    # Sort combined results by similarity score in descending order
+    combined_results.sort(key=lambda x: x[1], reverse=True)
+
+    # Take top three unique entries based on categories
+    final_combined = []
+    included_phrases = set()
+    for phrase, score in combined_results:
+        category_found = False
+        for category, phrases in semantic_phrases.items():
+            if phrase in phrases and category not in included_categories:
+                final_combined.append((phrase, score))
+                included_categories.add(category)
+                category_found = True
+                break
+        if category_found:
+            break
+
+    return final_combined[:3]  # Return top three entries
+
+# Example usage:
+semantic_phrases = {
+    'Indebtness': ['customer impacted due to operational failure', 'firms providing poor Consumer Support which includes delays in customer service'],
+    'Fair Value': ['customer not provided with fair amount'],
 }
 
-df = pd.DataFrame(data)
+description_results = [
+    ('customers are receiving required notifications through app which may result in them not being able to manage their finances', 0.3794984221458435),
+    ('customers borrow more money than they can afford to repay', 0.3701545000076294),
+    ('firms providing poor Consumer Support which includes delays in customer service', 0.35735374689102173)
+]
 
-# Function to apply the criteria
-def categorize_row(row):
-    reasons = []
-    fail_score = 0
-    core_fail_score = 0
+impact_results = [
+    ('customers are receiving required notifications through app which may result in them not being able to manage their finances', 0.3794984221458435),
+    ('customers borrow more money than they can afford to repay', 0.3701545000076294),
+    ('customer not provided with fair amount', 0.3452987422943115)
+]
 
-    def check_criteria(wordcount, interlock_comments, previous_rating, current_rating, previous_rationale, current_rationale, unexplained_acronyms_count, out_of_date, rationale_type):
-        local_reasons = []
-        local_fail_score = 0
-
-        if wordcount < 20:
-            local_reasons.append(f"{rationale_type} word count less than 20")
-            local_fail_score = max(local_fail_score, 20)
-        if len(interlock_comments) > 0 and wordcount < 50:
-            local_reasons.append(f"{rationale_type} interlock comments detected with word count less than 50")
-            local_fail_score = max(local_fail_score, 20)
-        if previous_rating != current_rating and previous_rationale == current_rationale:
-            local_reasons.append(f"{rationale_type} rating changed but rationale remains same")
-            local_fail_score = max(local_fail_score, 20)
-        if unexplained_acronyms_count > 0:
-            local_reasons.append(f"{rationale_type} has some unexplained acronyms")
-            local_fail_score = max(local_fail_score, 2)
-        if out_of_date == "Rationale contains out of date information":
-            local_reasons.append(f"{rationale_type} contains out of date information")
-            local_fail_score = max(local_fail_score, 5)
-
-        return local_reasons, local_fail_score
-
-    # Check criteria for Finance Rationale only if the rationale type is 'Fraud' or 'Technology'
-    if row['Finance Rationale Type'] in ['Fraud', 'Technology']:
-        finance_reasons, finance_fail_score = check_criteria(
-            row['Finance Wordcount'],
-            row['Finance Interlock comments'],
-            row['Finance Rating'],
-            row['Finance Rating'],
-            row['Finance Rationale'],
-            row['Finance Rationale'],
-            row['Unexplained count'],
-            row['Rationale_OutOfDateCheck (F)'],
-            'Finance rationale'
-        )
-        reasons.extend(finance_reasons)
-        core_fail_score = max(core_fail_score, finance_fail_score)
-
-    # Check criteria for Non-Finance Rationale
-    non_finance_reasons, non_finance_fail_score = check_criteria(
-        row['Non-Finance Wordcount'],
-        row['Non-Finance Interlock comments'],
-        row['Non-Finance Rating'],
-        row['Non-Finance Rating'],
-        row['Non-Finance Rationale'],
-        row['Non-Finance Rationale'],
-        row['Unexplained count'],
-        row['Rationale_OutOfDateCheck (F)'],
-        'Non-Finance rationale'
-    )
-    reasons.extend(non_finance_reasons)
-    core_fail_score = max(core_fail_score, non_finance_fail_score)
-
-    # Add check for Non-Financial Categories
-    categories_count = len(row['Non-Financial Categories'])
-    if categories_count < 5:
-        reasons.append(f"Non-Fin categories detected: {categories_count} values")
-        fail_score += 5 - categories_count
-
-    # Check for Monetary Funds
-    if len(row['CurrencyFinder_Rationale (F)']) > 0:
-        reasons.append("Finance Rationale detected with monetary amount")
-        fail_score += 2
-
-    # Check if rationale are identical
-    if row['Identical rationale'] == 'rationale are identical':
-        reasons.append("Rationale are identical")
-        fail_score += 20
-
-    # Include core fail score in the total fail score
-    fail_score += core_fail_score
-
-    if reasons:
-        return 'Bad', fail_score, ", ".join(reasons)
-    else:
-        return 'Good', 0, ""
-
-# Apply the function to the DataFrame
-df[['Category', 'Fail Score', 'Reasons']] = df.apply(lambda row: pd.Series(categorize_row(row)), axis=1)
-
-# Display the resulting DataFrame
-import ace_tools as tools; tools.display_dataframe_to_user(name="Categorized DataFrame with Reasons for Finance and Non-Finance", dataframe=df)
-
-print(df)
+combined_top_phrases = combine_phrases(semantic_phrases, description_results, impact_results)
+print(combined_top_phrases)

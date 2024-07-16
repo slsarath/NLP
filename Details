@@ -3,8 +3,7 @@ def combine_semantic_phrases(description_results, impact_results, semantic_phras
 
     # Collect phrases and scores from description_results
     if description_results:
-        for result in description_results[:3]:  # Limit to top three results
-            phrase, score = result  # Unpack the tuple
+        for phrase, score in description_results[:3]:  # Limit to top three results
             found = False
             for category, phrases in semantic_phrases.items():
                 if phrase in phrases:
@@ -15,8 +14,7 @@ def combine_semantic_phrases(description_results, impact_results, semantic_phras
 
     # Collect phrases and scores from impact_results
     if impact_results:
-        for result in impact_results[:3]:  # Limit to top three results
-            phrase, score = result  # Unpack the tuple
+        for phrase, score in impact_results[:3]:  # Limit to top three results
             found = False
             for category, phrases in semantic_phrases.items():
                 if phrase in phrases:

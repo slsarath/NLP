@@ -1,4 +1,10 @@
-def combine_semantic_phrases(description_results, impact_results, semantic_phrases):
+def combine_semantic_phrases(description_results_str, impact_results_str, semantic_phrases):
+    import ast
+
+    # Convert string representations to lists of tuples
+    description_results = ast.literal_eval(description_results_str)
+    impact_results = ast.literal_eval(impact_results_str)
+
     combined_phrases = []
 
     # Process description_results

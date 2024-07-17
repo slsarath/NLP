@@ -1,21 +1,26 @@
-# Example data setup (replace with your actual data)
 import pandas as pd
 
-# Example sorted lists of phrases with their scores
-sorted_lists = [
-    [('phrase A', 0.8), ('phrase B', 0.7), ('phrase C', 0.6)],
-    [('phrase D', 0.9), ('phrase E', 0.85), ('phrase F', 0.75)]
-]
-
-# Example theme phrases dictionary
-theme_phrases = {
-    'Theme 1': ['phrase A', 'phrase B'],
-    'Theme 2': ['phrase D', 'phrase E'],
-    'Theme 3': ['phrase F']
+# Example DataFrame setup (replace with your actual data)
+data = {
+    'Top matching description phrases': [
+        "[('customers are receiving required notifications through app which may result in them not being able to manage their finances', 0.3794984221458435), ('customers borrow more money than they can afford to repay', 0.3701545000076294), ('firms providing poor Consumer Support which includes delays in customer service', 0.35735374689102173)]",
+        "[('phrase D', 0.9), ('phrase E', 0.85), ('phrase F', 0.75)]"
+    ],
+    'Top matching impact phrases': [
+        "[('impact phrase A', 0.8), ('impact phrase B', 0.7), ('impact phrase C', 0.6)]",
+        "[('phrase X', 0.95), ('phrase Y', 0.9), ('phrase Z', 0.85)]"
+    ]
 }
 
+# Convert dictionary to DataFrame
+df = pd.DataFrame(data)
+
 # Function to map phrases to themes
-def map_phrases_to_themes(sorted_lists, theme_phrases):
+def map_phrases_to_themes(description_results, impact_results, theme_phrases):
+    sorted_lists = []
+    sorted_lists.append(eval(description_results))  # Convert string to list of tuples
+    sorted_lists.append(eval(impact_results))  # Convert string to list of tuples
+    
     top_theme = []
     second_theme = []
     third_theme = []
@@ -46,7 +51,7 @@ def map_phrases_to_themes(sorted_lists, theme_phrases):
                         break
             if top_mapped and second_mapped and third_mapped:
                 break
-            
+        
         # Handle cases where less than 3 themes are mapped
         if len(top_theme) < len(sorted_list):
             top_theme.extend([''] * (len(sorted_list) - len(top_theme)))
@@ -57,15 +62,8 @@ def map_phrases_to_themes(sorted_lists, theme_phrases):
     
     return top_theme, second_theme, third_theme
 
-# Applying the function to example data
-top_theme, second_theme, third_theme = map_phrases_to_themes(sorted_lists, theme_phrases)
+# Apply the function to each row of the DataFrame
+df[['Top theme', 'Second theme', 'Third theme']] = df.apply(lambda row: pd.Series(map_phrases_to_themes(row['Top matching description phrases'], row['Top matching impact phrases'], theme_phrases)), axis=1)
 
-# Create a DataFrame with the results
-df = pd.DataFrame({
-    'Sorted List': sorted_lists,
-    'Top theme': top_theme,
-    'Second theme': second_theme,
-    'Third theme': third_theme
-})
-
+# Show the updated DataFrame
 print(df)

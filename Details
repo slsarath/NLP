@@ -1,29 +1,19 @@
-import pandas as pd
-
-# Example DataFrame setup (replace with your actual data)
-data = {
-    'Top matching description phrases': [
-        "[('customers are receiving required notifications through app which may result in them not being able to manage their finances', 0.3794984221458435), ('customers borrow more money than they can afford to repay', 0.3701545000076294), ('firms providing poor Consumer Support which includes delays in customer service', 0.35735374689102173)]",
-        "[('phrase D', 0.9), ('phrase E', 0.85), ('phrase F', 0.75)]"
-    ],
-    'Top matching impact phrases': [
-        "[('impact phrase A', 0.8), ('impact phrase B', 0.7), ('impact phrase C', 0.6)]",
-        "[('phrase X', 0.95), ('phrase Y', 0.9), ('phrase Z', 0.85)]"
-    ]
-}
-
-# Convert dictionary to DataFrame
-df = pd.DataFrame(data)
-
-# Function to map phrases to themes
 def map_phrases_to_themes(description_results, impact_results, theme_phrases):
     sorted_lists = []
     sorted_lists.append(eval(description_results))  # Convert string to list of tuples
     sorted_lists.append(eval(impact_results))  # Convert string to list of tuples
     
-    top_theme = []
-    second_theme = []
-    third_theme = []
+    top_phrase = ''
+    top_score = 0.0
+    top_theme = ''
+    
+    second_phrase = ''
+    second_score = 0.0
+    second_theme = ''
+    
+    third_phrase = ''
+    third_score = 0.0
+    third_theme = ''
     
     for sorted_list in sorted_lists:
         top_mapped = False
@@ -34,36 +24,31 @@ def map_phrases_to_themes(description_results, impact_results, theme_phrases):
             if not top_mapped:
                 for theme, phrases in theme_phrases.items():
                     if phrase in phrases:
-                        top_theme.append(theme)
+                        top_phrase = phrase
+                        top_score = score
+                        top_theme = theme
                         top_mapped = True
                         break
             elif not second_mapped:
                 for theme, phrases in theme_phrases.items():
-                    if phrase in phrases and theme not in top_theme:
-                        second_theme.append(theme)
+                    if phrase in phrases and theme != top_theme:
+                        second_phrase = phrase
+                        second_score = score
+                        second_theme = theme
                         second_mapped = True
                         break
             elif not third_mapped and score >= 0.3:  # Adjust threshold as needed
                 for theme, phrases in theme_phrases.items():
-                    if phrase in phrases and theme not in (top_theme + second_theme):
-                        third_theme.append(theme)
+                    if phrase in phrases and theme not in (top_theme, second_theme):
+                        third_phrase = phrase
+                        third_score = score
+                        third_theme = theme
                         third_mapped = True
                         break
             if top_mapped and second_mapped and third_mapped:
                 break
         
-        # Handle cases where less than 3 themes are mapped
-        if len(top_theme) < len(sorted_list):
-            top_theme.extend([''] * (len(sorted_list) - len(top_theme)))
-        if len(second_theme) < len(sorted_list):
-            second_theme.extend([''] * (len(sorted_list) - len(second_theme)))
-        if len(third_theme) < len(sorted_list):
-            third_theme.extend([''] * (len(sorted_list) - len(third_theme)))
+        if top_mapped and second_mapped and third_mapped:
+            break
     
-    return top_theme, second_theme, third_theme
-
-# Apply the function to each row of the DataFrame
-df[['Top theme', 'Second theme', 'Third theme']] = df.apply(lambda row: pd.Series(map_phrases_to_themes(row['Top matching description phrases'], row['Top matching impact phrases'], theme_phrases)), axis=1)
-
-# Show the updated DataFrame
-print(df)
+    return top_phrase, top_score, top_theme, second_phrase, second_score, second_theme, third_phrase, third_score, third_theme

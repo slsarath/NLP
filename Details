@@ -1,54 +1,71 @@
-def combine_semantic_phrases(description_results_str, impact_results_str, semantic_phrases):
-    import ast
+# Example data setup (replace with your actual data)
+import pandas as pd
 
-    # Convert string representations to lists of tuples
-    description_results = ast.literal_eval(description_results_str)
-    impact_results = ast.literal_eval(impact_results_str)
+# Example sorted lists of phrases with their scores
+sorted_lists = [
+    [('phrase A', 0.8), ('phrase B', 0.7), ('phrase C', 0.6)],
+    [('phrase D', 0.9), ('phrase E', 0.85), ('phrase F', 0.75)]
+]
 
-    # Initialize a dictionary to collect phrases by category
-    combined_phrases_by_category = {}
+# Example theme phrases dictionary
+theme_phrases = {
+    'Theme 1': ['phrase A', 'phrase B'],
+    'Theme 2': ['phrase D', 'phrase E'],
+    'Theme 3': ['phrase F']
+}
 
-    # Process description_results
-    if description_results:
-        for phrase, score in description_results[:3]:  # Limit to top three results
-            added = False
-            for category, phrases in semantic_phrases.items():
-                if phrase in phrases:
-                    if category not in combined_phrases_by_category:
-                        combined_phrases_by_category[category] = []
-                    combined_phrases_by_category[category].append((phrase, score))
-                    added = True
-                    break
-            if not added:
-                combined_phrases_by_category['Others'] = [(phrase, score)]
-
-    # Process impact_results
-    if impact_results:
-        for phrase, score in impact_results[:3]:  # Limit to top three results
-            added = False
-            for category, phrases in semantic_phrases.items():
-                if phrase in phrases:
-                    if category not in combined_phrases_by_category:
-                        combined_phrases_by_category[category] = []
-                    combined_phrases_by_category[category].append((phrase, score))
-                    added = True
-                    break
-            if not added:
-                combined_phrases_by_category['Others'] = [(phrase, score)]
-
-    # Combine phrases from different categories based on score
-    combined_phrases = []
-    seen_phrases = set()
-
-    for category, phrases_scores in combined_phrases_by_category.items():
-        phrases_scores.sort(key=lambda x: x[1], reverse=True)
-        for phrase, score in phrases_scores:
-            if phrase not in seen_phrases:
-                combined_phrases.append((phrase, score))
-                seen_phrases.add(phrase)
-            if len(combined_phrases) >= 3:
+# Function to map phrases to themes
+def map_phrases_to_themes(sorted_lists, theme_phrases):
+    top_theme = []
+    second_theme = []
+    third_theme = []
+    
+    for sorted_list in sorted_lists:
+        top_mapped = False
+        second_mapped = False
+        third_mapped = False
+        
+        for phrase, score in sorted_list:
+            if not top_mapped:
+                for theme, phrases in theme_phrases.items():
+                    if phrase in phrases:
+                        top_theme.append(theme)
+                        top_mapped = True
+                        break
+            elif not second_mapped:
+                for theme, phrases in theme_phrases.items():
+                    if phrase in phrases and theme not in top_theme:
+                        second_theme.append(theme)
+                        second_mapped = True
+                        break
+            elif not third_mapped and score >= 0.3:  # Adjust threshold as needed
+                for theme, phrases in theme_phrases.items():
+                    if phrase in phrases and theme not in (top_theme + second_theme):
+                        third_theme.append(theme)
+                        third_mapped = True
+                        break
+            if top_mapped and second_mapped and third_mapped:
                 break
-        if len(combined_phrases) >= 3:
-            break
+            
+        # Handle cases where less than 3 themes are mapped
+        if len(top_theme) < len(sorted_list):
+            top_theme.extend([''] * (len(sorted_list) - len(top_theme)))
+        if len(second_theme) < len(sorted_list):
+            second_theme.extend([''] * (len(sorted_list) - len(second_theme)))
+        if len(third_theme) < len(sorted_list):
+            third_theme.extend([''] * (len(sorted_list) - len(third_theme)))
+    
+    return top_theme, second_theme, third_theme
 
-    return combined_phrases[:3]
+# Applying the function to example data
+top_theme, second_theme, third_theme = map_phrases_to_themes(sorted_lists, theme_phrases)
+
+# Create a DataFrame with the results
+df = pd.DataFrame({
+    'Sorted List': sorted_lists,
+    'Top theme': top_theme,
+    'Second theme': second_theme,
+    'Third theme': third_theme
+})
+
+print(df)

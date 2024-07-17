@@ -1,54 +1,24 @@
-def map_phrases_to_themes(description_results, impact_results, theme_phrases):
-    sorted_lists = []
-    sorted_lists.append(eval(description_results))  # Convert string to list of tuples
-    sorted_lists.append(eval(impact_results))  # Convert string to list of tuples
-    
-    top_phrase = ''
-    top_score = 0.0
-    top_theme = ''
-    
-    second_phrase = ''
-    second_score = 0.0
-    second_theme = ''
-    
-    third_phrase = ''
-    third_score = 0.0
-    third_theme = ''
-    
-    for sorted_list in sorted_lists:
-        top_mapped = False
-        second_mapped = False
-        third_mapped = False
-        
-        for phrase, score in sorted_list:
-            if not top_mapped:
-                for theme, phrases in theme_phrases.items():
-                    if phrase in phrases:
-                        top_phrase = phrase
-                        top_score = score
-                        top_theme = theme
-                        top_mapped = True
-                        break
-            elif not second_mapped:
-                for theme, phrases in theme_phrases.items():
-                    if phrase in phrases and theme != top_theme:
-                        second_phrase = phrase
-                        second_score = score
-                        second_theme = theme
-                        second_mapped = True
-                        break
-            elif not third_mapped and score >= 0.3:  # Adjust threshold as needed
-                for theme, phrases in theme_phrases.items():
-                    if phrase in phrases and theme not in (top_theme, second_theme):
-                        third_phrase = phrase
-                        third_score = score
-                        third_theme = theme
-                        third_mapped = True
-                        break
-            if top_mapped and second_mapped and third_mapped:
-                break
-        
-        if top_mapped and second_mapped and third_mapped:
-            break
-    
-    return top_phrase, top_score, top_theme, second_phrase, second_score, second_theme, third_phrase, third_score, third_theme
+Line-by-Line Explanation:
+
+	1.	Initialization of Lists:
+	•	sorted_lists is where we store the results of our analysis from two columns: description_results and impact_results. These results are formatted as lists of tuples (pairs of text phrases and their similarity scores).
+	2.	Sorting and Conversion:
+	•	We convert the string representations of description_results and impact_results into actual lists of tuples (eval(description_results) and eval(impact_results)). This helps us work with the data more easily.
+	3.	Variables for Results:
+	•	We create variables (top_phrase, top_score, top_theme, etc.) to store the top three phrases along with their similarity scores and corresponding themes.
+	4.	Looping through Results:
+	•	We iterate through each list of tuples (sorted_list) from sorted_lists. These lists contain phrases and their similarity scores.
+	5.	Mapping Phrases to Themes:
+	•	For each phrase in sorted_list, we try to find a matching theme from a predefined set (theme_phrases). Themes are categories that the phrases might belong to.
+	6.	Assigning Themes:
+	•	If a phrase matches a theme and hasn’t been assigned to top_theme yet, we assign it as the top phrase and its theme (top_phrase, top_score, top_theme).
+	•	If the first theme has been assigned (top_theme), we look for a second phrase that matches a different theme (second_phrase, second_score, second_theme). This ensures diversity in themes.
+	•	Similarly, for the third phrase (third_phrase, third_score, third_theme), we ensure it matches a different theme than the first two and meets a minimum similarity score threshold (score >= 0.3).
+	7.	Handling Cases:
+	•	We handle cases where fewer than three themes are found by extending lists with empty strings (''). This ensures consistency in the output format.
+	8.	Return Values:
+	•	Finally, we return the identified phrases, scores, and themes (top_phrase, top_score, top_theme, etc.) as results.
+
+Non-Technical Explanation:
+
+This function takes input data that represents phrases and their similarity scores from two different sources. It then categorizes these phrases into themes based on predefined categories. The function ensures that each theme gets assigned unique phrases with their respective similarity scores. If certain criteria aren’t met, such as finding enough distinct themes or meeting similarity thresholds, it adjusts the output accordingly. The goal is to organize and present the phrases in a clear and structured manner according to their relevance to specific themes.

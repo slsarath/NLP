@@ -1,24 +1,41 @@
-Line-by-Line Explanation:
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QFileDialog, QMessageBox, QVBoxLayout, QWidget, QHBoxLayout, QComboBox
+import logging
+from utils.data_processor import DataProcessor
+from utils.another_processor import AnotherProcessor  # Import other processors as needed
 
-	1.	Initialization of Lists:
-	•	sorted_lists is where we store the results of our analysis from two columns: description_results and impact_results. These results are formatted as lists of tuples (pairs of text phrases and their similarity scores).
-	2.	Sorting and Conversion:
-	•	We convert the string representations of description_results and impact_results into actual lists of tuples (eval(description_results) and eval(impact_results)). This helps us work with the data more easily.
-	3.	Variables for Results:
-	•	We create variables (top_phrase, top_score, top_theme, etc.) to store the top three phrases along with their similarity scores and corresponding themes.
-	4.	Looping through Results:
-	•	We iterate through each list of tuples (sorted_list) from sorted_lists. These lists contain phrases and their similarity scores.
-	5.	Mapping Phrases to Themes:
-	•	For each phrase in sorted_list, we try to find a matching theme from a predefined set (theme_phrases). Themes are categories that the phrases might belong to.
-	6.	Assigning Themes:
-	•	If a phrase matches a theme and hasn’t been assigned to top_theme yet, we assign it as the top phrase and its theme (top_phrase, top_score, top_theme).
-	•	If the first theme has been assigned (top_theme), we look for a second phrase that matches a different theme (second_phrase, second_score, second_theme). This ensures diversity in themes.
-	•	Similarly, for the third phrase (third_phrase, third_score, third_theme), we ensure it matches a different theme than the first two and meets a minimum similarity score threshold (score >= 0.3).
-	7.	Handling Cases:
-	•	We handle cases where fewer than three themes are found by extending lists with empty strings (''). This ensures consistency in the output format.
-	8.	Return Values:
-	•	Finally, we return the identified phrases, scores, and themes (top_phrase, top_score, top_theme, etc.) as results.
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setWindowTitle("Select Requirement")
 
-Non-Technical Explanation:
+        # Set the window background color to blue and widgets' background to white
+        self.setStyleSheet("background-color: blue;")
 
-This function takes input data that represents phrases and their similarity scores from two different sources. It then categorizes these phrases into themes based on predefined categories. The function ensures that each theme gets assigned unique phrases with their respective similarity scores. If certain criteria aren’t met, such as finding enough distinct themes or meeting similarity thresholds, it adjusts the output accordingly. The goal is to organize and present the phrases in a clear and structured manner according to their relevance to specific themes.
+        # Create central widget
+        central_widget = QWidget()
+        central_widget.setStyleSheet("background-color: white;")
+        self.setCentralWidget(central_widget)
+
+        # Initialize the data processors
+        self.processor = DataProcessor()
+        self.another_processor = AnotherProcessor()
+
+        # Create layout
+        layout = QVBoxLayout()
+
+        # Add your widgets here
+        label = QLabel("Example Label")
+        label.setStyleSheet("color: blue;")
+        layout.addWidget(label)
+
+        # Set layout to central widget
+        central_widget.setLayout(layout)
+
+# Code to run the application
+if __name__ == "__main__":
+    import sys
+    from PyQt5.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+    mainWindow = MainWindow()
+    mainWindow.show()
+    sys.exit(app.exec_())

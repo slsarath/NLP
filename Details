@@ -1,41 +1,79 @@
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QFileDialog, QMessageBox, QVBoxLayout, QWidget, QHBoxLayout, QComboBox
-import logging
-from utils.data_processor import DataProcessor
-from utils.another_processor import AnotherProcessor  # Import other processors as needed
+Certainly, let's go into more detail about the PII recognition process, suitable for a 5-minute presentation.
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
-        self.setWindowTitle("Select Requirement")
+---
 
-        # Set the window background color to blue and widgets' background to white
-        self.setStyleSheet("background-color: blue;")
+**Introduction:**
 
-        # Create central widget
-        central_widget = QWidget()
-        central_widget.setStyleSheet("background-color: white;")
-        self.setCentralWidget(central_widget)
+Good morning everyone,
 
-        # Initialize the data processors
-        self.processor = DataProcessor()
-        self.another_processor = AnotherProcessor()
+Today, I'll be presenting our project on Personal Identifiable Information (PII) Recognition. This project is crucial for maintaining privacy and ensuring compliance with data protection regulations, especially given the increasing volume of data we handle daily.
 
-        # Create layout
-        layout = QVBoxLayout()
+**Objective:**
 
-        # Add your widgets here
-        label = QLabel("Example Label")
-        label.setStyleSheet("color: blue;")
-        layout.addWidget(label)
+The primary objective of this project is to extract PII from text data. This is vital to ensure the privacy of individuals and to prevent data breaches. By identifying PII accurately, we can take the necessary steps to protect sensitive information.
 
-        # Set layout to central widget
-        central_widget.setLayout(layout)
+**Process Overview:**
 
-# Code to run the application
-if __name__ == "__main__":
-    import sys
-    from PyQt5.QtWidgets import QApplication
-    app = QApplication(sys.argv)
-    mainWindow = MainWindow()
-    mainWindow.show()
-    sys.exit(app.exec_())
+**1. Data Preprocessing:**
+
+We start with data preprocessing, which involves cleaning and preparing the input text. This step is essential as it ensures the data is in a suitable format for analysis. Preprocessing includes tasks such as removing special characters, normalizing text, and handling missing values.
+
+**2. Named Entity Recognition (NER):**
+
+Once the data is preprocessed, we use Named Entity Recognition (NER) to identify and classify entities within the text. NER is a crucial component as it helps in recognizing various entities like names, locations, and organizations. For example:
+- **PERSON:** Identifies individuals such as "Tim Cook."
+- **ORG:** Recognizes organizations like "Apple."
+- **GPE:** Identifies geopolitical entities, which include countries, cities, and states like "New York."
+
+**3. Regex Matcher:**
+
+In addition to NER, we use Regular Expressions (Regex) to match specific patterns in the text. This helps in extracting structured data like account numbers, email addresses, and other standardized information. Regex is powerful as it allows for pattern-based matching, ensuring we capture all relevant PII.
+
+**Integration with HR Data:**
+
+We integrate HR data to distinguish between personal names and employee names. This ensures the accuracy of our PII recognition. For instance, if an employee's name appears in the text, the system can cross-reference it with the HR database to confirm the identification.
+
+**Detailed Breakdown of Entity Types:**
+
+Our system categorizes entities into various types, as shown in the slide:
+- **PERSON:** Refers to individuals, including fictional characters.
+- **NORP:** Nationalities or religious/political groups.
+- **FAC:** Facilities such as buildings and highways.
+- **ORG:** Organizations, institutions, and companies.
+- **GPE:** Geopolitical entities like countries and cities.
+- **LOC:** Non-GPE locations like mountains and rivers.
+- **PRODUCT:** Objects, vehicles, foods, etc.
+- **EVENT:** Named events such as battles and sports events.
+- **WORK_OF_ART:** Titles of books, songs, etc.
+- **LAW:** Named documents made into laws.
+- **LANGUAGE:** Any named language.
+- **DATE:** Absolute or relative dates.
+- **TIME:** Times smaller than a day.
+- **PERCENT:** Percentages.
+- **MONEY:** Monetary values.
+- **QUANTITY:** Measurements.
+- **ORDINAL:** Positions in a sequence like "first," "second."
+- **CARDINAL:** Numerals that do not fall under other types.
+
+**Example:**
+
+To make this more tangible, let's look at the example on the slide. In the sentence "On the 15th of September, Tim Cook announced that Apple wants to acquire ABC Group from New York for 1 billion dollars," our system identifies:
+- "15th of September" as a DATE,
+- "Tim Cook" as a PERSON,
+- "Apple" and "ABC Group" as ORG (organizations),
+- "New York" as a GPE (geopolitical entity),
+- "1 billion dollars" as MONEY.
+
+**Importance:**
+
+Understanding and implementing PII recognition is critical. It helps protect sensitive information and ensures compliance with various privacy laws and regulations. By accurately identifying and handling PII, we can prevent data breaches and protect the privacy of individuals.
+
+**Conclusion:**
+
+In conclusion, our PII recognition system combines advanced techniques like NER and Regex with data integration to accurately identify and protect sensitive information. This project not only enhances our data security measures but also helps maintain the trust of our stakeholders.
+
+Thank you for your attention. I am happy to take any questions you may have.
+
+---
+
+This script should provide a comprehensive and engaging presentation for a non-technical audience, covering the essential aspects of your PII recognition project.

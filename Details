@@ -1,1 +1,26 @@
-https://www.ottplay.com/movie/mandakini-2024/629d8c360b232?utm_source=android&utm_medium=share-cta&utm_campaign=share
+import os
+import win32com.client
+
+# Path to the Excel file
+file_path = r'C:\path\to\your\file.xlsx'
+
+# Ensure the file exists
+if not os.path.exists(file_path):
+    print(f"The file {file_path} does not exist.")
+else:
+    try:
+        # Initialize the Excel application
+        excel_app = win32com.client.Dispatch('Excel.Application')
+        excel_app.Visible = True  # Optional: Makes Excel visible
+
+        # Open the workbook
+        workbook = excel_app.Workbooks.Open(file_path)
+        print(f"Successfully opened {file_path}")
+
+        # Perform your operations here...
+
+        # Close the workbook and quit Excel
+        workbook.Close(SaveChanges=False)
+        excel_app.Quit()
+    except Exception as e:
+        print(f"An error occurred: {e}")

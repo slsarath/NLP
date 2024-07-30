@@ -44,7 +44,7 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
 
     num_rows, num_cols = event_id_df.shape
     col_names = list(event_id_df.columns)
-    data_values = event_id_df.values.tolist()
+    data_values = event_id_df.replace({pd.NaT: None, pd.NA: None, np.nan: None}).values.tolist()
 
     # Function to get Excel column letter
     def get_excel_column_letter(n):
@@ -58,14 +58,12 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
 
     # Writing column names and data to the sheet
     try:
-        array_data = np.array(data_values)
         id_sheet.Range(f"A1:{last_col}1").Value = [col_names]
-        id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = array_data
+        id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = data_values
     except Exception as e:
         print(f"Error during data writing: {e}")
-        # Handle specific NaT error
-        array_data = np.array([[None if pd.isna(x) else x for x in row] for row in data_values])
-        id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = array_data
+        data_values = [[None if pd.isna(x) else x for x in row] for row in data_values]
+        id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = data_values
 
     # Filtering the "Check" column
     try:

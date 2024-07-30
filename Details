@@ -1,85 +1,11 @@
-import pandas as pd
-import numpy as np
-import os
-import win32com.client as win32
-
-# Initialize Excel application
-excel = win32.Dispatch('Excel.Application')
-excel.Visible = False  # Make Excel visible while running (set to True if you want to see the process)
-
-# Define the DataFrame (example DataFrame)
-event_id_df = pd.DataFrame({
-    'Column1': [1, 2, 3],
-    'Check': ['Value1', 'Value2', '#N/A'],
-    'DateColumn': pd.to_datetime(['2023-01-01', '2023-01-02', None])  # Example dates with a NaT value
-})
-
-# File path
-new_sheet_file_path = r'C:\path\to\your\excel_file.xlsx'
-trade_id = 'example_trade_id'
-following_name = 'example_following_name'
-
-# Open the workbook
 try:
-    workbook = excel.Workbooks.Open(new_sheet_file_path)
-except Exception as e:
-    print(f"Error opening workbook: {e}")
-    excel.Quit()
-    raise
-
-# Clear the 'new' sheet if it exists, or create it
-try:
-    id_sheet = workbook.Sheets('new')
-except:
-    id_sheet = workbook.Sheets.Add()
-    id_sheet.Name = 'new'
-
-id_sheet.Cells.Clear()
-
-# Fill the sheet with data from DataFrame
-num_rows, num_cols = event_id_df.shape
-col_names = list(event_id_df.columns)
-data_values = event_id_df.to_numpy().tolist()
-
-# Writing column names and data to the sheet
-for col_num, col_name in enumerate(col_names, 1):
-    id_sheet.Cells(1, col_num).Value = col_name
-
-for row_num, row_data in enumerate(data_values, 2):
-    for col_num, cell_value in enumerate(row_data, 1):
-        id_sheet.Cells(row_num, col_num).Value = str(cell_value)
-
-# Filtering the "Check" column
-try:
-    check_column = id_sheet.Rows(1).Find("Check").EntireColumn
-    check_column.AutoFilter(Field=1, Criteria1="<>#N/A")
-except Exception as e:
-    print(f"Error during filtering: {e}")
-
-# Copy filtered rows to new DataFrame and create "STRFinal" sheet
-try:
-    filtered_range = id_sheet.UsedRange.SpecialCells(12, 23)
-    filtered_data = [[cell.Value for cell in row.Cells] for row in filtered_range.Rows]
-    filtered_df = pd.DataFrame(filtered_data[1:], columns=filtered_data[0])
-
-    # Add STR Final Sheet
-    str_final_sheet = workbook.Sheets.Add(After=workbook.Sheets(workbook.Sheets.Count))
-    str_final_sheet.Name = "STRFinal"
-
-    for i, col_name in enumerate(filtered_df.columns, 1):
-        str_final_sheet.Cells(1, i).Value = col_name
-        for j, value in enumerate(filtered_df[col_name], 2):
-            str_final_sheet.Cells(j, i).Value = str(value)
-
-    # Additional formatting
-    id_sheet.Rows("1:1").Insert(Shift=-4161)  # Shift down the row
-    id_sheet.Range("B1:E1").Merge()
-    id_sheet.Range("B1:E1").Value = following_name
-
-    # Save and close the workbook
-    workbook.Save()
-except Exception as e:
-    print(f"Error during processing: {e}")
-
-workbook.Close(False)
-excel.Quit()
+    array_data = np.array(data_values)
+    id_sheet.Range(f"A1:DM1").Value = [col_names]
+    id_sheet.Range(f"A2:DM{num_rows + 1}").Value = array_data
+except ValueError as e:
+    print(f"ValueError encountered: {e}")
+    # Handle specific NaT error
+    if "NaTType does not support astimezone" in str(e):
+        # Convert NaT to None or empty string as a fallback
+        array_data = np.array([[None if pd.isna(x) else x for x in row] for row in data_values])
+        id_sheet.Range(f"A2:DM{num_rows + 1}").Value = array_data

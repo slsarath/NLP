@@ -67,29 +67,17 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
         array_data = np.array([[None if pd.isna(x) else x for x in row] for row in data_values])
         id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = array_data
 
-    # Filtering the "Check" column
+    # Add STR Final Sheet
     try:
-        check_column = id_sheet.Rows(1).Find("Check").EntireColumn
-        check_column.AutoFilter(Field=1, Criteria1="<>#N/A")
-    except Exception as e:
-        print(f"Error during filtering: {e}")
-
-    # Copy filtered rows to new DataFrame and create "STRFinal" sheet
-    try:
-        filtered_range = id_sheet.UsedRange.SpecialCells(12, 23)
-        filtered_data = [[cell.Value for cell in row.Cells] for row in filtered_range.Rows]
-        filtered_df = pd.DataFrame(filtered_data[1:], columns=filtered_data[0])
-
-        # Add STR Final Sheet
         str_final_sheet = trade_id_wb.Sheets.Add(After=trade_id_wb.Sheets(trade_id_wb.Sheets.Count))
         str_final_sheet.Name = STR_sheet_name
 
         # Insert column names into the first row
-        for i, col_name in enumerate(filtered_df.columns, 1):
+        for i, col_name in enumerate(col_names, 1):
             str_final_sheet.Cells(1, i).Value = col_name
 
         # Insert data into subsequent rows
-        for row_num, row_data in enumerate(filtered_df.itertuples(index=False), 2):
+        for row_num, row_data in enumerate(data_values, 2):
             for col_num, cell_value in enumerate(row_data, 1):
                 str_final_sheet.Cells(row_num, col_num).Value = cell_value
 

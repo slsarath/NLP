@@ -1,9 +1,4 @@
-import pandas as pd
-import numpy as np
-import win32com.client as win32
-
-def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_name, following_name):
-    # Read data from the Excel files
+# Read data from the Excel files
     event_id_df = pd.read_excel(new_sheet_file_path, sheet_name='new')
     cum_id_df = pd.read_excel(cumulative_file_path, sheet_name='Sheet1')
 
@@ -40,64 +35,32 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
 
     num_rows, num_cols = event_id_df.shape
     col_names = list(event_id_df.columns)
-    data_values = event_id_df.to_numpy().tolist()
+    data_values = event_id_df.values.tolist()
 
     # Writing column names and data to the sheet
     try:
         array_data = np.array(data_values)
-        id_sheet.Range(f"A1:DM1").Value = [col_names]
-        id_sheet.Range(f"A2:DM{num_rows + 1}").Value = array_data
-    except ValueError as e:
-        print(f"ValueError encountered: {e}")
-        # Handle specific NaT error
-        if "NaTType does not support astimezone" in str(e):
-            # Convert NaT to None or empty string as a fallback
-            array_data = np.array([[None if pd.isna(x) else x for x in row] for row in data_values])
-            id_sheet.Range(f"A2:DM{num_rows + 1}").Value = array_data
-
-    # Filtering the "Check" column
-    try:
-        check_column = id_sheet.Rows(1).Find("Check").EntireColumn
-        check_column.AutoFilter(Field=1, Criteria1="<>#N/A")
+        id_sheet.Range(f"A1:{chr(65 + num_cols - 1)}1").Value = [col_names]
+        id_sheet.Range(f"A2:{chr(65 + num_cols - 1)}{num_rows + 1}").Value = array_data
     except Exception as e:
-        print(f"Error during filtering: {e}")
+        print(f"Error during data writing: {e}")
+        # Handle specific NaT error
+        array_data = np.array([[None if pd.isna(x) else x for x in row] for row in data_values])
+        id_sheet.Range(f"A2:{chr(65 + num_cols - 1)}{num_rows + 1}").Value = array_data
 
-    # Copy filtered rows to new DataFrame and create "STRFinal" sheet
+    # Add STR Final Sheet
     try:
-        filtered_range = id_sheet.UsedRange.SpecialCells(12, 23)
-        filtered_data = [[cell.Value for cell in row.Cells] for row in filtered_range.Rows]
-        filtered_df = pd.DataFrame(filtered_data[1:], columns=filtered_data[0])
-
-        # Add STR Final Sheet
         str_final_sheet = trade_id_wb.Sheets.Add(After=trade_id_wb.Sheets(trade_id_wb.Sheets.Count))
         str_final_sheet.Name = STR_sheet_name
 
         # Insert column names into the first row
-        for i, col_name in enumerate(filtered_df.columns, 1):
+        for i, col_name in enumerate(col_names, 1):
             str_final_sheet.Cells(1, i).Value = col_name
 
         # Insert data into subsequent rows
-        for row_num, row_data in enumerate(filtered_df.itertuples(index=False), 2):
+        for row_num, row_data in enumerate(data_values, 2):
             for col_num, cell_value in enumerate(row_data, 1):
                 str_final_sheet.Cells(row_num, col_num).Value = cell_value
 
     except Exception as e:
         print(f"Error during copying to STRFinal sheet: {e}")
-
-    # Insert the specified value in the range B1:E1 and merge those cells
-    id_sheet.Rows("1:1").Insert(Shift=-4161)
-    id_sheet.Range("B1:E1").Merge()
-    id_sheet.Range("B1:E1").Value = following_name
-
-    # Save and close the workbook
-    trade_id_wb.Save()
-    trade_id_wb.Close()
-    excel.Quit()
-
-# Example usage
-create_check_column(
-    new_sheet_file_path='path_to_new_sheet.xlsx',
-    cumulative_file_path='path_to_cumulative_file.xlsx',
-    STR_sheet_name='STRFinal',
-    following_name='Following Name'
-)

@@ -1,26 +1,76 @@
+import pandas as pd
+import numpy as np
 import os
-import win32com.client
+import win32com.client as win32
 
-# Path to the Excel file
-file_path = r'C:\path\to\your\file.xlsx'
+# Sample DataFrame for demonstration
+event_id_df = pd.DataFrame({
+    'Column1': [1, 2, 3],
+    'Check': ['Value1', 'Value2', '#N/A'],
+    'DateColumn': pd.to_datetime(['2023-01-01', '2023-01-02', None])  # Example dates with a NaT value
+})
 
-# Ensure the file exists
-if not os.path.exists(file_path):
-    print(f"The file {file_path} does not exist.")
-else:
-    try:
-        # Initialize the Excel application
-        excel_app = win32com.client.Dispatch('Excel.Application')
-        excel_app.Visible = True  # Optional: Makes Excel visible
+# File path
+new_sheet_file_path = r'C:\path\to\your\excel_file.xlsx'
+trade_id = 'example_trade_id'
 
-        # Open the workbook
-        workbook = excel_app.Workbooks.Open(file_path)
-        print(f"Successfully opened {file_path}")
+# Initialize Excel application
+excel = win32.Dispatch('Excel.Application')
+excel.Visible = False  # Make Excel visible while running (set to False if you don't want to show)
 
-        # Perform your operations here...
+# Open the workbook
+try:
+    workbook = excel.Workbooks.Open(new_sheet_file_path)
+except Exception as e:
+    print(f"Error opening workbook: {e}")
+    excel.Quit()
+    raise
 
-        # Close the workbook and quit Excel
-        workbook.Close(SaveChanges=False)
-        excel_app.Quit()
-    except Exception as e:
-        print(f"An error occurred: {e}")
+# Clear the 'new' sheet if it exists, or create it
+try:
+    sheet = workbook.Sheets('new')
+except:
+    sheet = workbook.Sheets.Add()
+    sheet.Name = 'new'
+
+sheet.Cells.Clear()
+
+# Fill the sheet with data from DataFrame
+num_rows, num_cols = event_id_df.shape
+col_names = list(event_id_df.columns)
+data_values = event_id_df.to_numpy().tolist()
+array_data = np.array(data_values)
+
+# Writing column names and data to the sheet
+for col_num, col_name in enumerate(col_names, 1):
+    sheet.Cells(1, col_num).Value = col_name
+
+for row_num, row_data in enumerate(array_data, 2):
+    for col_num, cell_value in enumerate(row_data, 1):
+        sheet.Cells(row_num, col_num).Value = str(cell_value)
+
+# Filtering the "Check" column
+try:
+    check_column = sheet.Rows(1).Find("Check").EntireColumn
+    check_column.AutoFilter(Field=1, Criteria1="<>#N/A")
+except Exception as e:
+    print(f"Error during filtering: {e}")
+
+# Creating a new sheet "STRFinal" and adding filtered data
+filtered_df = event_id_df[event_id_df['Check'] == '#N/A']  # Example filter, adjust as needed
+str_final_sheet = workbook.Sheets.Add()
+str_final_sheet.Name = "STRFinal"
+
+for i, col_name in enumerate(filtered_df.columns, 1):
+    str_final_sheet.Cells(1, i).Value = col_name
+    for j, value in enumerate(filtered_df[col_name], 2):
+        str_final_sheet.Cells(j, i).Value = str(value)
+
+# Save and close the workbook
+try:
+    workbook.Save()
+except Exception as e:
+    print(f"Error saving workbook: {e}")
+
+workbook.Close(False)
+excel.Quit()

@@ -1,4 +1,9 @@
-# Read data from the Excel files
+import pandas as pd
+import numpy as np
+import win32com.client as win32
+
+def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_name, following_name):
+    # Read data from the Excel files
     event_id_df = pd.read_excel(new_sheet_file_path, sheet_name='new')
     cum_id_df = pd.read_excel(cumulative_file_path, sheet_name='Sheet1')
 
@@ -9,6 +14,13 @@
     # Create the Check column
     event_id_df['Check'] = event_id_df['Trade Event ID'].apply(
         lambda x: x if x in cum_id_df['Trade Event ID'].values else '#N/A')
+
+    # Localize any datetime columns
+    for col in event_id_df.select_dtypes(include=['datetime']).columns:
+        event_id_df[col] = event_id_df[col].dt.tz_localize('UTC')
+
+    # Convert all data to string to avoid issues with Excel writing
+    event_id_df = event_id_df.astype(str)
 
     # Initialize Excel application
     excel = win32.gencache.EnsureDispatch("Excel.Application")
@@ -40,13 +52,13 @@
     # Writing column names and data to the sheet
     try:
         array_data = np.array(data_values)
-        id_sheet.Range(f"A1:{chr(65 + num_cols - 1)}1").Value = [col_names]
-        id_sheet.Range(f"A2:{chr(65 + num_cols - 1)}{num_rows + 1}").Value = array_data
+        id_sheet.Range(f"A1:{chr(64 + num_cols)}1").Value = [col_names]
+        id_sheet.Range(f"A2:{chr(64 + num_cols)}{num_rows + 1}").Value = array_data
     except Exception as e:
         print(f"Error during data writing: {e}")
         # Handle specific NaT error
         array_data = np.array([[None if pd.isna(x) else x for x in row] for row in data_values])
-        id_sheet.Range(f"A2:{chr(65 + num_cols - 1)}{num_rows + 1}").Value = array_data
+        id_sheet.Range(f"A2:{chr(64 + num_cols)}{num_rows + 1}").Value = array_data
 
     # Add STR Final Sheet
     try:
@@ -64,3 +76,21 @@
 
     except Exception as e:
         print(f"Error during copying to STRFinal sheet: {e}")
+
+    # Insert the specified value in the range B1:E1 and merge those cells
+    id_sheet.Rows("1:1").Insert(Shift=-4161)
+    id_sheet.Range("B1:E1").Merge()
+    id_sheet.Range("B1:E1").Value = following_name
+
+    # Save and close the workbook
+    trade_id_wb.Save()
+    trade_id_wb.Close()
+    excel.Quit()
+
+# Example usage
+create_check_column(
+    new_sheet_file_path='path_to_new_sheet.xlsx',
+    cumulative_file_path='path_to_cumulative_file.xlsx',
+    STR_sheet_name='STRFinal',
+    following_name='Following Name'
+)

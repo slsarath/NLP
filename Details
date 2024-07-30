@@ -16,9 +16,8 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
         event_id_df['Check'] = event_id_df['Trade Event ID'].apply(
             lambda x: x if x in cum_id_df['Trade Event ID'].values else '#N/A')
 
-        # Convert datetime columns to strings
-        for col in event_id_df.select_dtypes(include=['datetime']).columns:
-            event_id_df[col] = event_id_df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Convert all data to strings to avoid type issues
+        event_id_df = event_id_df.astype(str)
 
         # Initialize Excel application
         excel = win32.gencache.EnsureDispatch("Excel.Application")
@@ -40,7 +39,7 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
 
         num_rows, num_cols = event_id_df.shape
         col_names = list(event_id_df.columns)
-        data_values = event_id_df.replace({pd.NaT: None, pd.NA: None, np.nan: None}).values.tolist()
+        data_values = event_id_df.values.tolist()
 
         # Function to get Excel column letter
         def get_excel_column_letter(n):

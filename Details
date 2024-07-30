@@ -3,77 +3,64 @@ import numpy as np
 import win32com.client as win32
 
 def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_name, following_name):
-    # Read data from the Excel files
-    event_id_df = pd.read_excel(new_sheet_file_path, sheet_name='new')
-    cum_id_df = pd.read_excel(cumulative_file_path, sheet_name='Sheet1')
-
-    # Ensure the Trade Event ID columns are strings
-    event_id_df['Trade Event ID'] = event_id_df['Trade Event ID'].astype(str)
-    cum_id_df['Trade Event ID'] = cum_id_df['Trade Event ID'].astype(str)
-
-    # Create the Check column
-    event_id_df['Check'] = event_id_df['Trade Event ID'].apply(
-        lambda x: x if x in cum_id_df['Trade Event ID'].values else '#N/A')
-
-    # Convert datetime columns to strings
-    for col in event_id_df.select_dtypes(include=['datetime']).columns:
-        event_id_df[col] = event_id_df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
-
-    # Initialize Excel application
-    excel = win32.gencache.EnsureDispatch("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    excel.AskToUpdateLinks = False
-
-    # Open the workbook
     try:
+        # Read data from the Excel files
+        event_id_df = pd.read_excel(new_sheet_file_path, sheet_name='new')
+        cum_id_df = pd.read_excel(cumulative_file_path, sheet_name='Sheet1')
+
+        # Ensure the Trade Event ID columns are strings
+        event_id_df['Trade Event ID'] = event_id_df['Trade Event ID'].astype(str)
+        cum_id_df['Trade Event ID'] = cum_id_df['Trade Event ID'].astype(str)
+
+        # Create the Check column
+        event_id_df['Check'] = event_id_df['Trade Event ID'].apply(
+            lambda x: x if x in cum_id_df['Trade Event ID'].values else '#N/A')
+
+        # Convert datetime columns to strings
+        for col in event_id_df.select_dtypes(include=['datetime']).columns:
+            event_id_df[col] = event_id_df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Initialize Excel application
+        excel = win32.gencache.EnsureDispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        excel.AskToUpdateLinks = False
+
+        # Open the workbook
         trade_id_wb = excel.Workbooks.Open(new_sheet_file_path)
-    except Exception as e:
-        print(f"Error opening workbook: {e}")
-        excel.Quit()
-        raise
 
-    # Clear the 'new' sheet if it exists, or create it
-    try:
-        id_sheet = trade_id_wb.Sheets('new')
-    except:
-        id_sheet = trade_id_wb.Sheets.Add()
-        id_sheet.Name = 'new'
+        # Clear the 'new' sheet if it exists, or create it
+        try:
+            id_sheet = trade_id_wb.Sheets('new')
+        except:
+            id_sheet = trade_id_wb.Sheets.Add()
+            id_sheet.Name = 'new'
 
-    id_sheet.Cells.Clear()
+        id_sheet.Cells.Clear()
 
-    num_rows, num_cols = event_id_df.shape
-    col_names = list(event_id_df.columns)
-    data_values = event_id_df.replace({pd.NaT: None, pd.NA: None, np.nan: None}).values.tolist()
+        num_rows, num_cols = event_id_df.shape
+        col_names = list(event_id_df.columns)
+        data_values = event_id_df.replace({pd.NaT: None, pd.NA: None, np.nan: None}).values.tolist()
 
-    # Function to get Excel column letter
-    def get_excel_column_letter(n):
-        string = ""
-        while n > 0:
-            n, remainder = divmod(n - 1, 26)
-            string = chr(65 + remainder) + string
-        return string
+        # Function to get Excel column letter
+        def get_excel_column_letter(n):
+            string = ""
+            while n > 0:
+                n, remainder = divmod(n - 1, 26)
+                string = chr(65 + remainder) + string
+            return string
 
-    last_col = get_excel_column_letter(num_cols)
+        last_col = get_excel_column_letter(num_cols)
 
-    # Writing column names and data to the sheet
-    try:
+        # Writing column names and data to the sheet
         id_sheet.Range(f"A1:{last_col}1").Value = [col_names]
         id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = data_values
-    except Exception as e:
-        print(f"Error during data writing: {e}")
-        data_values = [[None if pd.isna(x) else x for x in row] for row in data_values]
-        id_sheet.Range(f"A2:{last_col}{num_rows + 1}").Value = data_values
 
-    # Filtering the "Check" column
-    try:
+        # Filtering the "Check" column
         check_column = id_sheet.Rows(1).Find("Check").EntireColumn
         check_column.AutoFilter(Field=1, Criteria1="<>#N/A")
-    except Exception as e:
-        print(f"Error during filtering: {e}")
 
-    # Copy filtered rows to new DataFrame and create "STRFinal" sheet
-    try:
+        # Copy filtered rows to new DataFrame and create "STRFinal" sheet
         filtered_range = id_sheet.UsedRange.SpecialCells(12, 23)
         filtered_data = [[cell.Value for cell in row.Cells] for row in filtered_range.Rows]
         filtered_df = pd.DataFrame(filtered_data[1:], columns=filtered_data[0])
@@ -91,24 +78,19 @@ def create_check_column(new_sheet_file_path, cumulative_file_path, STR_sheet_nam
             for col_num, cell_value in enumerate(row_data, 1):
                 str_final_sheet.Cells(row_num, col_num).Value = cell_value
 
-    except Exception as e:
-        print(f"Error during copying to STRFinal sheet: {e}")
-
-    # Insert the specified value in the range B1:E1 and merge those cells
-    try:
+        # Insert the specified value in the range B1:E1 and merge those cells
         id_sheet.Rows("1:1").Insert(Shift=-4161)
         id_sheet.Range("B1:E1").Merge()
         id_sheet.Range("B1:E1").Value = following_name
-    except Exception as e:
-        print(f"Error during merging and setting value: {e}")
 
-    # Save and close the workbook
-    try:
+        # Save and close the workbook
         trade_id_wb.Save()
         trade_id_wb.Close()
+        excel.Quit()
+
     except Exception as e:
-        print(f"Error during saving and closing the workbook: {e}")
-    finally:
+        print(f"Error: {e}")
+        input('Error occurred, press Enter to close the program')
         excel.Quit()
 
 # Example usage

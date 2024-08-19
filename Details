@@ -1,45 +1,34 @@
-Here is a list of semantic search queries for each of the provided phrases:
+import re
 
-### 1. **Overcommitment on SLAs including pricing implementation timelines**
-   - "Refund delays due to overpromised SLA timelines"
-   - "Issues with pricing due to unrealistic SLA commitments"
-   - "Impact of overcommitted SLAs on pricing and refunds"
-   - "Delays in pricing implementation due to SLA overcommitment"
-   - "Customer refunds affected by excessive SLA commitments"
+def clean_text(text):
+    # Step 1: Replace '?' with bullet points
+    text = text.replace('?', '•')
+    
+    # Step 2: Remove unnecessary symbols and characters (now excluding bullet points)
+    text = re.sub(r'[^\w\s.,:;/&-•]', '', text)
+    
+    # Step 3: Fix formatting issues (like misplaced punctuation or unnecessary line breaks)
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with a single space
+    text = re.sub(r'\s([?.!,"])', r'\1', text)  # Remove space before punctuation
+    
+    # Step 4: Standardize dates (assuming DD/MM/YYYY format)
+    text = re.sub(r'\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b', lambda x: f'{x.group(1).zfill(2)}/{x.group(2).zfill(2)}/{x.group(3)}', text)
+    
+    # Step 5: Remove redundant or irrelevant information (for this example, assume we don't need to remove anything specific)
+    # This step can be customized as needed
+    
+    # Step 6: Correct any typographical errors (example: assume no specific corrections needed here)
+    # This step can be customized as needed
+    
+    # Step 7: Clarify ambiguous references (if needed, otherwise skipped in this example)
+    # This step can be customized as needed
+    
+    # Trim any leading or trailing spaces after cleaning
+    cleaned_text = text.strip()
+    
+    return cleaned_text
 
-### 2. **Incorrect instructions to Ops**
-   - "Operational mishaps from incorrect directives"
-   - "Errors in operations due to wrong instructions"
-   - "Misguided instructions causing ops errors"
-   - "Operational failures from inaccurate guidance"
-   - "Mistakes in ops caused by incorrect directives"
-
-### 3. **Agree with client but not instructed to ops including pricing**
-   - "Client agreements not communicated to ops affecting pricing"
-   - "Pricing errors due to lack of ops instructions despite client agreement"
-   - "Failure to instruct ops after client agreement on pricing"
-   - "Pricing discrepancies from uncommunicated client agreements"
-   - "Ops not informed of client agreements causing pricing issues"
-
-### 4. **Operational error - pricing and amends**
-   - "Pricing mistakes in operations and amendments"
-   - "Errors in pricing due to operational mishandling"
-   - "Amendment errors affecting pricing operations"
-   - "Operational issues leading to pricing and amendment errors"
-   - "Pricing errors linked to operational amendments"
-
-### 5. **Product set up/Amendment**
-   - "Issues in product setup and amendments"
-   - "Errors during product setup or amendment processes"
-   - "Challenges in product amendments affecting setup"
-   - "Product setup problems due to amendment errors"
-   - "Complications in product setup and subsequent amendments"
-
-### 6. **Cash Management error - Pricing**
-   - "Pricing errors in cash management operations"
-   - "Cash management issues causing pricing discrepancies"
-   - "Incorrect pricing in cash management processes"
-   - "Errors in cash management affecting pricing"
-   - "Pricing problems arising from cash management mistakes"
-
-These queries are designed to capture various aspects of the issues you are focusing on and should provide comprehensive coverage in your semantic search.
+# Sample input text
+input_text = """
+? A new credit interest rate of CC? 0.22% was agreed with The Currency Cloud for their accounts, it was confirmed to the client by coverage that the rate will be applied on 16/11/2022.
+? It was identified that three bank

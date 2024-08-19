@@ -1,42 +1,45 @@
-import pandas as pd
+Here is a list of semantic search queries for each of the provided phrases:
 
-# Example DataFrame
-data = {
-    'Text': [
-        'This is a test sentence with more than four words for testing human error.',
-        'Another example sentence that might result in system error detection.',
-        'One more test case for application error in the dataset.'
-    ],
-    'Top matching semantic phrases': [
-        [('human error', 0.95), ('operator error', 0.90), ('verifier error', 0.85)],
-        [('system error', 0.92), ('application error', 0.88), ('human error', 0.82)],
-        [('application error', 0.94), ('system error', 0.89), ('operator error', 0.81)]
-    ]
-}
-df = pd.DataFrame(data)
+### 1. **Overcommitment on SLAs including pricing implementation timelines**
+   - "Refund delays due to overpromised SLA timelines"
+   - "Issues with pricing due to unrealistic SLA commitments"
+   - "Impact of overcommitted SLAs on pricing and refunds"
+   - "Delays in pricing implementation due to SLA overcommitment"
+   - "Customer refunds affected by excessive SLA commitments"
 
-# Example theme dictionary
-theme_dict = {
-    'Colleague Error': ['human error', 'operator error', 'verifier error'],
-    'Technical Error': ['system error', 'application error']
-}
+### 2. **Incorrect instructions to Ops**
+   - "Operational mishaps from incorrect directives"
+   - "Errors in operations due to wrong instructions"
+   - "Misguided instructions causing ops errors"
+   - "Operational failures from inaccurate guidance"
+   - "Mistakes in ops caused by incorrect directives"
 
-def map_phrases_to_themes(phrases, theme_dict):
-    theme_mapping = []
-    for phrase, score in phrases:
-        for theme, phrase_list in theme_dict.items():
-            if phrase in phrase_list:
-                theme_mapping.append((theme, score))
-                break
-    return theme_mapping
+### 3. **Agree with client but not instructed to ops including pricing**
+   - "Client agreements not communicated to ops affecting pricing"
+   - "Pricing errors due to lack of ops instructions despite client agreement"
+   - "Failure to instruct ops after client agreement on pricing"
+   - "Pricing discrepancies from uncommunicated client agreements"
+   - "Ops not informed of client agreements causing pricing issues"
 
-# Apply the mapping function to create new columns
-df['Top Matching theme'] = df['Top matching semantic phrases'].apply(lambda x: map_phrases_to_themes(x, theme_dict))
-df['Top Matching theme 1'] = df['Top Matching theme'].apply(lambda x: x[0][0] if len(x) > 0 else None)
-df['Top Matching theme 2'] = df['Top Matching theme'].apply(lambda x: x[1][0] if len(x) > 1 else None)
-df['Top Matching theme 3'] = df['Top Matching theme'].apply(lambda x: x[2][0] if len(x) > 2 else None)
+### 4. **Operational error - pricing and amends**
+   - "Pricing mistakes in operations and amendments"
+   - "Errors in pricing due to operational mishandling"
+   - "Amendment errors affecting pricing operations"
+   - "Operational issues leading to pricing and amendment errors"
+   - "Pricing errors linked to operational amendments"
 
-# Drop the intermediate column used for mapping
-df.drop(columns=['Top Matching theme'], inplace=True)
+### 5. **Product set up/Amendment**
+   - "Issues in product setup and amendments"
+   - "Errors during product setup or amendment processes"
+   - "Challenges in product amendments affecting setup"
+   - "Product setup problems due to amendment errors"
+   - "Complications in product setup and subsequent amendments"
 
-print(df)
+### 6. **Cash Management error - Pricing**
+   - "Pricing errors in cash management operations"
+   - "Cash management issues causing pricing discrepancies"
+   - "Incorrect pricing in cash management processes"
+   - "Errors in cash management affecting pricing"
+   - "Pricing problems arising from cash management mistakes"
+
+These queries are designed to capture various aspects of the issues you are focusing on and should provide comprehensive coverage in your semantic search.

@@ -1,34 +1,11 @@
-import re
+When discussing your future aspirations with your manager, it's important to be clear, realistic, and aligned with both your personal goals and the company's objectives. Here are a few ways you could approach your answer:
 
-def clean_text(text):
-    # Step 1: Replace '?' with bullet points
-    text = text.replace('?', '•')
-    
-    # Step 2: Remove unnecessary symbols and characters (now excluding bullet points)
-    text = re.sub(r'[^\w\s.,:;/&-•]', '', text)
-    
-    # Step 3: Fix formatting issues (like misplaced punctuation or unnecessary line breaks)
-    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with a single space
-    text = re.sub(r'\s([?.!,"])', r'\1', text)  # Remove space before punctuation
-    
-    # Step 4: Standardize dates (assuming DD/MM/YYYY format)
-    text = re.sub(r'\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b', lambda x: f'{x.group(1).zfill(2)}/{x.group(2).zfill(2)}/{x.group(3)}', text)
-    
-    # Step 5: Remove redundant or irrelevant information (for this example, assume we don't need to remove anything specific)
-    # This step can be customized as needed
-    
-    # Step 6: Correct any typographical errors (example: assume no specific corrections needed here)
-    # This step can be customized as needed
-    
-    # Step 7: Clarify ambiguous references (if needed, otherwise skipped in this example)
-    # This step can be customized as needed
-    
-    # Trim any leading or trailing spaces after cleaning
-    cleaned_text = text.strip()
-    
-    return cleaned_text
+1. **Career Development**: You might want to express your desire to take on more responsibility or develop specific skills. For example, you could say, "In the next year, I aspire to take on more leadership responsibilities within the team, such as leading projects or mentoring junior colleagues."
 
-# Sample input text
-input_text = """
-? A new credit interest rate of CC? 0.22% was agreed with The Currency Cloud for their accounts, it was confirmed to the client by coverage that the rate will be applied on 16/11/2022.
-? It was identified that three bank
+2. **Skill Enhancement**: If you're looking to develop new skills or deepen your expertise in certain areas, you could say, "I would like to focus on enhancing my technical skills in [specific area], as I believe this will allow me to contribute more effectively to our team and take on more complex projects."
+
+3. **Role Progression**: If you're aiming for a promotion or a role change, you could mention that: "In the next year, I aim to position myself for a promotion to [specific role], by continuing to excel in my current role and developing the necessary skills and competencies."
+
+4. **Impact on the Company**: You could also focus on the impact you want to make: "I want to drive [specific project or initiative] forward, which I believe will have a significant positive impact on our department's goals and contribute to the overall success of the company."
+
+Pick the one that resonates most with your career goals or adapt them to fit your specific aspirations. It's also helpful to mention any steps you plan to take to achieve these goals, showing your commitment and proactive attitude.

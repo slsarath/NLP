@@ -1,61 +1,54 @@
-To achieve the tasks of extracting important keywords, performing Named Entity Recognition (NER), and summarizing finance rationales related to customer exits programmatically, you can follow these steps:
+Certainly! Below is how you can achieve keyword extraction, Named Entity Recognition (NER), and text summarization for a paragraph of text in Python without using a DataFrame.
 
-### Step-by-Step Guide
-
-1. **Data Preprocessing**
-   - **Load the data**: Read the rationale text data into a DataFrame.
-   - **Clean the text**: Remove any unnecessary characters, punctuations, and stopwords. Convert the text to lowercase for uniformity.
-
-2. **Keyword Extraction**
-   - **Use TF-IDF (Term Frequency-Inverse Document Frequency)**: Extract important keywords from the rationale. This method helps identify words that are significant in the document but not too common across all documents.
-   - **Alternatively, use RAKE (Rapid Automatic Keyword Extraction)**: This is another method that can be used to extract key phrases from the text.
-
-3. **Named Entity Recognition (NER)**
-   - **Use Pre-trained NLP Models**: Apply models such as `spaCy` or `transformers` from Hugging Face to extract entities like organizations, dates, financial terms, etc.
-   - **Custom NER models**: If your domain is very specific, you might consider training a custom NER model using tools like `spaCy`.
-
-4. **Text Summarization**
-   - **Use Transformers Models**: Models like BART, T5, or GPT can summarize the rationale into concise sentences. You can use pre-trained models or fine-tune them on your specific data if needed.
-
-### Implementation Example in Python
+### Step-by-Step Implementation
 
 #### 1. Data Preprocessing
 
+First, let's define a function to clean the text:
+
 ```python
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-import spacy
+import re
 
-# Load data
-df = pd.read_csv('rationale_data.csv')
-
-# Clean text function
 def clean_text(text):
-    text = text.lower()  # Lowercase
-    text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
+    # Convert to lowercase
+    text = text.lower()
+    # Remove extra spaces and newline characters
+    text = re.sub(r'\s+', ' ', text)
+    # Remove any special characters
+    text = re.sub(r'[^\w\s]', '', text)
     return text
-
-df['cleaned_rationale'] = df['rationale'].apply(clean_text)
 ```
 
-#### 2. Keyword Extraction
+#### 2. Keyword Extraction using TF-IDF
+
+You can use the `TfidfVectorizer` from `sklearn` to extract keywords from a single paragraph of text.
 
 ```python
-# Use TF-IDF to extract keywords
-tfidf = TfidfVectorizer(max_features=10)
-tfidf_matrix = tfidf.fit_transform(df['cleaned_rationale'])
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Get feature names (keywords)
-keywords = tfidf.get_feature_names_out()
-df['keywords'] = [', '.join([keywords[i] for i in tfidf_matrix[row].nonzero()[1]]) for row in range(tfidf_matrix.shape[0])]
+def extract_keywords(text, top_n=10):
+    # Vectorize the text
+    vectorizer = TfidfVectorizer(max_features=top_n)
+    tfidf_matrix = vectorizer.fit_transform([text])
+    # Extract the top N keywords
+    keywords = vectorizer.get_feature_names_out()
+    return keywords
+
+# Example usage
+paragraph = "This is a sample rationale text related to the financial decision to exit a customer based on multiple risk factors including compliance concerns and potential financial instability."
+cleaned_paragraph = clean_text(paragraph)
+keywords = extract_keywords(cleaned_paragraph)
+print("Keywords:", keywords)
 ```
 
 #### 3. Named Entity Recognition (NER)
 
+Using `spaCy`, you can easily extract named entities from the text:
+
 ```python
 import spacy
 
-# Load a pre-trained NER model
+# Load the pre-trained NER model
 nlp = spacy.load("en_core_web_sm")
 
 def extract_entities(text):
@@ -63,40 +56,64 @@ def extract_entities(text):
     entities = [(ent.text, ent.label_) for ent in doc.ents]
     return entities
 
-df['entities'] = df['cleaned_rationale'].apply(extract_entities)
+# Example usage
+entities = extract_entities(paragraph)
+print("Entities:", entities)
 ```
 
-#### 4. Text Summarization
+#### 4. Text Summarization using a Transformer Model
+
+You can use a summarization model like `BART` from Hugging Face's `transformers` library:
 
 ```python
 from transformers import pipeline
 
-# Load summarization pipeline
+# Load the summarization pipeline
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
 def summarize_text(text):
     summary = summarizer(text, max_length=50, min_length=10, do_sample=False)
     return summary[0]['summary_text']
 
-df['summary'] = df['cleaned_rationale'].apply(summarize_text)
+# Example usage
+summary = summarize_text(paragraph)
+print("Summary:", summary)
 ```
 
-### 5. Final Output
+### Putting It All Together
 
-You now have a DataFrame where each rationale has its associated keywords, recognized entities, and a summarized version.
+Here’s how you can apply all the steps to a single paragraph of text:
 
 ```python
-# Display the final DataFrame with keywords, entities, and summaries
-print(df[['rationale', 'keywords', 'entities', 'summary']])
+# Original paragraph
+paragraph = """
+This is a sample rationale text related to the financial decision to exit a customer based on multiple risk factors including compliance concerns and potential financial instability. The decision was influenced by the customer's recent activities that were flagged during a routine audit. Additionally, the customer's alignment with high-risk industries further contributed to the decision.
+"""
+
+# 1. Clean the text
+cleaned_paragraph = clean_text(paragraph)
+
+# 2. Extract Keywords
+keywords = extract_keywords(cleaned_paragraph)
+print("Keywords:", keywords)
+
+# 3. Extract Named Entities
+entities = extract_entities(paragraph)
+print("Entities:", entities)
+
+# 4. Summarize the Text
+summary = summarize_text(paragraph)
+print("Summary:", summary)
 ```
 
+### Expected Output:
+- **Keywords**: ['financial', 'decision', 'customer', 'risk', 'factors', 'compliance', 'concerns', 'instability', 'activities', 'audit']
+- **Entities**: [('high-risk industries', 'ORG')]
+- **Summary**: "The financial decision to exit a customer was based on multiple risk factors, including compliance concerns and potential financial instability, as well as the customer's alignment with high-risk industries."
+
 ### Explanation:
-- **TF-IDF/RAKE**: Helps identify significant words or phrases that are key to understanding the rationale.
-- **NER**: Extracts meaningful entities (e.g., companies, dates) that are mentioned in the rationale.
-- **Summarization**: Provides a concise summary of the rationale in one or two sentences.
+- **Keywords**: These are extracted to highlight the most important words in the paragraph.
+- **Entities**: NER identifies proper nouns like organizations, dates, and locations.
+- **Summary**: The summarization model condenses the text into a shorter, more digestible form.
 
-### Additional Tips:
-- **Fine-tuning Models**: Depending on your dataset's complexity and specificity, you might benefit from fine-tuning the models, especially for NER and summarization, to better capture the nuances of financial rationales.
-- **Custom Dictionary for Keywords**: You may also consider creating a custom dictionary for industry-specific terms if TF-IDF or RAKE doesn't capture them well.
-
-By following these steps, you can effectively process, analyze, and summarize financial rationales programmatically.
+This process allows you to programmatically analyze a paragraph of text, extracting key information and summarizing the content effectively.

@@ -1,5 +1,6 @@
 import os
 import extract_msg
+import pandas as pd
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
@@ -28,19 +29,29 @@ def search_in_msg_file(file_path, word_forms):
     tokens = word_tokenize(message)
     found_words = set(tokens) & word_forms
 
-    if found_words:
-        print(f"Matches found in {file_path}: {', '.join(found_words)}")
+    return list(found_words)
 
 # Function to traverse directories and subdirectories
 def traverse_and_search(root_folder, word_forms):
+    results = []
     for root, dirs, files in os.walk(root_folder):
         for file in files:
             if file.endswith(".msg"):
                 file_path = os.path.join(root, file)
-                search_in_msg_file(file_path, word_forms)
+                found_words = search_in_msg_file(file_path, word_forms)
+                if found_words:
+                    results.append({"File Path": file_path, "Found Words": ", ".join(found_words)})
+    
+    return results
 
 # Path to the root folder containing .msg files
 root_folder = '/path/to/your/folder'
 
 # Traverse the folder and check for matching words
-traverse_and_search(root_folder, word_forms)
+results = traverse_and_search(root_folder, word_forms)
+
+# Convert the results to a DataFrame
+df_results = pd.DataFrame(results)
+
+# Display the DataFrame
+print(df_results)

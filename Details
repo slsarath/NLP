@@ -1,56 +1,56 @@
 import os
 import extract_msg
 import pandas as pd
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+import re
 
-# Initialize the lemmatizer
-lemmatizer = WordNetLemmatizer()
+# Define the list of words and phrases
+phrase_list = ["trade union congress", "national party", "example", "test", "document"]
 
-# Define the words/phrases list
-word_list = ["example", "test", "document"]
+# Function to preprocess text (clean and normalize)
+def clean_text(text):
+    text = text.lower()  # Convert to lowercase
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with a single space
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation and special characters
+    return text
 
-# Convert the list to include both singular and plural forms
-def generate_word_forms(word_list):
-    word_forms = []
-    for word in word_list:
-        word_forms.append(word)
-        word_forms.append(lemmatizer.lemmatize(word, 'n'))  # singular form
-        word_forms.append(lemmatizer.lemmatize(word, 'n') + 's')  # plural form
-    return set(word_forms)
+# Function to search for phrases within the cleaned message body
+def search_phrases_in_text(text, phrase_list):
+    found_phrases = []
+    for phrase in phrase_list:
+        if phrase in text:
+            found_phrases.append(phrase)
+    return found_phrases
 
-word_forms = generate_word_forms(word_list)
-
-# Function to read .msg files and check for word matches
-def search_in_msg_file(file_path, word_forms):
+# Function to read .msg files, preprocess text, and check for phrase matches
+def search_in_msg_file(file_path, phrase_list):
     try:
         msg = extract_msg.Message(file_path)
-        message = msg.body.lower()
-
-        tokens = word_tokenize(message)
-        found_words = set(tokens) & word_forms
-
-        return list(found_words) if found_words else []
+        message = msg.body
+        cleaned_message = clean_text(message)
+        
+        found_phrases = search_phrases_in_text(cleaned_message, phrase_list)
+        
+        return found_phrases if found_phrases else []
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
         return []
 
 # Function to traverse directories and subdirectories and collect data
-def traverse_and_search(root_folder, word_forms):
+def traverse_and_search(root_folder, phrase_list):
     data = []
     for root, dirs, files in os.walk(root_folder):
         for file in files:
             if file.endswith(".msg"):
                 file_path = os.path.join(root, file)
-                found_words = search_in_msg_file(file_path, word_forms)
-                data.append({"File Name": file, "Search Results": found_words})
+                found_phrases = search_in_msg_file(file_path, phrase_list)
+                data.append({"File Name": file, "Search Results": found_phrases})
     return data
 
 # Path to the root folder containing .msg files
 root_folder = '/path/to/your/folder'
 
-# Traverse the folder and check for matching words, storing results in a list
-data = traverse_and_search(root_folder, word_forms)
+# Traverse the folder and check for matching phrases, storing results in a list
+data = traverse_and_search(root_folder, phrase_list)
 
 # Convert the list of results into a DataFrame
 df = pd.DataFrame(data)

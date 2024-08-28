@@ -2,7 +2,7 @@ import os
 import extract_msg
 import pandas as pd
 import re
-import time
+import tempfile
 
 # Define the words/phrases list (both single words and multi-word phrases)
 word_list = ["example", "test", "document", "trade union congress", "national party", "yed"]
@@ -58,19 +58,17 @@ def search_in_msg_file(file_path, word_forms):
         msg = extract_msg.Message(file_path)
         found_words = set()
 
-        # Check for attachments
-        for attachment in msg.attachments:
-            if attachment.longFilename.endswith('.xls') or attachment.longFilename.endswith('.xlsx'):
-                # Save the attachment locally
-                attachment_path = os.path.join(os.getcwd(), attachment.longFilename)
-                attachment.save(customPath=attachment_path)
+        # Create a temporary directory for saving attachments
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Check for attachments
+            for attachment in msg.attachments:
+                if attachment.longFilename.endswith('.xls') or attachment.longFilename.endswith('.xlsx'):
+                    # Save the attachment in the temporary directory
+                    attachment_path = os.path.join(temp_dir, attachment.longFilename)
+                    attachment.save(customPath=attachment_path)
 
-                # Search for keywords in the Excel attachment
-                found_words.update(search_in_excel(attachment_path, word_forms))
-
-                # Ensure the file is not being used before deleting
-                time.sleep(1)  # Add a small delay
-                os.remove(attachment_path)
+                    # Search for keywords in the Excel attachment
+                    found_words.update(search_in_excel(attachment_path, word_forms))
 
         return list(found_words) if found_words else []
     except Exception as e:
@@ -97,4 +95,5 @@ data = traverse_and_search(root_folder, word_forms)
 # Convert the list of results into a DataFrame
 df = pd.DataFrame(data)
 
-#​⬤
+# Display the DataFrame
+print(df)

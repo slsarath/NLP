@@ -58,19 +58,35 @@ def search_in_excel(file_content, word_forms):
 def search_in_msg_file(file_path, word_forms):
     try:
         msg = extract_msg.Message(file_path)
-        found_words = set()
+        msg_found_words = set()
+        attachment_results = []
+
+        # Preprocess and search in the email body
+        if msg.body:
+            message = preprocess_text(msg.body)
+            for phrase in word_forms:
+                if " " in phrase:
+                    if phrase in message:
+                        msg_found_words.add(phrase)
+                else:
+                    if re.search(phrase, message):
+                        msg_found_words.add(phrase.strip(r'\b'))
 
         # Check for attachments
         for attachment in msg.attachments:
             if attachment.longFilename.endswith('.xls') or attachment.longFilename.endswith('.xlsx'):
                 # Read the attachment content directly from memory
                 file_content = attachment.data  # Get the binary content of the attachment
-                found_words.update(search_in_excel(file_content, word_forms))
+                excel_found_words = search_in_excel(file_content, word_forms)
+                attachment_results.append({
+                    "Attachment Name": attachment.longFilename,
+                    "Excel Found Words": excel_found_words
+                })
 
-        return list(found_words) if found_words else []
+        return list(msg_found_words), attachment_results
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
-        return []
+        return [], []
 
 # Function to traverse directories and subdirectories and collect data
 def traverse_and_search(root_folder, word_forms):
@@ -79,8 +95,24 @@ def traverse_and_search(root_folder, word_forms):
         for file in files:
             if file.endswith(".msg"):
                 file_path = os.path.join(root, file)
-                found_words = search_in_msg_file(file_path, word_forms)
-                data.append({"File Name": file, "Search Results": found_words})
+                msg_found_words, attachment_results = search_in_msg_file(file_path, word_forms)
+                
+                # Prepare the data to append to the DataFrame
+                if attachment_results:
+                    for attachment in attachment_results:
+                        data.append({
+                            "File Name": file,
+                            "Found Words in MSG": msg_found_words,
+                            "Attachment Name": attachment["Attachment Name"],
+                            "Found Words in Excel": attachment["Excel Found Words"]
+                        })
+                else:
+                    data.append({
+                        "File Name": file,
+                        "Found Words in MSG": msg_found_words,
+                        "Attachment Name": None,
+                        "Found Words in Excel": None
+                    })
     return data
 
 # Path to the root folder containing .msg files
@@ -94,3 +126,6 @@ df = pd.DataFrame(data)
 
 # Display the DataFrame
 print(df)
+
+# Optionally, save the DataFrame to a CSV file
+df.to_csv("search_results.csv", index=False)

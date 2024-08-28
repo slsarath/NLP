@@ -2,6 +2,7 @@ import os
 import extract_msg
 import pandas as pd
 import re
+import time
 
 # Define the words/phrases list (both single words and multi-word phrases)
 word_list = ["example", "test", "document", "trade union congress", "national party", "yed"]
@@ -30,25 +31,21 @@ def preprocess_text(text):
 # Function to search for keywords in Excel content
 def search_in_excel(excel_file_path, word_forms):
     try:
-        # Load the Excel file
-        xls = pd.ExcelFile(excel_file_path)
-        found_words = set()
+        # Use 'with' statement to ensure the file is properly closed
+        with pd.ExcelFile(excel_file_path) as xls:
+            found_words = set()
+            for sheet_name in xls.sheet_names:
+                sheet = pd.read_excel(xls, sheet_name=sheet_name, engine='openpyxl')
+                content = sheet.to_string()
+                content = preprocess_text(content)
 
-        # Iterate through each sheet in the Excel file
-        for sheet_name in xls.sheet_names:
-            sheet = pd.read_excel(xls, sheet_name=sheet_name, engine='openpyxl')
-            # Convert sheet content to string and preprocess it
-            content = sheet.to_string()
-            content = preprocess_text(content)
-
-            # Search for words/phrases
-            for phrase in word_forms:
-                if " " in phrase:
-                    if phrase in content:
-                        found_words.add(phrase)
-                else:
-                    if re.search(phrase, content):
-                        found_words.add(phrase.strip(r'\b'))
+                for phrase in word_forms:
+                    if " " in phrase:
+                        if phrase in content:
+                            found_words.add(phrase)
+                    else:
+                        if re.search(phrase, content):
+                            found_words.add(phrase.strip(r'\b'))
 
         return list(found_words) if found_words else []
     except Exception as e:
@@ -65,13 +62,14 @@ def search_in_msg_file(file_path, word_forms):
         for attachment in msg.attachments:
             if attachment.longFilename.endswith('.xls') or attachment.longFilename.endswith('.xlsx'):
                 # Save the attachment locally
-                attachment.save()
                 attachment_path = os.path.join(os.getcwd(), attachment.longFilename)
+                attachment.save(customPath=attachment_path)
 
                 # Search for keywords in the Excel attachment
                 found_words.update(search_in_excel(attachment_path, word_forms))
 
-                # Clean up by removing the saved attachment file
+                # Ensure the file is not being used before deleting
+                time.sleep(1)  # Add a small delay
                 os.remove(attachment_path)
 
         return list(found_words) if found_words else []
@@ -99,5 +97,4 @@ data = traverse_and_search(root_folder, word_forms)
 # Convert the list of results into a DataFrame
 df = pd.DataFrame(data)
 
-# Display the DataFrame
-print(df)
+#​⬤

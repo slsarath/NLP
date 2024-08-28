@@ -27,22 +27,52 @@ def preprocess_text(text):
     text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
     return text
 
-# Function to read .msg files and check for word/phrase matches
+# Function to search for keywords in Excel content
+def search_in_excel(excel_file_path, word_forms):
+    try:
+        # Load the Excel file
+        xls = pd.ExcelFile(excel_file_path)
+        found_words = set()
+
+        # Iterate through each sheet in the Excel file
+        for sheet_name in xls.sheet_names:
+            sheet = pd.read_excel(xls, sheet_name=sheet_name, engine='openpyxl')
+            # Convert sheet content to string and preprocess it
+            content = sheet.to_string()
+            content = preprocess_text(content)
+
+            # Search for words/phrases
+            for phrase in word_forms:
+                if " " in phrase:
+                    if phrase in content:
+                        found_words.add(phrase)
+                else:
+                    if re.search(phrase, content):
+                        found_words.add(phrase.strip(r'\b'))
+
+        return list(found_words) if found_words else []
+    except Exception as e:
+        print(f"Error processing Excel file {excel_file_path}: {e}")
+        return []
+
+# Function to read .msg files, check for Excel attachments, and search their content
 def search_in_msg_file(file_path, word_forms):
     try:
         msg = extract_msg.Message(file_path)
-        message = preprocess_text(msg.body)
-        
         found_words = set()
-        for phrase in word_forms:
-            # For multi-word phrases, use 'in' to check for presence
-            if " " in phrase:
-                if phrase in message:
-                    found_words.add(phrase)
-            else:
-                # For single words, use regex search to ensure whole word matches
-                if re.search(phrase, message):
-                    found_words.add(phrase.strip(r'\b'))
+
+        # Check for attachments
+        for attachment in msg.attachments:
+            if attachment.longFilename.endswith('.xls') or attachment.longFilename.endswith('.xlsx'):
+                # Save the attachment locally
+                attachment.save()
+                attachment_path = os.path.join(os.getcwd(), attachment.longFilename)
+
+                # Search for keywords in the Excel attachment
+                found_words.update(search_in_excel(attachment_path, word_forms))
+
+                # Clean up by removing the saved attachment file
+                os.remove(attachment_path)
 
         return list(found_words) if found_words else []
     except Exception as e:
@@ -71,6 +101,3 @@ df = pd.DataFrame(data)
 
 # Display the DataFrame
 print(df)
-
-# Optionally, save the DataFrame to a CSV file
-df.to_csv("search_results.csv", index=False)

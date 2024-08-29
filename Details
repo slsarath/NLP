@@ -1,8 +1,7 @@
 import os
-import extract_msg
 import pandas as pd
 import re
-from io import BytesIO
+from docx import Document
 
 # Define the words/phrases list (both single words and multi-word phrases)
 word_list = ["example", "test", "document", "trade union congress", "national party", "yed"]
@@ -28,96 +27,70 @@ def preprocess_text(text):
     text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
     return text
 
-# Function to search for keywords in Excel content
-def search_in_excel(file_content, word_forms):
+# Function to search for keywords in the .docx file content
+def search_in_docx(doc_file_path, word_forms):
     try:
+        doc = Document(doc_file_path)
+        full_text = []
+
+        # Extract text from each paragraph in the document
+        for para in doc.paragraphs:
+            full_text.append(para.text)
+
+        # Combine all text into a single string
+        text = ' '.join(full_text)
+        text = preprocess_text(text)
+
         found_words = set()
+        extracts = []
 
-        # Read the Excel file directly from memory
-        xls = pd.ExcelFile(BytesIO(file_content), engine='openpyxl')
+        # Search for keywords/phrases in the text
+        for phrase in word_forms:
+            if " " in phrase:
+                if phrase in text:
+                    found_words.add(phrase)
+                    # Extract relevant context around the found phrase
+                    extracts.append(extract_context(text, phrase))
+            else:
+                matches = re.finditer(phrase, text)
+                for match in matches:
+                    found_words.add(phrase.strip(r'\b'))
+                    # Extract relevant context around the found word
+                    extracts.append(extract_context(text, match.group()))
 
-        for sheet_name in xls.sheet_names:
-            sheet = pd.read_excel(xls, sheet_name=sheet_name)
-            content = sheet.to_string()
-            content = preprocess_text(content)
-
-            for phrase in word_forms:
-                if " " in phrase:
-                    if phrase in content:
-                        found_words.add(phrase)
-                else:
-                    if re.search(phrase, content):
-                        found_words.add(phrase.strip(r'\b'))
-
-        return list(found_words) if found_words else []
+        return list(found_words), extracts if found_words else [], []
     except Exception as e:
-        print(f"Error processing Excel content: {e}")
-        return []
-
-# Function to read .msg files, check for Excel attachments, and search their content
-def search_in_msg_file(file_path, word_forms):
-    try:
-        msg = extract_msg.Message(file_path)
-        msg_found_words = set()
-        attachment_results = []
-
-        # Preprocess and search in the email body
-        if msg.body:
-            message = preprocess_text(msg.body)
-            for phrase in word_forms:
-                if " " in phrase:
-                    if phrase in message:
-                        msg_found_words.add(phrase)
-                else:
-                    if re.search(phrase, message):
-                        msg_found_words.add(phrase.strip(r'\b'))
-
-        # Check for attachments
-        for attachment in msg.attachments:
-            # Use shortFilename as a fallback
-            filename = attachment.longFilename or attachment.shortFilename
-            if filename and (filename.endswith('.xls') or filename.endswith('.xlsx')):
-                # Read the attachment content directly from memory
-                file_content = attachment.data  # Get the binary content of the attachment
-                excel_found_words = search_in_excel(file_content, word_forms)
-                attachment_results.append({
-                    "Attachment Name": filename,
-                    "Excel Found Words": excel_found_words
-                })
-
-        return list(msg_found_words), attachment_results
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+        print(f"Error processing {doc_file_path}: {e}")
         return [], []
+
+# Function to extract context around the found keyword/phrase
+def extract_context(text, phrase, window=30):
+    try:
+        start = max(text.find(phrase) - window, 0)
+        end = min(text.find(phrase) + len(phrase) + window, len(text))
+        return text[start:end]
+    except Exception as e:
+        print(f"Error extracting context: {e}")
+        return ""
 
 # Function to traverse directories and subdirectories and collect data
 def traverse_and_search(root_folder, word_forms):
     data = []
     for root, dirs, files in os.walk(root_folder):
         for file in files:
-            if file.endswith(".msg"):
+            if file.endswith(".docx"):
                 file_path = os.path.join(root, file)
-                msg_found_words, attachment_results = search_in_msg_file(file_path, word_forms)
+                found_words, extracts = search_in_docx(file_path, word_forms)
                 
                 # Prepare the data to append to the DataFrame
-                if attachment_results:
-                    for attachment in attachment_results:
-                        data.append({
-                            "File Name": file,
-                            "Found Words in MSG": msg_found_words,
-                            "Attachment Name": attachment["Attachment Name"],
-                            "Found Words in Excel": attachment["Excel Found Words"]
-                        })
-                else:
-                    data.append({
-                        "File Name": file,
-                        "Found Words in MSG": msg_found_words,
-                        "Attachment Name": None,
-                        "Found Words in Excel": None
-                    })
+                data.append({
+                    "File Name": file,
+                    "Found Words": found_words,
+                    "Extracts": extracts
+                })
     return data
 
-# Path to the root folder containing .msg files
+# Path to the root folder containing .docx files
 root_folder = '/path/to/your/folder'
 
 # Traverse the folder and check for matching words, storing results in a list
@@ -130,4 +103,4 @@ df = pd.DataFrame(data)
 print(df)
 
 # Optionally, save the DataFrame to a CSV file
-df.to_csv("search_results.csv", index=False)
+df.to_csv("docx_search_results.csv", index=False)

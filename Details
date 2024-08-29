@@ -74,12 +74,14 @@ def search_in_msg_file(file_path, word_forms):
 
         # Check for attachments
         for attachment in msg.attachments:
-            if attachment.longFilename.endswith('.xls') or attachment.longFilename.endswith('.xlsx'):
+            # Use shortFilename as a fallback
+            filename = attachment.longFilename or attachment.shortFilename
+            if filename and (filename.endswith('.xls') or filename.endswith('.xlsx')):
                 # Read the attachment content directly from memory
                 file_content = attachment.data  # Get the binary content of the attachment
                 excel_found_words = search_in_excel(file_content, word_forms)
                 attachment_results.append({
-                    "Attachment Name": attachment.longFilename,
+                    "Attachment Name": filename,
                     "Excel Found Words": excel_found_words
                 })
 

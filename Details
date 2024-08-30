@@ -1,1 +1,1 @@
-=TEXTJOIN(", ", TRUE, SORT(UNIQUE(TEXTSPLIT(A1 & "," & B1, ",", TRUE))))
+=SUBSTITUTE(SUBSTITUTE(A1, "[", ""), "]", "")

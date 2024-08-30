@@ -42,36 +42,20 @@ def search_in_docx(doc_file_path, word_forms):
         text = preprocess_text(text)
 
         found_words = set()
-        extracts = []
 
         # Search for keywords/phrases in the text
         for phrase in word_forms:
             if " " in phrase:
                 if phrase in text:
                     found_words.add(phrase)
-                    # Extract relevant context around the found phrase
-                    extracts.append(extract_context(text, phrase))
             else:
-                matches = re.finditer(phrase, text)
-                for match in matches:
+                if re.search(phrase, text):
                     found_words.add(phrase.strip(r'\b'))
-                    # Extract relevant context around the found word
-                    extracts.append(extract_context(text, match.group()))
 
-        return list(found_words), extracts if found_words else [], []
+        return list(found_words) if found_words else []
     except Exception as e:
         print(f"Error processing {doc_file_path}: {e}")
-        return [], []
-
-# Function to extract context around the found keyword/phrase
-def extract_context(text, phrase, window=30):
-    try:
-        start = max(text.find(phrase) - window, 0)
-        end = min(text.find(phrase) + len(phrase) + window, len(text))
-        return text[start:end]
-    except Exception as e:
-        print(f"Error extracting context: {e}")
-        return ""
+        return []
 
 # Function to traverse directories and subdirectories and collect data
 def traverse_and_search(root_folder, word_forms):
@@ -80,13 +64,12 @@ def traverse_and_search(root_folder, word_forms):
         for file in files:
             if file.endswith(".docx"):
                 file_path = os.path.join(root, file)
-                found_words, extracts = search_in_docx(file_path, word_forms)
+                found_words = search_in_docx(file_path, word_forms)
                 
                 # Prepare the data to append to the DataFrame
                 data.append({
                     "File Name": file,
-                    "Found Words": found_words,
-                    "Extracts": extracts
+                    "Found Words": found_words
                 })
     return data
 

@@ -1,95 +1,40 @@
-import os
-import pandas as pd
-import re
-from docx import Document
+The code you've provided appears to be a SQL query, potentially with some syntax errors or formatting issues. It seems to be checking various conditions related to task assignments, approvals, and delegation of responsibilities in some sort of workflow or access management system. Let's break it down step by step to see if it addresses the condition that "an individual cannot approve their own access request."
 
-# Define the words/phrases list (both single words and multi-word phrases)
-word_list = ["example", "test", "document", "trade union congress", "national party", "yed"]
+### Key Sections of the Query:
 
-# Convert the list to include both singular and plural forms (only for single words)
-def generate_word_forms(word_list):
-    word_forms = set()
-    for word in word_list:
-        if " " in word:  # Keep phrases as they are
-            word_forms.add(word.lower())
-        else:
-            word_forms.add(rf'\b{word.lower()}\b')  # Use regex word boundary for exact match
-            word_forms.add(rf'\b{word.lower()}s\b')  # Handle plural forms with word boundary
-    return word_forms
+1. **Table Aliases and Joins:**
+   - `tskreg`: Alias for `PHX_BPM_EXT.PHX_TASK_REGISTRY` or `PHX_BPM_EXT.PHX_TASK_REGISTRY_vw`.
+   - `req`: Alias for `PHX_BPM_EXT.PHX_REQUEST_30_VW`, joined with `PS.PS_REQ_STAGE_MATRIX mat` on certain conditions.
+   - Several other tables like `PA.pa_catalogitem cat`, `PA.PA_ASSET_ACTION paa`, `PHX_BPM_EXT.PHX_TASK_DEF TDEF`, `PHX_BPM_EXT.PHX_PROCESS_DEF PDEF`.
 
-word_forms = generate_word_forms(word_list)
+2. **Primary Conditions:**
+   - `negrequestee <> ||VO_USRLKEY||`: This seems to be a key condition where the `requestee` (the person who made the request) must not be the same as the user identified by `VO_USRLKEY`. This implies that the person who submitted the request should not be involved in the approval process.
 
-# Function to preprocess text (remove unwanted characters)
-def preprocess_text(text):
-    # Convert to lowercase
-    text = text.lower()
-    # Remove special characters, keeping only alphanumeric and spaces
-    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
-    return text
+3. **Delegation Check:**
+   - The query checks for delegated responsibilities using the tables `PA.PA_RESP_DELEGATION_DETAILS`, `PS.PS_ATK_RTK`, and user group membership tables.
+   - It ensures that certain responsibilities like "LM-REQ" and "LM-RECERT" are not delegated inappropriately or without the right conditions.
 
-# Function to search for keywords in the .docx file content, including text in tables
-def search_in_docx(doc_file_path, word_forms):
-    try:
-        doc = Document(doc_file_path)
-        full_text = []
+4. **Date Filters:**
+   - The query filters requests based on creation dates within the last year (`req.create_d BETWEEN (SYSDATE - 365) and SYSDATE`).
 
-        # Extract text from each paragraph in the document
-        for para in doc.paragraphs:
-            full_text.append(para.text)
+5. **Final Conditions:**
+   - The query joins several tables to ensure that the tasks and requests align correctly with the process definitions and statuses.
 
-        # Extract text from each table in the document
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    full_text.append(cell.text)
+### Fulfilling the Condition:
+- **Check for Self-Approval:**
+   - The critical part of ensuring that "an individual cannot approve their own access request" is where the query checks that the `requestee` (likely the person who requested the access) is not the same as the `ASSIGNEE_KEY` (the person assigned to approve the request).
+   - This is captured by the condition:
+     ```sql
+     tskreg.ASSIGNEE_KEY IN (...)
+     ```
+     and
+     ```sql
+     tskreg.ASSIGNEE_KEY <> req.requestee
+     ```
 
-        # Combine all text into a single string
-        text = ' '.join(full_text)
-        text = preprocess_text(text)
+### Conclusion:
+- **Yes**, the query does include conditions that seem to prevent an individual from approving their own access request. Specifically, it checks that the `ASSIGNEE_KEY` (the person responsible for approval) is not the same as the `requestee` (the person who submitted the request).
 
-        found_words = set()
+- The query also seems to account for delegation and other complex scenarios to ensure the integrity of the approval process.
 
-        # Search for keywords/phrases in the text
-        for phrase in word_forms:
-            if " " in phrase:
-                if phrase in text:
-                    found_words.add(phrase)
-            else:
-                if re.search(phrase, text):
-                    found_words.add(phrase.strip(r'\b'))
-
-        return list(found_words) if found_words else []
-    except Exception as e:
-        print(f"Error processing {doc_file_path}: {e}")
-        return []
-
-# Function to traverse directories and subdirectories and collect data
-def traverse_and_search(root_folder, word_forms):
-    data = []
-    for root, dirs, files in os.walk(root_folder):
-        for file in files:
-            if file.endswith(".docx"):
-                file_path = os.path.join(root, file)
-                found_words = search_in_docx(file_path, word_forms)
-                
-                # Prepare the data to append to the DataFrame
-                data.append({
-                    "File Name": file,
-                    "Found Words": found_words
-                })
-    return data
-
-# Path to the root folder containing .docx files
-root_folder = '/path/to/your/folder'
-
-# Traverse the folder and check for matching words, storing results in a list
-data = traverse_and_search(root_folder, word_forms)
-
-# Convert the list of results into a DataFrame
-df = pd.DataFrame(data)
-
-# Display the DataFrame
-print(df)
-
-# Optionally, save the DataFrame to a CSV file
-df.to_csv("docx_search_results.csv", index=False)
+If there are syntax errors or further context needed (e.g., actual column names or specific business logic), those might need to be addressed to ensure the query operates correctly. But based on the provided code, it seems to fulfill the requirement that an individual cannot approve their own access request.

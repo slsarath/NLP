@@ -43,7 +43,8 @@ def search_in_excel(file_content, word_forms):
 
             for phrase in word_forms:
                 if re.search(phrase, content):
-                    found_words.add(phrase)
+                    # Remove the \b before storing the found word
+                    found_words.add(re.sub(r'\\b', '', phrase))
 
         return list(found_words) if found_words else []
     except Exception as e:
@@ -62,7 +63,8 @@ def search_in_msg_file(file_path, word_forms):
             message = preprocess_text(msg.body)
             for phrase in word_forms:
                 if re.search(phrase, message):
-                    msg_found_words.add(phrase)
+                    # Remove the \b before storing the found word
+                    msg_found_words.add(re.sub(r'\\b', '', phrase))
 
         # Check for attachments
         for attachment in msg.attachments:

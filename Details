@@ -27,7 +27,7 @@ def preprocess_text(text):
     text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
     return text
 
-# Function to search for keywords in the .docx file content
+# Function to search for keywords in the .docx file content, including text in tables
 def search_in_docx(doc_file_path, word_forms):
     try:
         doc = Document(doc_file_path)
@@ -36,6 +36,12 @@ def search_in_docx(doc_file_path, word_forms):
         # Extract text from each paragraph in the document
         for para in doc.paragraphs:
             full_text.append(para.text)
+
+        # Extract text from each table in the document
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    full_text.append(cell.text)
 
         # Combine all text into a single string
         text = ' '.join(full_text)

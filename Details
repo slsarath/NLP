@@ -1,8 +1,20 @@
+import pandas as pd
+import ast
+import numpy as np
+
+# Sample DataFrame with potential NaN values
+data = {
+    'List1': ["['a', 'b']", "['a', 'c']", np.nan],
+    'List2': ["['c']", "['b', 'd']", "['e']"]
+}
+
+df = pd.DataFrame(data)
+
 # Function to convert string to list, combine, deduplicate, and sort
 def combine_sort_unique(row):
-    # Convert the string to a list using ast.literal_eval
-    list1 = ast.literal_eval(row['List1'])
-    list2 = ast.literal_eval(row['List2'])
+    # Check if the row contains NaN and handle it by using an empty list
+    list1 = ast.literal_eval(row['List1']) if pd.notna(row['List1']) else []
+    list2 = ast.literal_eval(row['List2']) if pd.notna(row['List2']) else []
     
     # Combine the lists
     combined_list = list1 + list2

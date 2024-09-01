@@ -1,1 +1,42 @@
-=SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(A1, "[", ""), "]", ""), "'", ""), " ", "")
+I understand you're looking for a simpler solution to sort and remove duplicates from a list in Excel. Here's a step-by-step guide using a simpler approach:
+
+### Steps to Sort and Remove Duplicates from a List in Excel:
+
+1. **Assume You Have This List in Cell `A1`:**
+   - `['c', 'b', 'a', 'c']`
+
+2. **Step 1: Remove the Brackets and Quotes**
+   - In cell `B1`, use the following formula to remove the square brackets `[` `]` and quotes `'`:
+   ```excel
+   =SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(A1, "[", ""), "]", ""), "'", ""), " ", "")
+   ```
+   - This will leave you with: `c,b,a,c`
+
+3. **Step 2: Split the List into Separate Cells**
+   - Select a range of cells horizontally (e.g., `C1:F1`) and use the following formula:
+   ```excel
+   =TEXTSPLIT(B1, ",")
+   ```
+   - This will split `c,b,a,c` into separate cells: `C1: c`, `D1: b`, `E1: a`, `F1: c`
+
+4. **Step 3: Remove Duplicates and Sort the Values**
+   - In another range of cells horizontally (e.g., `G1:I1`), use the following formula to remove duplicates and sort:
+   ```excel
+   =SORT(UNIQUE(C1:F1))
+   ```
+   - This will give you the sorted, unique values: `G1: a`, `H1: b`, `I1: c`
+
+5. **Step 4: Combine the Sorted List Back into a Single Cell**
+   - Finally, in a new cell (e.g., `J1`), combine the sorted list back into a single string with square brackets:
+   ```excel
+   ="['" & TEXTJOIN("', '", TRUE, G1:I1) & "']"
+   ```
+   - This will result in: `['a', 'b', 'c']`
+
+### Summary of the Steps:
+1. Remove brackets and quotes from the original list.
+2. Split the cleaned list into separate cells.
+3. Use `SORT` and `UNIQUE` to sort the values and remove duplicates.
+4. Combine the sorted and unique list back into a formatted string.
+
+This approach is easier to follow and manually breaks down the process into manageable steps, ensuring that you achieve the desired output.

@@ -1,1 +1,1 @@
-="['" & TEXTJOIN("', '", TRUE, SORT(UNIQUE(TEXTSPLIT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(A1, "[", ""), "]", ""), "'", ""), " ", ""), ",")))) & "']"
+=SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(A1, "[", ""), "]", ""), "'", ""), " ", "")

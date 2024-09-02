@@ -1,31 +1,42 @@
 import pandas as pd
-import ast
 import numpy as np
 
-# Sample DataFrame with potential NaN values
+def check_rating_rationale(row):
+    previous_rating = row['Previous rating']
+    current_rating = row['Current rating']
+    previous_rationale = row['Previous rationale']
+    current_rationale = row['Current rationale']
+
+    if pd.isna(previous_rating) and not pd.isna(current_rating):
+        if pd.isna(previous_rationale):
+            return "Previous rating and rationale missing"
+        else:
+            return "Previous rating missing"
+    elif not pd.isna(previous_rating) and pd.isna(current_rating):
+        if pd.isna(current_rationale):
+            return "Current rating and rationale missing"
+        else:
+            return "Current rating missing"
+    elif pd.isna(previous_rationale) and not pd.isna(current_rationale):
+        return "Previous rationale is missing"
+    elif not pd.isna(previous_rationale) and pd.isna(current_rationale):
+        return "Current rationale is missing"
+    elif previous_rating != current_rating and previous_rationale == current_rationale:
+        return "Rating changed but rationale remains same"
+    else:
+        return "No issues detected"  # You can customize this return statement if necessary
+
+# Example usage with a DataFrame
 data = {
-    'List1': ["['a', 'b']", "['a', 'c']", np.nan],
-    'List2': ["['c']", "['b', 'd']", "['e']"]
+    'Previous rating': ['Effective', 'Effective', np.nan, 'Ineffective', 'Effective', np.nan, 'Effective'],
+    'Previous rationale': ['Rationale 1', np.nan, 'Rationale 3', 'Rationale 4', np.nan, 'Rationale 6', 'Rationale 7'],
+    'Current rating': ['Ineffective', 'Effective', 'Effective', 'Effective', np.nan, 'Ineffective', 'Effective'],
+    'Current rationale': ['Rationale 1', np.nan, 'Rationale 3', 'Rationale 4', 'Rationale 5', np.nan, 'Rationale 7']
 }
 
 df = pd.DataFrame(data)
 
-# Function to convert string to list, combine, deduplicate, and sort
-def combine_sort_unique(row):
-    # Check if the row contains NaN and handle it by using an empty list
-    list1 = ast.literal_eval(row['List1']) if pd.notna(row['List1']) else []
-    list2 = ast.literal_eval(row['List2']) if pd.notna(row['List2']) else []
-    
-    # Combine the lists
-    combined_list = list1 + list2
-    
-    # Remove duplicates and sort
-    unique_sorted_list = sorted(set(combined_list))
-    
-    return unique_sorted_list
+# Apply the function to each row in the DataFrame
+df['Check Result'] = df.apply(check_rating_rationale, axis=1)
 
-# Apply the function to the DataFrame to create a new column
-df['Combined_Sorted_List'] = df.apply(combine_sort_unique, axis=1)
-
-# Display the DataFrame
 print(df)

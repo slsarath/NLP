@@ -1,42 +1,21 @@
-import pandas as pd
-import numpy as np
+# Function to preprocess text
+def preprocess_text(text):
+    # Convert to lowercase
+    text = text.lower()
+    # Remove punctuation
+    text = re.sub(r'[^\w\s]', '', text)
+    # Remove extra spaces
+    text = ' '.join(text.split())
+    return text
 
-def check_rating_rationale(row):
-    previous_rating = row['Previous rating']
-    current_rating = row['Current rating']
-    previous_rationale = row['Previous rationale']
-    current_rationale = row['Current rationale']
+# Apply preprocessing to the 'Text' column
+df['Processed_Text'] = df['Text'].apply(preprocess_text)
 
-    if pd.isna(previous_rating) and not pd.isna(current_rating):
-        if pd.isna(previous_rationale):
-            return "Previous rating and rationale missing"
-        else:
-            return "Previous rating missing"
-    elif not pd.isna(previous_rating) and pd.isna(current_rating):
-        if pd.isna(current_rationale):
-            return "Current rating and rationale missing"
-        else:
-            return "Current rating missing"
-    elif pd.isna(previous_rationale) and not pd.isna(current_rationale):
-        return "Previous rationale is missing"
-    elif not pd.isna(previous_rationale) and pd.isna(current_rationale):
-        return "Current rationale is missing"
-    elif previous_rating != current_rating and previous_rationale == current_rationale:
-        return "Rating changed but rationale remains same"
-    else:
-        return "No issues detected"  # You can customize this return statement if necessary
+def find_exact_matches(text, keywords):
+    matches = []
+    for keyword in keywords:
+        if keyword in text:
+            matches.append(keyword)
+    return matches
 
-# Example usage with a DataFrame
-data = {
-    'Previous rating': ['Effective', 'Effective', np.nan, 'Ineffective', 'Effective', np.nan, 'Effective'],
-    'Previous rationale': ['Rationale 1', np.nan, 'Rationale 3', 'Rationale 4', np.nan, 'Rationale 6', 'Rationale 7'],
-    'Current rating': ['Ineffective', 'Effective', 'Effective', 'Effective', np.nan, 'Ineffective', 'Effective'],
-    'Current rationale': ['Rationale 1', np.nan, 'Rationale 3', 'Rationale 4', 'Rationale 5', np.nan, 'Rationale 7']
-}
 
-df = pd.DataFrame(data)
-
-# Apply the function to each row in the DataFrame
-df['Check Result'] = df.apply(check_rating_rationale, axis=1)
-
-print(df)

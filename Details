@@ -1,21 +1,56 @@
+import pandas as pd
+import re
+from word_forms.word_forms import get_word_forms
+from nltk.tokenize import word_tokenize
+
+# Sample DataFrame
+data = {'Text': [
+    'The government needs to address political views.',
+    'There is a strong need for monies in politics.',
+    'We should consider non-political views in this context.',
+    'The governmental policies must focus on the economy.'
+]}
+
+df = pd.DataFrame(data)
+
+# List of words and phrases to search for
+keywords = ['government', 'need for money', 'political view', 'politics']
+
 # Function to preprocess text
 def preprocess_text(text):
     # Convert to lowercase
     text = text.lower()
     # Remove punctuation
     text = re.sub(r'[^\w\s]', '', text)
-    # Remove extra spaces
-    text = ' '.join(text.split())
-    return text
+    # Tokenize text
+    return word_tokenize(text)
 
-# Apply preprocessing to the 'Text' column
-df['Processed_Text'] = df['Text'].apply(preprocess_text)
-
-def find_exact_matches(text, keywords):
-    matches = []
+# Function to get all word forms of keywords
+def get_all_word_forms(keywords):
+    all_forms = set()
     for keyword in keywords:
-        if keyword in text:
-            matches.append(keyword)
+        forms = get_word_forms(keyword)
+        # Flatten the dictionary into a set of words
+        for word_set in forms.values():
+            all_forms.update(word_set)
+        # Add the original keyword
+        all_forms.add(keyword)
+    return all_forms
+
+# Function to find matches including word forms
+def find_matches_with_word_forms(text, all_forms):
+    matches = []
+    for word in all_forms:
+        if word in text:
+            matches.append(word)
     return matches
 
+# Generate all word forms from the keywords
+all_forms = get_all_word_forms(keywords)
 
+# Apply the function to the DataFrame
+df['Processed_Text'] = df['Text'].apply(preprocess_text)
+df['Matches'] = df['Processed_Text'].apply(lambda x: find_matches_with_word_forms(x, all_forms))
+
+# Display the DataFrame with matches
+print(df[['Text', 'Matches']])

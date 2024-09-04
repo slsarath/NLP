@@ -1,78 +1,50 @@
-Here’s how you can adapt the code you provided to search for exact matches and check for different word forms like singular and plural in a text column of a DataFrame:
+import win32com.client as win32
 
-### Step 1: Prepare Your Data and Word List
-```python
-import pandas as pd
-import re
+# Initialize Excel application
+excel = win32.gencache.EnsureDispatch('Excel.Application')
+excel.Visible = False  # Run Excel in the background
 
-# Sample DataFrame
-data = {'Text': [
-    'The government needs to address political views.',
-    'There is a strong need for money in politics.',
-    'We should consider non-political views in this context.',
-    'The governmental policies must focus on the economy.'
-]}
+# Open master workbook and temporary workbook
+master_wb = excel.Workbooks.Open(master_book_xlsx_file_path)
+test_master_wb = excel.Workbooks.Open(master_temp_file)
 
-df = pd.DataFrame(data)
+# Get active sheets
+sheet_master = master_wb.ActiveSheet
+sheet_temp = test_master_wb.ActiveSheet
 
-# List of words and phrases to search for
-word_list = ["government", "need for money", "political view", "politics"]
-```
+# Find the last rows in both sheets
+last_row_master = sheet_master.Cells(sheet_master.Rows.Count, TradeId).End(-4162).Row
+last_row_temp = sheet_temp.Cells(sheet_temp.Rows.Count, TradeId).End(-4162).Row
 
-### Step 2: Generate Word Forms
-This function generates regex patterns for exact matches and plural forms:
+# Create a set of TradeIds from the temporary sheet for quick lookup
+temp_trade_ids = set()
+for row_temp in range(1, last_row_temp + 1):
+    ch_id_temp = sheet_temp.Cells(row_temp, TradeId).Value
+    temp_trade_ids.add(ch_id_temp)
 
-```python
-def generate_word_forms(word_list):
-    word_forms = set()
-    for word in word_list:
-        if " " in word:  # Handle multi-word phrases
-            word_forms.add(rf'\b{word.lower()}\b')
-        else:
-            word_forms.add(rf'\b{word.lower()}\b')  # Exact match
-            word_forms.add(rf'\b{word.lower()}s\b')  # Handle plural form
-    return word_forms
+# Iterate through the master sheet from the bottom up to avoid issues when deleting rows
+for row in range(last_row_master, 3, -1):  # Start from the last row to row 4
+    ch_id_master = sheet_master.Cells(row, TradeId).Value
+    if ch_id_master not in temp_trade_ids:
+        sheet_master.Rows(row).Delete()  # Delete rows that don't match
 
-word_forms = generate_word_forms(word_list)
-```
+# Now update the matching rows
+for row in range(4, last_row_master + 1):
+    ch_id_master = sheet_master.Cells(row, TradeId).Value
+    for row_temp in range(1, last_row_temp + 1):
+        ch_id_temp = sheet_temp.Cells(row_temp, TradeId).Value
+        if ch_id_master == ch_id_temp:
+            sheet_master.Cells(row, Level_4).Value = sheet_temp.Cells(row_temp, Level_4).Value
+            sheet_master.Cells(row, Level_5).Value = sheet_temp.Cells(row_temp, Level_5).Value
+            sheet_master.Cells(row, Level_6).Value = sheet_temp.Cells(row_temp, Level_6).Value
+            sheet_master.Cells(row, Level_7).Value = sheet_temp.Cells(row_temp, Level_7).Value
+            sheet_master.Cells(row, Controller1).Value = sheet_temp.Cells(row_temp, Controller1).Value
+            sheet_master.Cells(row, ReportingDate).Value = sheet_temp.Cells(row_temp, ReportingDate).Value
 
-### Step 3: Preprocess the Text
-You may want to preprocess the text to ensure consistency:
+# Save the updated master workbook
+master_wb.Save()
 
-```python
-def preprocess_text(text):
-    # Convert to lowercase
-    text = text.lower()
-    # Replace non-alphanumeric characters with spaces, keeping word boundaries intact
-    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
-    return text
-```
-
-### Step 4: Search for Matches
-This function will search for the generated word forms in the text:
-
-```python
-def find_matches(text, word_forms):
-    matches = set()
-    preprocessed_text = preprocess_text(text)
-    for phrase in word_forms:
-        if re.search(phrase, preprocessed_text):
-            matches.add(re.sub(r'\\b', '', phrase))  # Remove the word boundary markers for output
-    return list(matches)
-
-# Apply the function to the DataFrame
-df['Matches'] = df['Text'].apply(lambda x: find_matches(x, word_forms))
-
-# Display the DataFrame with matches
-print(df[['Text', 'Matches']])
-```
-
-### Step 5: View the Results
-This code will add a `Matches` column to your DataFrame that lists all matching words and phrases, including plural forms.
-
-### Sample Output
-After applying the above code, the output might look like this:
-
-```plaintext
-                                             Text                          Matches
-0  The government needs to
+# Clean up by closing workbooks and quitting Excel
+test_master_wb.Close(False)
+master_wb.Close(True)
+excel.Quit()

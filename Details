@@ -1,51 +1,61 @@
-Here's a revised version of your script for presenting the slide at a stakeholder meeting, considering that your audience is non-technical:
+Here's a script to present the "Repeat Issue Analysis" slide, tailored for a stakeholder meeting:
 
 ---
 
-### Opening the Meeting
+### Introducing the Topic: Repeat Issue Analysis
 
 **You:**  
-"Good [morning/afternoon], everyone! First of all, I’d like to thank you for inviting me to speak today. I’m really excited to share some insights on Natural Language Processing, or NLP, and discuss how it's been applied in various projects we’ve worked on.
-
-Now, I understand that some of you may not be very familiar with the technical details of NLP – and that’s okay. I’m going to keep things straightforward and make sure it’s easy to follow. The goal of today’s session is to give you a clear understanding of what NLP is and why it matters to businesses and organizations like ours.
-
-If you have any questions at any point, feel free to ask – I want this to be as interactive and engaging as possible."
+"Next, let’s dive into the topic of 'Repeat Issue Analysis,' which is an important part of ensuring that similar issues don’t keep recurring over time within our organization. This analysis helps identify issues that appear repeatedly within different parts of the business, specifically looking at the vertical and horizontal combinations based on their issue descriptions."
 
 ---
 
-### Presenting the Slide on "Introduction to NLP"
+### Explaining "What" (What is Repeat Issue Analysis?)
 
 **You:**  
-"Let’s start by understanding what Natural Language Processing, or NLP, is all about. 
+"To start with, the 'What' section outlines the purpose of this analysis. Our goal is to develop a solution that identifies repeat issues, by analyzing the issue descriptions across both vertical and horizontal combinations. 
 
-NLP is essentially a way to teach computers how to understand human language – whether that’s spoken or written. In everyday life, we encounter NLP without even realizing it. For example, when you use Siri or Google Assistant, you’re talking to a system that uses NLP to understand your voice commands and respond with the correct information. 
-
-Another example is when you reach out to customer support and get an automated reply – that’s NLP at work as well, providing automated responses to help resolve your queries quickly."
-
-*Point to the slide where it mentions examples like Siri, Google Assistant, and customer service.* 
-
-"Now, why is NLP important? Well, we are surrounded by massive amounts of data in the form of text – emails, social media posts, customer feedback, and more. NLP helps organizations handle this huge volume of data by automating tasks that would take people a lot of time to complete. It’s efficient, it saves time, and it can even improve customer interactions, like the chatbot example I mentioned earlier."
+One important note is that when we refer to 'repetition,' we mean issues that share similar descriptions but occur at different times. These issues can span across various horizontals and verticals, making it essential to address them to prevent further occurrences."
 
 ---
 
-### Everyday Benefits of NLP
+### Explaining "Why" (Why is this Important?)
 
 **You:**  
-"There are several real-world applications of NLP. For instance:
+"Now, moving to the 'Why' section: Repeat issues often indicate deeper, more intrinsic problems that need attention. If we don’t address these issues properly, they can keep cropping up, leading to inefficiencies and potentially larger problems. By identifying these repeat issues, we can take more focused actions to prevent them from recurring, which ultimately improves our processes."
 
-1. **Improved Customer Service:** NLP allows companies to respond faster and more accurately to customer queries. It ensures customers get the right information without long wait times.
-  
-2. **Automated Financial Processes:** In the financial sector, NLP helps automate processes like fraud detection and invoice processing, ensuring that tasks are handled smoothly and efficiently.
+---
 
-3. **Enhanced Risk Management and Compliance:** NLP can also help businesses stay compliant with regulations by automatically analyzing data and highlighting potential risks.
+### Explaining "How" (How is this Done?)
 
-4. **Innovative Market Analysis and Investment Strategies:** By analyzing large amounts of data, NLP can uncover market trends and help businesses make smarter investment decisions."
+**You:**  
+"So, how are we going about identifying these repeat issues? We are leveraging Natural Language Processing (NLP), Machine Learning, and Data Analytics techniques. These advanced technologies allow us to analyze the issue descriptions systematically and recognize patterns across different cases. This way, we can identify similarities and repetitions that might not be obvious at first glance."
+
+---
+
+### Explaining "For Whom" (Who Benefits from This?)
+
+**You:**  
+"This analysis is specifically being applied for BUK, though we plan to expand it further. However, it's important to note that identifying and addressing repeat issues has broader benefits for the organization as a whole, ensuring efficiency and reducing risks of ongoing problems."
+
+---
+
+### Explaining "Benefits/Results" (What Results Have We Seen?)
+
+**You:**  
+"Looking at the 'Benefits/Results' section, we’ve analyzed data from January 2021 to June 2023, and the results are quite interesting. About 45% of the total issues in this period were considered, and we found that approximately 5% of the issues had the potential to be repeated. Additionally, around 17% of these issues were potentially repeated across organizations, highlighting the importance of this analysis in identifying and mitigating such risks."
+
+---
+
+### Explaining "Next Steps"
+
+**You:**  
+"Finally, the 'Next Steps' section shows that we’re planning to replicate this analysis across other verticals and horizontals. By scaling up, we can ensure that all parts of the business benefit from this process, ultimately minimizing the risk of recurring issues."
 
 ---
 
 **You:**  
-"That’s a brief overview of NLP and how it’s being used in various industries. We’ll get into more specific use cases shortly. But before we move on, do any of you have any questions about what we’ve discussed so far?"
+"So, in summary, Repeat Issue Analysis helps us identify patterns in recurring issues, enabling us to address the root causes more effectively. This will lead to more efficient processes, reduced risk, and overall improved organizational performance. If anyone has any questions, feel free to ask."
 
 ---
 
-This script sets a friendly and engaging tone while making the content understandable for non-technical stakeholders. It ensures that they understand the relevance of NLP in their work environment.
+This script breaks down each section of the slide and explains it clearly for a non-technical audience, ensuring they understand the value and relevance of the analysis.

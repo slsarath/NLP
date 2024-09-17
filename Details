@@ -1,50 +1,37 @@
-import win32com.client as win32
+Here’s a simple script to present the slide on "Introduction to NLP" to a non-technical audience in a stakeholder meeting:
 
-# Initialize Excel application
-excel = win32.gencache.EnsureDispatch('Excel.Application')
-excel.Visible = False  # Run Excel in the background
+---
 
-# Open master workbook and temporary workbook
-master_wb = excel.Workbooks.Open(master_book_xlsx_file_path)
-test_master_wb = excel.Workbooks.Open(master_temp_file)
+**You:**
 
-# Get active sheets
-sheet_master = master_wb.ActiveSheet
-sheet_temp = test_master_wb.ActiveSheet
+“Hello everyone, thanks for joining today’s meeting! I’ll be taking a few minutes to explain Natural Language Processing, or NLP, and how it’s relevant to us. 
 
-# Find the last rows in both sheets
-last_row_master = sheet_master.Cells(sheet_master.Rows.Count, TradeId).End(-4162).Row
-last_row_temp = sheet_temp.Cells(sheet_temp.Rows.Count, TradeId).End(-4162).Row
+Let’s start by understanding what NLP actually is. NLP stands for Natural Language Processing, and in simple terms, it’s a branch of artificial intelligence that helps computers understand and process human language—whether that’s spoken or written.
 
-# Create a set of TradeIds from the temporary sheet for quick lookup
-temp_trade_ids = set()
-for row_temp in range(1, last_row_temp + 1):
-    ch_id_temp = sheet_temp.Cells(row_temp, TradeId).Value
-    temp_trade_ids.add(ch_id_temp)
+A lot of us interact with NLP daily, even if we don’t realize it. For example, when you ask Google Assistant or Siri a question, they understand your voice, process what you're asking, and respond to you. That’s NLP working in the background, converting your speech into something the machine can understand, and then using that information to give you the best possible answer.
 
-# Iterate through the master sheet from the bottom up to avoid issues when deleting rows
-for row in range(last_row_master, 3, -1):  # Start from the last row to row 4
-    ch_id_master = sheet_master.Cells(row, TradeId).Value
-    if ch_id_master not in temp_trade_ids:
-        sheet_master.Rows(row).Delete()  # Delete rows that don't match
+Now, let’s look at why NLP is important. There are three key reasons:
 
-# Now update the matching rows
-for row in range(4, last_row_master + 1):
-    ch_id_master = sheet_master.Cells(row, TradeId).Value
-    for row_temp in range(1, last_row_temp + 1):
-        ch_id_temp = sheet_temp.Cells(row_temp, TradeId).Value
-        if ch_id_master == ch_id_temp:
-            sheet_master.Cells(row, Level_4).Value = sheet_temp.Cells(row_temp, Level_4).Value
-            sheet_master.Cells(row, Level_5).Value = sheet_temp.Cells(row_temp, Level_5).Value
-            sheet_master.Cells(row, Level_6).Value = sheet_temp.Cells(row_temp, Level_6).Value
-            sheet_master.Cells(row, Level_7).Value = sheet_temp.Cells(row_temp, Level_7).Value
-            sheet_master.Cells(row, Controller1).Value = sheet_temp.Cells(row_temp, Controller1).Value
-            sheet_master.Cells(row, ReportingDate).Value = sheet_temp.Cells(row_temp, ReportingDate).Value
+- First, it helps automate text-based processes, saving us time and reducing human errors.
+- Second, it can analyze large volumes of data quickly. Think about all the text we deal with in emails, documents, and customer queries. NLP helps us sift through this data efficiently.
+- Finally, it enhances customer interactions by powering things like chatbots. These chatbots use NLP to understand what customers are asking for and respond appropriately, improving the customer experience.
 
-# Save the updated master workbook
-master_wb.Save()
+**(Move to the lower section of the slide)**
 
-# Clean up by closing workbooks and quitting Excel
-test_master_wb.Close(False)
-master_wb.Close(True)
-excel.Quit()
+NLP is used in a variety of industries. Here are some examples relevant to us:
+
+1. **Improved Customer Service**: NLP helps customer service teams provide quick and accurate responses by understanding customer inquiries, often through automated systems.
+
+2. **Automated Financial Processes**: It also assists in financial services, such as detecting fraud, automating account reconciliations, or processing invoices.
+
+3. **Enhanced Risk Management and Compliance**: NLP can help companies assess potential risks and ensure they meet regulatory compliance standards by analyzing vast amounts of regulatory and legal text.
+
+4. **Innovative Market Analysis and Investment Strategies**: NLP can identify emerging trends by analyzing market data, making it a valuable tool for making informed investment decisions.
+
+In short, NLP helps automate, analyze, and improve processes across various sectors. 
+
+Does anyone have any questions so far?”
+
+---
+
+This script keeps things simple and accessible for non-technical audiences, while highlighting the practical benefits of NLP.

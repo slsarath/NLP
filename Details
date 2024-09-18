@@ -1,34 +1,5 @@
-A **semantic search model** in machine learning is a way for computers to understand the *meaning* behind words and phrases, rather than just looking for exact matches. Instead of simply matching keywords, it tries to grasp what you're really asking about and finds results that are more relevant based on context and meaning.
+Let me provide a quick demonstration.
 
-### Example in Layman’s Terms:
-Imagine you’re looking for “how to cook a healthy breakfast.” A basic search might only look for those exact words on websites, but a **semantic search model** understands that you’re probably interested in recipes, so it will also show you articles like “easy oatmeal recipes” or “nutritious morning smoothies” – even if they don’t use your exact search words.
+For the prediction model, we trained the system using a set of pre-labeled data, where the business had already identified issues associated with consumer harm. Based on this data, we trained our model to generate probability scores for similar issues.
 
-### Fun Example:
-Think of it like having a super-smart friend. You might ask them, “Where can I watch a movie tonight?” They won’t just search for the word "movie" and list random places. Instead, they’ll consider you might be looking for *movie theaters*, *streaming services*, or even *drive-ins*, and they’ll give you suggestions based on that.
-
-In a nutshell, semantic search doesn’t just focus on the words you use, but the *ideas* behind them!
-
-
-
-Sure! Here's an easy example of **POS tagging**:
-
-### Sentence:  
-**"The cat sat on the mat."**
-
-With **POS tagging**, we label each word with its role:
-- "The" = **Article** (introducing something)
-- "Cat" = **Noun** (the main subject, a thing)
-- "Sat" = **Verb** (action word, what the cat did)
-- "On" = **Preposition** (shows location or position)
-- "The" = **Article** (introducing something again)
-- "Mat" = **Noun** (another thing, the place the cat sat on)
-
-So the computer understands that in this sentence, a noun (cat) is doing something (sat) in relation to another noun (mat).
-
-### Fun Analogy:
-Imagine you're watching a play. POS tagging is like assigning each actor a role:
-- The **noun** (cat) is the main character,
-- The **verb** (sat) tells you what action the character is doing,
-- The **preposition** (on) tells you where this action is happening.
-
-In this way, computers can "see" the structure of a sentence and make sense of it!
+Similarly, for the semantic analysis model, the business provides us with specific categories and relevant phrases. We then develop a model that categorizes the phrases accordingly, ensuring accurate classification.

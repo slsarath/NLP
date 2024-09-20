@@ -1,5 +1,36 @@
-Let me provide a quick demonstration.
+Here's how you can fill out the form for this automation idea:
 
-For the prediction model, we trained the system using a set of pre-labeled data, where the business had already identified issues associated with consumer harm. Based on this data, we trained our model to generate probability scores for similar issues.
+---
 
-Similarly, for the semantic analysis model, the business provides us with specific categories and relevant phrases. We then develop a model that categorizes the phrases accordingly, ensuring accurate classification.
+**1. Idea Title:**  
+"Automated Voice Recognition for Swap Communication Compliance"
+
+---
+
+**2. Description:**  
+Currently, analysts manually listen to 40-50 audio recordings daily to verify if the BMC employee has properly communicated the "Pre Trade Mark" value to clients during swaps. This process is time-consuming and prone to human error. By implementing machine learning and advanced voice recognition technology, we can automate this process, ensuring faster and more accurate compliance checks.
+
+---
+
+**3. The Opportunity:**  
+The current manual process of verifying audio recordings is inefficient and labor-intensive, limiting the team's ability to focus on more strategic tasks. Automating this with machine learning offers a significant opportunity to improve productivity, accuracy, and consistency in compliance checks. This solution would allow the team to handle higher volumes without the need for additional resources while reducing human error.
+
+---
+
+**4. Resources Required:**  
+- Machine learning models for voice recognition and natural language processing (NLP)
+- Access to historical swap audio recordings for training the model
+- Collaboration with IT and Data Science teams to develop and deploy the solution
+- Cloud infrastructure for processing and storing audio data
+
+---
+
+**5. Measure of Success:**  
+- Reduction in the time spent by analysts listening to recordings (e.g., from hours to minutes)
+- Increased accuracy in identifying compliance issues related to "Pre Trade Mark" communication
+- Positive feedback from compliance teams on the reduced manual workload
+- Scalability to process larger volumes of audio data without additional human resources
+
+---
+
+This submission captures the key aspects of your idea in a concise yet impactful way.

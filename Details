@@ -4,31 +4,34 @@ import pandas as pd
 # Sample data in the 'Narrative' column
 data = {'Narrative': [
     'The event is on March 23, 2023 and another one on 03/12/23.',
-    'We are planning for 12/03/2023 and possibly 2023-03-12.',
-    'Next meeting is on 23rd March 2023 or 23 March 2023.',
-    'A prior event happened on Mar 23, 23 and March 2023.'
+    'We are planning for Q3 2023 and possibly 2023-03-12.',
+    'Next meeting is on Quarter2 2022 or 23rd March 2023.',
+    'A prior event happened on Mar 23, 23, March 2023 and Q4 2021.'
 ]}
 
 # Create a DataFrame
 df = pd.DataFrame(data)
 
-# Regex pattern for matching dates in multiple formats
+# Updated Regex pattern for dates, quarters, and year references
 date_pattern = r"""
 \b(                  
-(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{1,2}(?:,\s?\d{2,4})?)   # Month Day, Year
-|(?:\d{1,2}(?:st|nd|rd|th)?\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{2,4})  # Day Month Year
-|(?:\d{4}-\d{2}-\d{2})  # ISO Date yyyy-mm-dd
-|(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4})  # mm/dd/yy or dd/mm/yyyy
+(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{1,2}(?:,\s?\d{2,4})?)   # Month Day, Year (e.g., March 23, 2023)
+|(?:\d{1,2}(?:st|nd|rd|th)?\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{2,4})  # Day Month Year (e.g., 23rd March 2023)
+|(?:\d{4}-\d{2}-\d{2})  # ISO Date yyyy-mm-dd (e.g., 2023-03-12)
+|(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4})  # mm/dd/yy or dd/mm/yyyy (e.g., 03/12/23)
+|(?:Q[1-4]\s?\d{4})  # Quarter format Q1 2023, Q2 2024
+|(?:Quarter[1-4]\s?\d{4})  # Quarter format Quarter1 2023, Quarter2 2024
+|(?:\d{4})  # Year reference (e.g., 2023)
 )\b
 """
 
-# Function to extract dates from each narrative
-def extract_dates(text):
+# Function to extract dates, quarters, and year references from each narrative
+def extract_dates_and_quarters(text):
     matches = re.findall(date_pattern, text, re.VERBOSE)
-    return ', '.join(matches) if matches else 'No Date Found'
+    return ', '.join(matches) if matches else 'No Date/Quarter Found'
 
-# Apply the function to each narrative and store in a new column 'Extracted Dates'
-df['Extracted Dates'] = df['Narrative'].apply(extract_dates)
+# Apply the function to each narrative and store in a new column 'Extracted Dates and Quarters'
+df['Extracted Dates and Quarters'] = df['Narrative'].apply(extract_dates_and_quarters)
 
-# Output the DataFrame to view the extracted dates
+# Output the DataFrame to view the extracted dates, quarters, and years
 print(df)

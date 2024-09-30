@@ -1,58 +1,34 @@
-Here's a structured use case idea for **Cybersecurity Control Assurance** leveraging Generative AI:
+import re
+import pandas as pd
 
----
+# Sample data in the 'Narrative' column
+data = {'Narrative': [
+    'The event is on March 23, 2023 and another one on 03/12/23.',
+    'We are planning for 12/03/2023 and possibly 2023-03-12.',
+    'Next meeting is on 23rd March 2023 or 23 March 2023.',
+    'A prior event happened on Mar 23, 23 and March 2023.'
+]}
 
-### 1. **Idea Title:**  
-**"Generative AI for Cybersecurity Vulnerability Detection and Control Assurance"**
+# Create a DataFrame
+df = pd.DataFrame(data)
 
----
+# Regex pattern for matching dates in multiple formats
+date_pattern = r"""
+\b(                  
+(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{1,2}(?:,\s?\d{2,4})?)   # Month Day, Year
+|(?:\d{1,2}(?:st|nd|rd|th)?\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{2,4})  # Day Month Year
+|(?:\d{4}-\d{2}-\d{2})  # ISO Date yyyy-mm-dd
+|(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4})  # mm/dd/yy or dd/mm/yyyy
+)\b
+"""
 
-### 2. **Description:**  
-Generative AI has the potential to revolutionize cybersecurity by enabling more efficient vulnerability detection and secure code development. This idea proposes utilizing GenAI to generate code for detection rules, simulate adversarial strategies through "red teaming," and serve as a virtual expert for investigating security data. By analyzing security events and behavior anomalies, GenAI can accelerate the identification of risks and improve the aggregation of security insights, making cybersecurity control assurance smarter and faster.
+# Function to extract dates from each narrative
+def extract_dates(text):
+    matches = re.findall(date_pattern, text, re.VERBOSE)
+    return ', '.join(matches) if matches else 'No Date Found'
 
----
+# Apply the function to each narrative and store in a new column 'Extracted Dates'
+df['Extracted Dates'] = df['Narrative'].apply(extract_dates)
 
-### 3. **The Opportunity:**  
-The increasing sophistication of cyber threats requires organizations to adopt proactive and intelligent solutions to maintain a strong security posture. Current processes for detecting vulnerabilities, testing attack scenarios, and investigating security data are manual, time-consuming, and prone to human error. By integrating Generative AI into cybersecurity, organizations can:
-
-- Accelerate the secure development of detection rules for vulnerabilities.
-- Simulate adversarial attacks faster and with more complexity in "red teaming."
-- Improve the aggregation and analysis of security event data, enhancing risk detection.
-
-This approach will streamline threat detection and response, making the security infrastructure more resilient and adaptable to emerging threats.
-
----
-
-### 4. **Resources Required:**  
-- **Technical Resources:**  
-  - Generative AI models tailored for cybersecurity (such as secure code generation, anomaly detection, and natural language processing).
-  - Access to cybersecurity event logs, vulnerability databases, and simulated attack scenarios for training AI models.
-  - Infrastructure to support real-time threat detection and behavior monitoring.
-
-- **Human Resources:**  
-  - Data scientists and ML engineers to build and train AI models.
-  - Cybersecurity experts to provide domain knowledge and validate AI-generated code or detection rules.
-  - Red teaming professionals to collaborate with the AI model for simulating adversarial attacks.
-
-- **Technology Resources:**  
-  - Cloud-based platforms or internal infrastructure to deploy and test AI-powered vulnerability detection systems.
-  - Access to data analytics tools to aggregate and analyze security insights.
-
----
-
-### 5. **Measure of Success:**  
-- **Reduction in time spent on vulnerability detection:**  
-  Measure the decrease in time needed to generate secure code and detection rules using GenAI.
-  
-- **Improvement in threat detection rates:**  
-  Compare the accuracy and speed of AI-driven risk detection to existing manual processes in identifying behavior anomalies and emerging threats.
-
-- **Efficiency in red teaming simulations:**  
-  Track the number and complexity of simulated attacks conducted by the AI, along with the success rate in identifying potential vulnerabilities.
-
-- **Enhancement of security control assurance processes:**  
-  Measure the overall improvement in cybersecurity compliance audits, based on the AI-generated insights and enhanced testing of security measures.
-
----
-
-This use case addresses the critical need for faster and smarter cybersecurity control assurance while leveraging the unique capabilities of Generative AI for secure code development and risk detection.
+# Output the DataFrame to view the extracted dates
+print(df)

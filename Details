@@ -17,14 +17,14 @@ df = pd.DataFrame(data)
 def process_narrative(text):
     quarter_years = []
 
-    # Pattern for months like "March 2023" or "May 2024"
+    # Pattern for months like "March 2023", "10th May 2024", or date formats like "01/08/2023"
     month_pattern = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{4}|\d{2}/\d{2}/\d{4}'
     # Pattern for "Q" references like "Q3" or "Q3 2023"
     quarter_pattern = r'(Q[1-4])\s?(\d{4})?'
     # Pattern for year only like "2023"
     year_pattern = r'\b\d{4}\b'
 
-    # Find all month-based references
+    # Find all month-based references (like "March 2023" or "01/08/2023")
     months = re.findall(month_pattern, text)
     for month_ref in months:
         # Parse the date and determine the quarter

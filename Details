@@ -4,16 +4,11 @@ from dateutil import parser
 
 # Sample DataFrame with extracted narrative values
 data = {'Narrative Extracted': [
-    'March 23, June 23, September 23, 2023',
-    '04 2023',
-    'Q3',
-    '2024',
-    'Q2 2023',
-    '2023, 2022',
-    'Q1 2023, Q3 2023',
-    'Q1 2024, Q2 2024, Q3 2024',
-    'May 24',
-    'Q2 2025',
+    'March 2023, June 2023, September 2023',
+    '01/08/2023',
+    '10th May 2024',
+    'April 2023, May 2023, October 2023',
+    '03 2022, 08 2022',
 ]}
 
 df = pd.DataFrame(data)
@@ -22,8 +17,8 @@ df = pd.DataFrame(data)
 def process_narrative(text):
     quarter_years = []
 
-    # Pattern for months like "March 23" or "May 24"
-    month_pattern = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{2}'
+    # Pattern for months like "March 2023" or "May 2024"
+    month_pattern = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s?\d{4}|\d{2}/\d{2}/\d{4}'
     # Pattern for "Q" references like "Q3" or "Q3 2023"
     quarter_pattern = r'(Q[1-4])\s?(\d{4})?'
     # Pattern for year only like "2023"
@@ -37,7 +32,8 @@ def process_narrative(text):
             date_obj = parser.parse(month_ref)
             quarter = (date_obj.month - 1) // 3 + 1  # Get quarter from month
             quarter_years.append(f"{date_obj.year}Q{quarter}")
-        except:
+        except Exception as e:
+            print(f"Error parsing date: {e}")
             continue
 
     # Find all quarter-based references
@@ -46,12 +42,6 @@ def process_narrative(text):
         if not year:
             year = "2023"  # Default to current year if year is missing
         quarter_years.append(f"{year}{q}")
-
-    # Find all standalone year references
-    years = re.findall(year_pattern, text)
-    for year in years:
-        # Assume Q4 for standalone years, as it's the latest quarter
-        quarter_years.append(f"{year}Q4")
 
     # Sort quarter references and keep only the latest one
     if quarter_years:

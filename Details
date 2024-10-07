@@ -4,11 +4,7 @@ from dateutil import parser
 
 # Sample DataFrame with extracted narrative values
 data = {'Narrative Extracted': [
-    'March 2023, June 2023, September 2023',
-    '01/08/2023',
-    '10th May 2024',
-    'April 2023, May 2023, October 2023',
-    '03/11/2022, 11/11/2022, 06/02/2024',  # Your test case
+    '2022, 03/11/2022, 11/11/2022, 06/02/2024'
 ]}
 
 df = pd.DataFrame(data)
@@ -17,27 +13,26 @@ df = pd.DataFrame(data)
 def process_narrative(text):
     quarter_years = []
 
-    # Pattern for written months (March 2023) and dates (03/11/2022 or 11/11/2022)
-    month_pattern = r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{4}\b)|(\d{2}/\d{2}/\d{4})'
+    # Pattern for DD/MM/YYYY dates
+    date_pattern = r'\b\d{2}/\d{2}/\d{4}\b'
     # Pattern for "Q" references like "Q3" or "Q3 2023"
     quarter_pattern = r'(Q[1-4])\s?(\d{4})?'
     # Pattern for year only like "2023"
     year_pattern = r'\b\d{4}\b'
 
-    # Find all month-based references (written months or numeric dates)
-    months = re.findall(month_pattern, text)
-    for month_ref in months:
-        # Only take non-empty matches (because of the two subgroups in the regex)
-        month_ref = next(filter(None, month_ref), None)
-        if month_ref:
-            # Parse the date and determine the quarter
-            try:
-                date_obj = parser.parse(month_ref)
-                quarter = (date_obj.month - 1) // 3 + 1  # Get quarter from month
-                quarter_years.append(f"{date_obj.year}Q{quarter}")
-            except Exception as e:
-                print(f"Error parsing date: {e}")
-                continue
+    # Find all DD/MM/YYYY dates
+    dates = re.findall(date_pattern, text)
+    month_dates = []
+    
+    for date_str in dates:
+        try:
+            # Parse DD/MM/YYYY date format
+            date_obj = parser.parse(date_str, dayfirst=True)
+            quarter = (date_obj.month - 1) // 3 + 1  # Determine the quarter
+            month_dates.append((date_obj, f"{date_obj.year}Q{quarter}"))
+        except Exception as e:
+            print(f"Error parsing date: {e}")
+            continue
 
     # Find all quarter-based references
     quarters = re.findall(quarter_pattern, text)
@@ -49,13 +44,19 @@ def process_narrative(text):
     # Find all standalone year references
     years = re.findall(year_pattern, text)
     for year in years:
-        # Assume Q4 for standalone years, as it's the latest quarter
+        # Assume Q4 for standalone years
         quarter_years.append(f"{year}Q4")
 
-    # Sort quarter references and keep only the latest one
+    # Sort quarter references and keep only the latest one based on the latest date
+    if month_dates:
+        # Sort based on the actual date objects to get the latest
+        latest_month = max(month_dates, key=lambda x: x[0])[1]
+        return latest_month
+    
     if quarter_years:
         latest_quarter = max(quarter_years)
         return latest_quarter
+    
     return "No Date/Quarter Found"
 
 # Apply the function to the DataFrame

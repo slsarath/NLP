@@ -1,50 +1,65 @@
-Here's the updated version of your use case for the **Audit Report Generation for Control Assurance**, based on the new narrative:
+import re
+import pandas as pd
+from dateutil import parser
 
----
+# Sample DataFrame with extracted narrative values
+data = {'Narrative Extracted': [
+    'March 2023, June 2023, September 2023',
+    '01/08/2023',
+    '10th May 2024',
+    'April 2023, May 2023, October 2023',
+    '03/11/2022, 11/11/2022, 06/02/2024',  # Your test case
+]}
 
-### 1. **Idea Title:**  
-**"AI-Driven Pre-Draft Audit Report Generation for Control Assurance"**
+df = pd.DataFrame(data)
 
----
+# Function to convert month/year or quarter/year to standard format YYYYQn
+def process_narrative(text):
+    quarter_years = []
 
-### 2. **Description:**  
-This idea leverages AI to automatically generate pre-draft audit reports by summarizing audit documentation, control objectives, risk assessments, and testing outcomes. The AI-generated reports will remove manual labor, reduce discrepancies in language, and ensure consistency across global audit teams. Although the initial draft will still require review and adjustments by auditors, this solution will significantly accelerate the process of report creation while minimizing errors related to data lineage and language nuances. The risk of AI bias is low, as the draft will always be subject to review by the Audit Owner (AO) and Project Manager (PM).
+    # Pattern for written months (March 2023) and dates (03/11/2022 or 11/11/2022)
+    month_pattern = r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{4}\b)|(\d{2}/\d{2}/\d{4})'
+    # Pattern for "Q" references like "Q3" or "Q3 2023"
+    quarter_pattern = r'(Q[1-4])\s?(\d{4})?'
+    # Pattern for year only like "2023"
+    year_pattern = r'\b\d{4}\b'
 
----
+    # Find all month-based references (written months or numeric dates)
+    months = re.findall(month_pattern, text)
+    for month_ref in months:
+        # Only take non-empty matches (because of the two subgroups in the regex)
+        month_ref = next(filter(None, month_ref), None)
+        if month_ref:
+            # Parse the date and determine the quarter
+            try:
+                date_obj = parser.parse(month_ref)
+                quarter = (date_obj.month - 1) // 3 + 1  # Get quarter from month
+                quarter_years.append(f"{date_obj.year}Q{quarter}")
+            except Exception as e:
+                print(f"Error parsing date: {e}")
+                continue
 
-### 3. **Opportunity/Problem the Idea Intends to Solve:**  
-The manual process of creating audit reports is time-consuming and subject to inconsistencies due to differences in language and reporting styles. These manual steps also introduce errors in linking the assurance work done with the reports produced. By introducing an AI-driven "pre-draft" report generation tool, we can:
-- Save significant time on drafting reports.
-- Ensure consistency and reduce discrepancies in language and content.
-- Minimize the risk of human error and missing data.
-- Provide auditors with a structured starting point for reports, making it easier to focus on analysis and conclusions.
+    # Find all quarter-based references
+    quarters = re.findall(quarter_pattern, text)
+    for q, year in quarters:
+        if not year:
+            year = "2023"  # Default to current year if year is missing
+        quarter_years.append(f"{year}{q}")
 
----
+    # Find all standalone year references
+    years = re.findall(year_pattern, text)
+    for year in years:
+        # Assume Q4 for standalone years, as it's the latest quarter
+        quarter_years.append(f"{year}Q4")
 
-### 4. **Resources Required:**  
-- **Technology**:  
-  - Generative AI models such as LLAMA 2, MPT-7B, and BLOOM for report generation.
-  - Tools for collecting audit documents and assurance data.
-  - Cloud infrastructure to support the generation and storage of pre-draft reports.
-  
-- **Human Resources**:  
-  - Data scientists to fine-tune AI models.
-  - Auditors and audit managers to review and validate pre-draft reports.
-  
-- **Data**:  
-  - Access to historical audit reports, control assurance data, and issue write-ups to train the AI.
+    # Sort quarter references and keep only the latest one
+    if quarter_years:
+        latest_quarter = max(quarter_years)
+        return latest_quarter
+    return "No Date/Quarter Found"
 
----
+# Apply the function to the DataFrame
+df['Latest Quarter Reference'] = df['Narrative Extracted'].apply(process_narrative)
 
-### 5. **Measure of Success:**  
-- **Time saved in report creation**: Measure the reduction in time needed to create audit reports compared to the manual process.
-  
-- **Improvement in report consistency and accuracy**: Track the number of edits required on AI-generated drafts vs. fully manual drafts to determine consistency and completeness.
-  
-- **Auditor satisfaction**: Survey auditors on the usability and helpfulness of AI-generated pre-drafts.
-  
-- **Adoption across teams**: Gauge how widely the tool is adopted by audit teams globally and its impact on report quality.
-
----
-
-This updated version of the use case focuses on how AI can assist in the **control assurance** process by automating parts of the report drafting, reducing errors, and providing a consistent base for auditors to work from. The pre-draft reports will help ensure alignment with audit methodology while speeding up the reporting process.
+# Output the DataFrame to check the results
+print(df)

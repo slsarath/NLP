@@ -1,66 +1,8 @@
-import re
-import pandas as pd
-from dateutil import parser
+The use case you shared could be beneficial to your work in assurance reviews in several ways:
 
-# Sample DataFrame with extracted narrative values
-data = {'Narrative Extracted': [
-    '2022, 03/11/2022, 11/11/2022, 06/02/2024'
-]}
+	1.	Faster Vulnerability Detection: Generative AI can help automate the creation of detection rules for vulnerabilities, allowing you to quickly identify weaknesses in systems and processes. This reduces manual work and improves the accuracy of controls testing.
+	2.	Improved Threat Simulation: By simulating adversarial attacks using AI (red teaming), you could more effectively assess the resilience of controls, identify potential gaps, and validate their effectiveness against emerging threats.
+	3.	Streamlined Data Analysis: AI could automate the aggregation and analysis of security event data, providing you with more detailed insights for your reviews. This will help identify anomalies and patterns that may be missed with traditional methods.
+	4.	Enhanced Reporting: AI-generated insights would improve the depth and quality of control assurance reports, helping to ensure that key risks and vulnerabilities are clearly communicated and tracked.
 
-df = pd.DataFrame(data)
-
-# Function to convert month/year or quarter/year to standard format YYYYQn
-def process_narrative(text):
-    quarter_years = []
-
-    # Pattern for DD/MM/YYYY dates
-    date_pattern = r'\b\d{2}/\d{2}/\d{4}\b'
-    # Pattern for "Q" references like "Q3" or "Q3 2023"
-    quarter_pattern = r'(Q[1-4])\s?(\d{4})?'
-    # Pattern for year only like "2023"
-    year_pattern = r'\b\d{4}\b'
-
-    # Find all DD/MM/YYYY dates
-    dates = re.findall(date_pattern, text)
-    month_dates = []
-    
-    for date_str in dates:
-        try:
-            # Parse DD/MM/YYYY date format
-            date_obj = parser.parse(date_str, dayfirst=True)
-            quarter = (date_obj.month - 1) // 3 + 1  # Determine the quarter
-            month_dates.append((date_obj, f"{date_obj.year}Q{quarter}"))
-        except Exception as e:
-            print(f"Error parsing date: {e}")
-            continue
-
-    # Find all quarter-based references
-    quarters = re.findall(quarter_pattern, text)
-    for q, year in quarters:
-        if not year:
-            year = "2023"  # Default to current year if year is missing
-        quarter_years.append(f"{year}{q}")
-
-    # Find all standalone year references
-    years = re.findall(year_pattern, text)
-    for year in years:
-        # Assume Q4 for standalone years
-        quarter_years.append(f"{year}Q4")
-
-    # Sort quarter references and keep only the latest one based on the latest date
-    if month_dates:
-        # Sort based on the actual date objects to get the latest
-        latest_month = max(month_dates, key=lambda x: x[0])[1]
-        return latest_month
-    
-    if quarter_years:
-        latest_quarter = max(quarter_years)
-        return latest_quarter
-    
-    return "No Date/Quarter Found"
-
-# Apply the function to the DataFrame
-df['Latest Quarter Reference'] = df['Narrative Extracted'].apply(process_narrative)
-
-# Output the DataFrame to check the results
-print(df)
+By adopting this use case, your work could become more efficient, thorough, and responsive to evolving cyber threats, ultimately improving the overall assurance process.

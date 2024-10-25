@@ -1,39 +1,15 @@
-Here’s a revised version of your script incorporating AWS Transcribe and NLP, which should fit well within your time while making a strong impact:
+Here’s the revised script that follows the exact order and points from the screenshot:
 
-Good [morning/afternoon], everyone.
+“Today, I’d like to highlight the key benefits of this solution.
 
-Today, I’m excited to present an idea that I believe can significantly improve our current assurance and surveillance processes for trade monitoring, particularly around voice recordings.
+First, it will improve accuracy in report drafting by helping us identify and correct errors, ensuring our reports are more precise. Second, it will standardize the reports, ensuring they adhere to the appropriate templates and methodologies across the board.
 
-The problem:
+Additionally, this solution will further improve the quality of reports that are sent out by the 1st Line of Defense. It will also save time by automating report reviews and the QA process, leading to reduced manual effort.
 
-Currently, our analysts manually listen to voice recordings to verify whether key information, such as pre-trade marks, was properly communicated. They also check for important details, such as whether the trade occurred at the right time, the exact price of the trade, and if any breaches occurred. This process is not only time-consuming—taking an average of 10 minutes per call—but also highly dependent on manual effort, which increases the risk of errors. With approximately 20 recordings per week, this can easily lead to 200 minutes of manual review for just one analyst. This workload only scales up when you consider larger data sets or different regions.
+The impact on budget days allocated for reviews is another key benefit, as reducing reporting time will allow us to complete reviews more efficiently. This enhanced productivity will result from AI assisting in the report drafting process.
 
-The solution:
+Moreover, this will ensure consistent reports are published from the CCO, bringing uniformity in how reports are presented and structured across all testers. The reduction in manual effort will allow testers to focus more on critical analysis.
 
-What if we could automate this process to save both time and effort while improving accuracy? That’s where our solution comes in, leveraging AWS Transcribe for voice transcription and Natural Language Processing (NLP) to extract relevant information directly from the transcribed data.
+Finally, this solution is scalable, meaning it can easily be extended to other assurance functions across the bank.”
 
-Here’s how it works:
-
-	1.	First, we use AWS Transcribe to automatically convert voice recordings into text. This allows us to work with structured data, removing the need for analysts to listen to each recording manually.
-	2.	Second, we apply NLP to analyze the transcriptions and extract key elements such as pre-trade marks, timing, prices, and any breaches related to trade activity. This not only ensures that the correct information is being reviewed but also allows for quick identification of any inconsistencies or breaches.
-	3.	Finally, the generated insights are formatted into standardized reports that align with our surveillance and assurance needs. This way, the process can be scaled across various regions and markets while maintaining consistency.
-
-Key benefits:
-
-	•	Time savings: With AWS Transcribe and NLP, what used to take analysts hours can now be reduced to minutes.
-	•	Accuracy and consistency: By automating key parts of the process, we can minimize human error and ensure uniformity in the information being reviewed across different markets.
-	•	Scalability: This solution can be extended to cover a larger volume of trades without requiring additional manpower, making it highly scalable across teams and regions.
-
-Measures of success:
-
-Success can be measured in three key ways:
-
-	•	A reduction in review time from hours to minutes.
-	•	Increased accuracy in detecting any breaches or inconsistencies.
-	•	Scalability to process larger volumes of voice data as needed.
-
-In summary, this solution streamlines a labor-intensive task, improves accuracy, and frees up analysts to focus on higher-value tasks. By using AWS Transcribe for transcription and NLP for analysis, we can enhance our assurance and surveillance processes in a scalable, efficient way.
-
-Thank you for your time, and I’m happy to answer any questions you may have.
-
-This revised script should align well with your goals and fit the 3-4 minute timeframe, while clearly explaining the solution’s value and how it leverages AWS and NLP for automation.
+This version directly aligns with the points from the screenshot, presented in a scripted format.

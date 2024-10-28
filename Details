@@ -1,41 +1,49 @@
 from sentence_transformers import util
 
-def semantic_search_mpnet(text, phrase_embeddings, phrases_list, theme_dict, top_k=3, min_similarity=0.7):
-    words = text.split()
+def semantic_search_mpnet(text, phrase_embeddings, phrases_list, theme_dict, top_k=3, min_similarity=0.5):
+    # Calculate the text embedding
+    text_embedding = model_mpnet.encode(text, convert_to_tensor=True)
+    similarity_scores = []
     
-    # Ensure the text is sufficiently descriptive to warrant a search
-    if len(words) > 1:
-        text_embedding = model_mpnet.encode(text, convert_to_tensor=True)
+    # For each phrase, check for keyword matches and semantic similarity
+    for i, phrase in enumerate(phrases_list):
+        # Split phrase and text into sets of lowercased words for easier comparison
+        phrase_words = set(phrase.lower().split())
+        text_words = set(text.lower().split())
         
-        # Calculate similarity scores for each phrase
-        similarity_scores = [
-            util.pytorch_cos_sim(text_embedding, phrase_emb).item() for phrase_emb in phrase_embeddings
-        ]
+        # Check if any keyword in phrase matches words in text
+        keyword_match = any(word in text_words for word in phrase_words)
         
-        # Filter indices based on minimum similarity threshold
-        top_indices = sorted(
-            [i for i, score in enumerate(similarity_scores) if score >= min_similarity],
-            key=lambda i: similarity_scores[i],
-            reverse=True
-        )
+        # Calculate semantic similarity
+        phrase_embedding = phrase_embeddings[i]
+        semantic_similarity = util.pytorch_cos_sim(text_embedding, phrase_embedding).item()
         
-        top_phrases = []
-        seen_themes = set()
-        
-        # Select top_k phrases that meet the theme uniqueness condition
-        for i in top_indices:
-            if len(top_phrases) >= top_k:
-                break
-                
-            phrase = phrases_list[i]
-            theme = theme_dict.get(phrase)
-            
-            # Ensure each theme is unique within top_k results
-            if theme and theme not in seen_themes:
-                top_phrases.append((phrase, similarity_scores[i]))
-                seen_themes.add(theme)
-        
-        # Return only top_k results or an empty list if none met criteria
-        return top_phrases if top_phrases else []
+        # Boost score if keyword match exists
+        if keyword_match:
+            # Increase similarity score slightly to prioritize keyword relevance
+            similarity_scores.append((i, semantic_similarity + 0.1))
+        else:
+            similarity_scores.append((i, semantic_similarity))
     
-    return []
+    # Filter and sort phrases by boosted similarity score
+    top_indices = sorted(
+        [idx for idx, score in similarity_scores if score >= min_similarity],
+        key=lambda idx: similarity_scores[idx][1],
+        reverse=True
+    )
+    
+    # Prepare the top phrases with their themes
+    top_phrases = []
+    seen_themes = set()
+    for idx in top_indices:
+        if len(top_phrases) >= top_k:
+            break
+        phrase = phrases_list[idx]
+        theme = theme_dict.get(phrase, None)
+        
+        # Avoid duplicate themes
+        if theme and theme not in seen_themes:
+            top_phrases.append((phrase, similarity_scores[idx][1]))
+            seen_themes.add(theme)
+    
+    return top_phrases if top_phrases else []

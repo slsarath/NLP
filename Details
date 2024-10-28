@@ -1,15 +1,41 @@
-Here’s the revised script that follows the exact order and points from the screenshot:
+from sentence_transformers import util
 
-“Today, I’d like to highlight the key benefits of this solution.
-
-First, it will improve accuracy in report drafting by helping us identify and correct errors, ensuring our reports are more precise. Second, it will standardize the reports, ensuring they adhere to the appropriate templates and methodologies across the board.
-
-Additionally, this solution will further improve the quality of reports that are sent out by the 1st Line of Defense. It will also save time by automating report reviews and the QA process, leading to reduced manual effort.
-
-The impact on budget days allocated for reviews is another key benefit, as reducing reporting time will allow us to complete reviews more efficiently. This enhanced productivity will result from AI assisting in the report drafting process.
-
-Moreover, this will ensure consistent reports are published from the CCO, bringing uniformity in how reports are presented and structured across all testers. The reduction in manual effort will allow testers to focus more on critical analysis.
-
-Finally, this solution is scalable, meaning it can easily be extended to other assurance functions across the bank.”
-
-This version directly aligns with the points from the screenshot, presented in a scripted format.
+def semantic_search_mpnet(text, phrase_embeddings, phrases_list, theme_dict, top_k=3, min_similarity=0.7):
+    words = text.split()
+    
+    # Ensure the text is sufficiently descriptive to warrant a search
+    if len(words) > 1:
+        text_embedding = model_mpnet.encode(text, convert_to_tensor=True)
+        
+        # Calculate similarity scores for each phrase
+        similarity_scores = [
+            util.pytorch_cos_sim(text_embedding, phrase_emb).item() for phrase_emb in phrase_embeddings
+        ]
+        
+        # Filter indices based on minimum similarity threshold
+        top_indices = sorted(
+            [i for i, score in enumerate(similarity_scores) if score >= min_similarity],
+            key=lambda i: similarity_scores[i],
+            reverse=True
+        )
+        
+        top_phrases = []
+        seen_themes = set()
+        
+        # Select top_k phrases that meet the theme uniqueness condition
+        for i in top_indices:
+            if len(top_phrases) >= top_k:
+                break
+                
+            phrase = phrases_list[i]
+            theme = theme_dict.get(phrase)
+            
+            # Ensure each theme is unique within top_k results
+            if theme and theme not in seen_themes:
+                top_phrases.append((phrase, similarity_scores[i]))
+                seen_themes.add(theme)
+        
+        # Return only top_k results or an empty list if none met criteria
+        return top_phrases if top_phrases else []
+    
+    return []

@@ -2,6 +2,15 @@ from sentence_transformers import util
 import torch
 
 def generalized_semantic_search(text, phrase_embeddings, phrases_list, model, top_k=3):
+    # Skip processing if text contains "see issue description" or "refer to issue description"
+    if "see issue description" in text.lower() or "refer to issue description" in text.lower():
+        return []
+    
+    # Check if any phrase from phrases_list exactly matches a part of the text
+    for phrase in phrases_list:
+        if phrase.lower() in text.lower():
+            return [(phrase, 1.0)]  # Return exact match with highest similarity score of 1.0
+    
     # Encode the input text using mean pooling
     text_embedding = model.encode(text, convert_to_tensor=True)
     

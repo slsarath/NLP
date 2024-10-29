@@ -1,34 +1,39 @@
-Explanation of Changes
-
-	1.	Skip Condition: Checks if the text includes “see issue description” or “refer to issue description” (case insensitive). If so, the function returns an empty list [].
-	2.	Exact Match Condition: Iterates through phrases_list and looks for any exact phrase match within the text. If a match is found, it returns that phrase with a similarity score of 1.0 (indicating a perfect match) without further processing.
-	3.	Regular Semantic Matching: If no exact match is found, the function proceeds with the standard semantic similarity scoring using the top_k matches based on contextual relevance.
-
 import pandas as pd
 
 # Sample data
 data = {
     'OriginalColumn': [
+        'CTRL-11123456-B-Local_approval, CTRL-00065432-Marketing Government',
         'CTRL-0062-Income selection',
-        'CTRL-0062-Income selection, CTRL-0064-Income deduction',
-        'CTRL-0075-Salary adjustments'
+        '',
+        'CTRL-0075-Salary adjustments',
+        None
     ]
 }
 
 # Create DataFrame
 df = pd.DataFrame(data)
 
-# Define function to extract control IDs and names
+# Define function to extract control IDs and names, handling blank values
 def extract_controls(text):
-    controls = text.split(', ')
+    if not text:  # Check for blank or None values
+        return '', ''  # Return empty strings for blank cells
+    
+    controls = text.split(', ')  # Split by comma and space to handle multiple controls
     control_ids = []
     control_names = []
+    
     for control in controls:
-        # Split on the first hyphen only
-        id_part, name_part = control.split('-', 2)[0] + '-' + control.split('-', 2)[1], control.split('-', 2)[2]
-        control_ids.append(id_part)
-        control_names.append(name_part)
-    return ', '.join(control_ids), ', '.join(control_names)
+        # Split each control into parts based on the first hyphen for ID and the rest for name
+        parts = control.split('-', 2)  # Limit split to 3 parts
+        if len(parts) >= 3:
+            control_id = '-'.join(parts[:2])  # Join the first two parts for ID
+            control_name = parts[2]  # Third part is the name
+            control_ids.append(control_id)
+            control_names.append(control_name)
+    
+    # Join the lists of IDs and names as comma-separated strings
+    return ', '.join(map(str, control_ids)), ', '.join(map(str, control_names))
 
 # Apply function and create new columns
 df[['Column1', 'Column2']] = df['OriginalColumn'].apply(lambda x: pd.Series(extract_controls(x)))

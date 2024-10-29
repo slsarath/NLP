@@ -1,28 +1,37 @@
-from sentence_transformers import util
-import torch
+Explanation of Changes
 
-def generalized_semantic_search(text, phrase_embeddings, phrases_list, model, top_k=3):
-    # Skip processing if text contains "see issue description" or "refer to issue description"
-    if "see issue description" in text.lower() or "refer to issue description" in text.lower():
-        return []
-    
-    # Check if any phrase from phrases_list exactly matches a part of the text
-    for phrase in phrases_list:
-        if phrase.lower() in text.lower():
-            return [(phrase, 1.0)]  # Return exact match with highest similarity score of 1.0
-    
-    # Encode the input text using mean pooling
-    text_embedding = model.encode(text, convert_to_tensor=True)
-    
-    # Calculate similarity scores for each phrase embedding
-    similarity_scores = torch.Tensor(
-        [util.pytorch_cos_sim(text_embedding, phrase_emb).item() for phrase_emb in phrase_embeddings]
-    )
-    
-    # Get indices of the top_k highest similarity scores
-    top_indices = torch.topk(similarity_scores, top_k).indices.tolist()
-    
-    # Get the phrases and scores for the top results
-    top_phrases = [(phrases_list[i], similarity_scores[i].item()) for i in top_indices]
-    
-    return top_phrases if top_phrases else [("No strong match found", 0)]
+	1.	Skip Condition: Checks if the text includes “see issue description” or “refer to issue description” (case insensitive). If so, the function returns an empty list [].
+	2.	Exact Match Condition: Iterates through phrases_list and looks for any exact phrase match within the text. If a match is found, it returns that phrase with a similarity score of 1.0 (indicating a perfect match) without further processing.
+	3.	Regular Semantic Matching: If no exact match is found, the function proceeds with the standard semantic similarity scoring using the top_k matches based on contextual relevance.
+
+import pandas as pd
+
+# Sample data
+data = {
+    'OriginalColumn': [
+        'CTRL-0062-Income selection',
+        'CTRL-0062-Income selection, CTRL-0064-Income deduction',
+        'CTRL-0075-Salary adjustments'
+    ]
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Define function to extract control IDs and names
+def extract_controls(text):
+    controls = text.split(', ')
+    control_ids = []
+    control_names = []
+    for control in controls:
+        # Split on the first hyphen only
+        id_part, name_part = control.split('-', 2)[0] + '-' + control.split('-', 2)[1], control.split('-', 2)[2]
+        control_ids.append(id_part)
+        control_names.append(name_part)
+    return ', '.join(control_ids), ', '.join(control_names)
+
+# Apply function and create new columns
+df[['Column1', 'Column2']] = df['OriginalColumn'].apply(lambda x: pd.Series(extract_controls(x)))
+
+# Display the result
+print(df[['Column1', 'Column2']])

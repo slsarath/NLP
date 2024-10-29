@@ -24,16 +24,13 @@ def extract_controls(text):
     control_names = []
     
     for control in controls:
-        # Split each control into parts based on the first hyphen for ID and the rest for name
-        parts = control.split('-', 2)  # Limit split to 3 parts
-        if len(parts) >= 3:
-            control_id = '-'.join(parts[:2])  # Join the first two parts for ID
-            control_name = parts[2]  # Third part is the name
-            control_ids.append(control_id)
-            control_names.append(control_name)
+        # Split on the first hyphen only to separate ID and name
+        control_id, control_name = control.split('-', 1)  # Split into exactly two parts
+        control_ids.append(control_id)
+        control_names.append(control_name)
     
     # Join the lists of IDs and names as comma-separated strings
-    return ', '.join(map(str, control_ids)), ', '.join(map(str, control_names))
+    return ', '.join(control_ids), ', '.join(control_names)
 
 # Apply function and create new columns
 df[['Column1', 'Column2']] = df['OriginalColumn'].apply(lambda x: pd.Series(extract_controls(x)))

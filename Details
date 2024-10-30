@@ -1,39 +1,13 @@
-import pandas as pd
+Yes, you can combine the logic into a single cell formula. Here’s how:
 
-# Sample data
-data = {
-    'OriginalColumn': [
-        'CTRL-11123456-B-Local_approval, CTRL-00065432-Marketing Government',
-        'CTRL-0062-Income selection',
-        '',
-        'CTRL-0075-Salary adjustments',
-        None
-    ]
-}
+Assuming A2 has 2023Q4 and B2 has 2022Q3, use the following formula:
 
-# Create DataFrame
-df = pd.DataFrame(data)
+=ABS((LEFT(A2, 4) + (RIGHT(A2, 1) - 1) / 4) - (LEFT(B2, 4) + (RIGHT(B2, 1) - 1) / 4)) > 1
 
-# Define function to extract control IDs and names, handling blank values
-def extract_controls(text):
-    if not text:  # Check for blank or None values
-        return '', ''  # Return empty strings for blank cells
-    
-    controls = text.split(', ')  # Split by comma and space to handle multiple controls
-    control_ids = []
-    control_names = []
-    
-    for control in controls:
-        # Split on the first hyphen only to separate ID and name
-        control_id, control_name = control.split('-', 1)  # Split into exactly two parts
-        control_ids.append(control_id)
-        control_names.append(control_name)
-    
-    # Join the lists of IDs and names as comma-separated strings
-    return ', '.join(control_ids), ', '.join(control_names)
+This formula will return TRUE if the difference is greater than 1 year, otherwise FALSE.
 
-# Apply function and create new columns
-df[['Column1', 'Column2']] = df['OriginalColumn'].apply(lambda x: pd.Series(extract_controls(x)))
+Explanation:
 
-# Display the result
-print(df[['Column1', 'Column2']])
+	•	LEFT(A2, 4) and LEFT(B2, 4) extract the year.
+	•	(RIGHT(A2, 1) - 1) / 4 and (RIGHT(B2, 1) - 1) / 4 convert the quarter into a decimal (e.g., Q4 becomes 0.75).
+	•	The formula then calculates the difference and checks if it’s greater than 1.

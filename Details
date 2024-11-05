@@ -2,63 +2,70 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-# Sample data setup
-issue_list = [...]  # Add your list of issue IDs here
+# Sample data setup - adjust these with your actual data as needed
+issue_list = [...]  # List of issue IDs
 output_matrix = [...]  # Replace with your actual output matrix data
 
 # Convert output_matrix to DataFrame
 out_res = pd.DataFrame(output_matrix, columns=issue_list)
 
-# Optimize column types
+# Convert numeric columns to the smallest possible data type to reduce memory usage
+for col in out_res.select_dtypes(include=["float", "int"]).columns:
+    out_res[col] = pd.to_numeric(out_res[col], downcast="float")
+
+# Convert categorical data to 'category' type if applicable
 out_res["CRTID1"] = issue_list
-out_res["CRTID1"] = out_res["CRTID1"].astype("category")  # Convert to category for memory efficiency
+out_res["CRTID1"] = out_res["CRTID1"].astype("category")
 
-# Set index for unstacking
-out_res = out_res.set_index('CRTID1')
-
-# Use sparse data structures to reduce memory usage if there are many NaNs
+# Convert to sparse format for columns with many NaNs
 out_res = out_res.astype(pd.SparseDtype("float", np.nan))
 
-# Try to perform unstack operation with error handling for memory issues
+# Try unstacking in chunks and saving intermediate results
 try:
+    # Attempt unstack if memory permits
     output = out_res.unstack().reset_index()
 except MemoryError:
     print("MemoryError: Unable to perform unstack operation on full dataset. Switching to chunk processing.")
-
-    # If a memory error occurs, process the data in smaller chunks
+    
+    # Process in smaller chunks
     output_chunks = []
-    chunk_size = 1000  # Adjust based on your memory capacity
+    chunk_size = 100  # Adjust chunk size based on available memory
 
-    for i in range(0, len(out_res), chunk_size):
-        chunk = out_res.iloc[i:i+chunk_size]
-        chunk_unstacked = chunk.unstack().reset_index()
-        output_chunks.append(chunk_unstacked)
+    for i in range(0, len(out_res.columns), chunk_size):
+        # Process columns in chunks
+        chunk_columns = out_res.columns[i:i + chunk_size]
+        chunk = out_res[chunk_columns].copy()
         
-    # Concatenate all chunks into a single DataFrame
-    output = pd.concat(output_chunks, ignore_index=True)
+        # Perform unstack operation on chunk and reset index
+        try:
+            chunk_unstacked = chunk.unstack().reset_index()
+            output_chunks.append(chunk_unstacked)
+        except MemoryError:
+            print(f"Memory error with chunk starting at column {i}. Try reducing chunk size.")
+            break
+
+    # Combine chunks
+    if output_chunks:
+        output = pd.concat(output_chunks, ignore_index=True)
 
 # Rename columns as required
 output.rename(columns={'level_0': 'CRTID2', 0: 'cos_score'}, inplace=True)
 
-# Define threshold values (example threshold, adjust as needed)
-threshold_values = [0.5, 0.6, 0.7]  # Replace with your actual thresholds
+# Example threshold processing
+threshold_values = [0.5, 0.6, 0.7]  # Define threshold values as needed
 
-# Processing clusters based on threshold values
 for threshold in threshold_values:
+    # Filter based on cos_score and avoid self-comparisons
     filtered_output = output[(output['cos_score'] >= threshold) & (output['CRTID1'] != output['CRTID2'])]
     
-    # Example function call (replace with your actual function)
-    # Assuming network_cluster is a function you have defined elsewhere
+    # Example network clustering and merging (replace with your actual code)
     df_cluster = network_cluster(filtered_output, ['CRTID1', 'CRTID2'])
-    
-    # Merging additional columns if needed
-    # Replace 'columns' with the actual columns you want to join from the original df
     df_cluster = pd.merge(df_cluster, df[columns], on='CRTID1', how='inner')
     
-    # Saving each threshold output to Excel
-    date_time = datetime.today().strftime("%Y-%m-%d_%H-%M")
+    # Save to Excel in each threshold iteration to avoid memory build-up
+    date_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
     filename = f"Refunds_Cluster_{threshold}_{date_time}.xlsx"
     with pd.ExcelWriter(filename) as writer:
         df_cluster.to_excel(writer, sheet_name="All Clusters")
 
-print("Process completed successfully.")
+print("Processing complete.")

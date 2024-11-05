@@ -1,13 +1,64 @@
-Yes, you can combine the logic into a single cell formula. Here’s how:
+import pandas as pd
+import numpy as np
+from datetime import datetime
 
-Assuming A2 has 2023Q4 and B2 has 2022Q3, use the following formula:
+# Sample data setup
+issue_list = [...]  # Add your list of issue IDs here
+output_matrix = [...]  # Replace with your actual output matrix data
 
-=ABS((LEFT(A2, 4) + (RIGHT(A2, 1) - 1) / 4) - (LEFT(B2, 4) + (RIGHT(B2, 1) - 1) / 4)) > 1
+# Convert output_matrix to DataFrame
+out_res = pd.DataFrame(output_matrix, columns=issue_list)
 
-This formula will return TRUE if the difference is greater than 1 year, otherwise FALSE.
+# Optimize column types
+out_res["CRTID1"] = issue_list
+out_res["CRTID1"] = out_res["CRTID1"].astype("category")  # Convert to category for memory efficiency
 
-Explanation:
+# Set index for unstacking
+out_res = out_res.set_index('CRTID1')
 
-	•	LEFT(A2, 4) and LEFT(B2, 4) extract the year.
-	•	(RIGHT(A2, 1) - 1) / 4 and (RIGHT(B2, 1) - 1) / 4 convert the quarter into a decimal (e.g., Q4 becomes 0.75).
-	•	The formula then calculates the difference and checks if it’s greater than 1.
+# Use sparse data structures to reduce memory usage if there are many NaNs
+out_res = out_res.astype(pd.SparseDtype("float", np.nan))
+
+# Try to perform unstack operation with error handling for memory issues
+try:
+    output = out_res.unstack().reset_index()
+except MemoryError:
+    print("MemoryError: Unable to perform unstack operation on full dataset. Switching to chunk processing.")
+
+    # If a memory error occurs, process the data in smaller chunks
+    output_chunks = []
+    chunk_size = 1000  # Adjust based on your memory capacity
+
+    for i in range(0, len(out_res), chunk_size):
+        chunk = out_res.iloc[i:i+chunk_size]
+        chunk_unstacked = chunk.unstack().reset_index()
+        output_chunks.append(chunk_unstacked)
+        
+    # Concatenate all chunks into a single DataFrame
+    output = pd.concat(output_chunks, ignore_index=True)
+
+# Rename columns as required
+output.rename(columns={'level_0': 'CRTID2', 0: 'cos_score'}, inplace=True)
+
+# Define threshold values (example threshold, adjust as needed)
+threshold_values = [0.5, 0.6, 0.7]  # Replace with your actual thresholds
+
+# Processing clusters based on threshold values
+for threshold in threshold_values:
+    filtered_output = output[(output['cos_score'] >= threshold) & (output['CRTID1'] != output['CRTID2'])]
+    
+    # Example function call (replace with your actual function)
+    # Assuming network_cluster is a function you have defined elsewhere
+    df_cluster = network_cluster(filtered_output, ['CRTID1', 'CRTID2'])
+    
+    # Merging additional columns if needed
+    # Replace 'columns' with the actual columns you want to join from the original df
+    df_cluster = pd.merge(df_cluster, df[columns], on='CRTID1', how='inner')
+    
+    # Saving each threshold output to Excel
+    date_time = datetime.today().strftime("%Y-%m-%d_%H-%M")
+    filename = f"Refunds_Cluster_{threshold}_{date_time}.xlsx"
+    with pd.ExcelWriter(filename) as writer:
+        df_cluster.to_excel(writer, sheet_name="All Clusters")
+
+print("Process completed successfully.")

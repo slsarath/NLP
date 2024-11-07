@@ -1,71 +1,22 @@
 import pandas as pd
-import numpy as np
-from datetime import datetime
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
 
-# Sample data setup - adjust these with your actual data as needed
-issue_list = [...]  # List of issue IDs
-output_matrix = [...]  # Replace with your actual output matrix data
+# Sample DataFrame with refund narratives
+# df = pd.DataFrame({'refunds_narrative': [...]})
 
-# Convert output_matrix to DataFrame
-out_res = pd.DataFrame(output_matrix, columns=issue_list)
 
-# Convert numeric columns to the smallest possible data type to reduce memory usage
-for col in out_res.select_dtypes(include=["float", "int"]).columns:
-    out_res[col] = pd.to_numeric(out_res[col], downcast="float")
+# Step 1: Vectorize the text data using TF-IDF
+vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)  # Limit features to save memory
+X = vectorizer.fit_transform(df['refunds_narrative'])
 
-# Convert categorical data to 'category' type if applicable
-out_res["CRTID1"] = issue_list
-out_res["CRTID1"] = out_res["CRTID1"].astype("category")
+# Step 2: Apply KMeans clustering
+num_clusters = 5  # Adjust the number of clusters as needed
+kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+df['cluster'] = kmeans.fit_predict(X)
 
-# Convert to sparse format for columns with many NaNs
-out_res = out_res.astype(pd.SparseDtype("float", np.nan))
+# Step 3: Label clusters in the DataFrame
+df['cluster'] = df['cluster'].apply(lambda x: f'Cluster {x + 1}')
 
-# Try unstacking in chunks and saving intermediate results
-try:
-    # Attempt unstack if memory permits
-    output = out_res.unstack().reset_index()
-except MemoryError:
-    print("MemoryError: Unable to perform unstack operation on full dataset. Switching to chunk processing.")
-    
-    # Process in smaller chunks
-    output_chunks = []
-    chunk_size = 100  # Adjust chunk size based on available memory
-
-    for i in range(0, len(out_res.columns), chunk_size):
-        # Process columns in chunks
-        chunk_columns = out_res.columns[i:i + chunk_size]
-        chunk = out_res[chunk_columns].copy()
-        
-        # Perform unstack operation on chunk and reset index
-        try:
-            chunk_unstacked = chunk.unstack().reset_index()
-            output_chunks.append(chunk_unstacked)
-        except MemoryError:
-            print(f"Memory error with chunk starting at column {i}. Try reducing chunk size.")
-            break
-
-    # Combine chunks
-    if output_chunks:
-        output = pd.concat(output_chunks, ignore_index=True)
-
-# Rename columns as required
-output.rename(columns={'level_0': 'CRTID2', 0: 'cos_score'}, inplace=True)
-
-# Example threshold processing
-threshold_values = [0.5, 0.6, 0.7]  # Define threshold values as needed
-
-for threshold in threshold_values:
-    # Filter based on cos_score and avoid self-comparisons
-    filtered_output = output[(output['cos_score'] >= threshold) & (output['CRTID1'] != output['CRTID2'])]
-    
-    # Example network clustering and merging (replace with your actual code)
-    df_cluster = network_cluster(filtered_output, ['CRTID1', 'CRTID2'])
-    df_cluster = pd.merge(df_cluster, df[columns], on='CRTID1', how='inner')
-    
-    # Save to Excel in each threshold iteration to avoid memory build-up
-    date_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = f"Refunds_Cluster_{threshold}_{date_time}.xlsx"
-    with pd.ExcelWriter(filename) as writer:
-        df_cluster.to_excel(writer, sheet_name="All Clusters")
-
-print("Processing complete.")
+# Display clustered data
+print(df[['refunds_narrative', 'cluster']])

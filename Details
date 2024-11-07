@@ -5,21 +5,19 @@ from sklearn.cluster import KMeans
 # Sample DataFrame with refund narratives
 # df = pd.DataFrame({'refunds_narrative': [...]})
 
-# Step 1: Remove any rows where 'refunds_narrative' is None or not a string
-df = df[df['refunds_narrative'].notnull()]
+# Step 1: Filter out any empty or None-like entries in 'refunds_narrative'
+df = df[df['refunds_narrative'].notnull()]  # Remove None entries
 df['refunds_narrative'] = df['refunds_narrative'].astype(str)
+df = df[df['refunds_narrative'].str.strip() != '']  # Remove empty strings
 
-# Step 2: Verify that all data in 'refunds_narrative' is now string
-print("Data types in 'refunds_narrative' column:", df['refunds_narrative'].apply(type).unique())
-
-# Step 3: Vectorize the text data using TF-IDF
+# Step 2: Vectorize the text data using TF-IDF
 try:
     vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)  # Adjust max_features as needed
     X = vectorizer.fit_transform(df['refunds_narrative'])
 except Exception as e:
     print("Error during vectorization:", e)
 
-# Step 4: Apply KMeans clustering
+# Step 3: Apply KMeans clustering
 num_clusters = 5  # Adjust the number of clusters based on your data
 try:
     kmeans = KMeans(n_clusters=num_clusters, random_state=42)

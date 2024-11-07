@@ -1,37 +1,50 @@
 import pandas as pd
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
-# Sample DataFrame with refund narratives
-# df = pd.DataFrame({'refunds_narrative': [...]})
+# Sample data setup - replace 'refunds_narrative' with your actual column name
+data = {
+    'refunds_narrative': [
+        "Example refund text 1.",
+        "Example refund text 2.",
+        "Example refund text 3.",
+        # Add more sample narratives here
+    ]
+}
+df = pd.DataFrame(data)
 
-# Step 1: Filter out any None or empty entries in 'refunds_narrative'
-df = df[df['refunds_narrative'].notnull()]  # Remove None entries
-df['refunds_narrative'] = df['refunds_narrative'].astype(str)
-df = df[df['refunds_narrative'].str.strip() != '']  # Remove empty strings
+# Step 1: Vectorize text data using TF-IDF
+vectorizer = TfidfVectorizer(stop_words='english')
+X = vectorizer.fit_transform(df['refunds_narrative'])
 
-# Step 2: Vectorize the text data using TF-IDF
+# Step 2: Check type and shape of X
+print(f"Type of X: {type(X)}")
+print(f"Shape of X: {X.shape if hasattr(X, 'shape') else 'No shape attribute'}")
+
+# Step 3: Ensure X is numeric and convert to dense if sparse
+if hasattr(X, "toarray"):
+    X = X.toarray()
+
+# Confirm that all values are numeric
+if not np.issubdtype(X.dtype, np.number):
+    print("Warning: X contains non-numeric data.")
+
+# Step 4: Attempt clustering with a smaller sample if full data causes issues
 try:
-    vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)  # Adjust max_features as needed
-    X = vectorizer.fit_transform(df['refunds_narrative'])
-    
-    # Check if X has any None or empty values
-    if X is None or X.shape[0] == 0:
-        print("Error: Vectorized data 'X' is empty or None.")
-    else:
-        print("Vectorization successful, proceeding with clustering.")
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    # Optional: Test with a smaller sample if you suspect memory issues
+    X_sample = X[:100]  # Adjust the sample size as needed
+    df['cluster'] = kmeans.fit_predict(X)
+    print("Clustering complete on full dataset.")
 except Exception as e:
-    print("Error during vectorization:", e)
-
-# Step 3: Apply KMeans clustering if X is valid
-if X is not None and X.shape[0] > 0:
+    print("Error during clustering on full dataset:", e)
+    print("Attempting clustering on a sample...")
     try:
-        num_clusters = 5  # Adjust the number of clusters based on your data
-        kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-        df['cluster'] = kmeans.fit_predict(X)
-        df['cluster'] = df['cluster'].apply(lambda x: f'Cluster {x + 1}')
-    except Exception as e:
-        print("Error during clustering:", e)
+        df['cluster'] = kmeans.fit_predict(X_sample)
+        print("Clustering successful on sample data.")
+    except Exception as e_sample:
+        print("Error during clustering on sample data:", e_sample)
 
-# Display clustered data if successful
-print(df[['refunds_narrative', 'cluster']])
+# Final output check
+print("Cluster assignments:\n", df[['refunds_narrative', 'cluster']])

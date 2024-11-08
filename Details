@@ -1,21 +1,7 @@
-The NoneType error you’re encountering seems to stem from the function call to getattr(self._dynlib, "openblas_get_config", lambda: None). When getattr can’t find "openblas_get_config" in self._dynlib, it returns None as specified in the lambda, leading to an error when you try to call .split() on the result.
+Hi,
 
-Here’s a breakdown of potential causes and solutions:
-	1.	Missing or Incorrect OpenBLAS Version: The comment indicates that if OpenBLAS is not loaded or the version is lower than 0.3.4, it might not expose openblas_get_config. You can check your OpenBLAS version to ensure it’s compatible.
-	2.	Checking the self._dynlib Initialization: Ensure that self._dynlib is correctly initialized and loaded with the OpenBLAS dynamic library. If self._dynlib is None, it would explain why the getattr call cannot find openblas_get_config.
-	3.	Add a Debugging Print Statement: You could add a print statement right before getattr to verify if self._dynlib is properly loaded:
+As discussed, I checked with Vaishali about the laptop upgrade process. She mentioned that the Line Manager needs to raise an IT request titled “Manage Personas” to change the individual’s persona from Agile to Developer. If the Developer persona is already assigned, no action is required.
 
-print("Dynlib:", self._dynlib)
-get_config = getattr(self._dynlib, "openblas_get_config", lambda: None)
+Once this step is completed, the Line Manager should raise a request for a laptop upgrade, stating that it’s required for the Data Analyst role.
 
-If it prints None or an unexpected output, you’ll know the issue lies with self._dynlib.
-
-	4.	Modify get_config Handling: Add a check for None before attempting .split() to handle cases where openblas_get_config is not found:
-
-get_config = getattr(self._dynlib, "openblas_get_config", lambda: None)
-if get_config is None:
-    return None
-
-
-
-Let me know if adjusting self._dynlib or adding these checks resolves the issue.
+According to standard guidelines, both Developer and Data Analyst roles should have a developer-grade laptop.

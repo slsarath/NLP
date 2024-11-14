@@ -1,7 +1,17 @@
-Hi,
+# Function to get the category based on phrase extraction and category dictionary
+def get_category(phrase_list):
+    if phrase_list:  # Check if the list is not empty
+        first_phrase = phrase_list[0]
+        for cat, keywords in category.items():
+            if first_phrase in keywords:
+                return cat
+    return None  # Return None if no matching category found or list is empty
 
-As discussed, I checked with Vaishali about the laptop upgrade process. She mentioned that the Line Manager needs to raise an IT request titled “Manage Personas” to change the individual’s persona from Agile to Developer. If the Developer persona is already assigned, no action is required.
-
-Once this step is completed, the Line Manager should raise a request for a laptop upgrade, stating that it’s required for the Data Analyst role.
-
-According to standard guidelines, both Developer and Data Analyst roles should have a developer-grade laptop.
+# Applying logic
+for i, row in df.iterrows():
+    if row['Top phrase similarity score'] != 1:
+        new_theme = get_category(row['phrase extraction'])
+        if new_theme:  # If a matching category was found, update Top theme
+            df.at[i, 'Top theme'] = new_theme
+            # Set 'Second top theme' to updated 'Top theme'
+            df.at[i, 'Second top theme'] = new_theme

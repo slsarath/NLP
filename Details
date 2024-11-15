@@ -14,14 +14,31 @@ def get_category(phrase_list_str):
         pass  # Handle cases where string is not a valid list format
     return None  # Return None if no matching category found or list is empty
 
+# Function to check word count and update themes
+def update_theme_based_on_length(row, text_field_name):
+    try:
+        # Calculate word count of the original text field
+        total_words = len(row[text_field_name].split())
+        if total_words < 80:  # Check if word count is less than 80
+            return "Short Text Theme"  # Default theme for short text
+    except AttributeError:
+        pass
+    return row['Top theme']  # Return existing Top theme if conditions not met
+
 # Applying logic
 for i, row in df.iterrows():
     if row['Top phrase similarity score'] != 1:
+        # Update theme based on category match
         new_theme = get_category(row['phrase extraction'])
-        # Check if a matching category was found and if 'Top theme' and 'Second top theme' are different
+        # Update theme if valid category found and themes are different
         if new_theme and row['Top theme'] != row['Second top theme']:
             df.at[i, 'Top theme'] = new_theme
-            # Set 'Second top theme' to updated 'Top theme'
             df.at[i, 'Second top theme'] = new_theme
+
+    # Update theme for short text using the original text field
+    updated_theme = update_theme_based_on_length(row, 'original_text_field')
+    if updated_theme != row['Top theme']:  # If updated, set both themes
+        df.at[i, 'Top theme'] = updated_theme
+        df.at[i, 'Second top theme'] = updated_theme
 
 print(df)

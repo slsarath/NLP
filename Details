@@ -1,17 +1,27 @@
+import ast  # Importing ast to safely evaluate string as list
+
 # Function to get the category based on phrase extraction and category dictionary
-def get_category(phrase_list):
-    if phrase_list:  # Check if the list is not empty
-        first_phrase = phrase_list[0]
-        for cat, keywords in category.items():
-            if first_phrase in keywords:
-                return cat
+def get_category(phrase_list_str):
+    try:
+        # Convert string to actual list
+        phrase_list = ast.literal_eval(phrase_list_str)
+        if isinstance(phrase_list, list) and phrase_list:  # Ensure it's a non-empty list
+            first_phrase = phrase_list[0]
+            for cat, keywords in category.items():
+                if first_phrase in keywords:
+                    return cat
+    except (ValueError, SyntaxError):
+        pass  # Handle cases where string is not a valid list format
     return None  # Return None if no matching category found or list is empty
 
 # Applying logic
 for i, row in df.iterrows():
     if row['Top phrase similarity score'] != 1:
         new_theme = get_category(row['phrase extraction'])
-        if new_theme:  # If a matching category was found, update Top theme
+        # Check if a matching category was found and if 'Top theme' and 'Second top theme' are different
+        if new_theme and row['Top theme'] != row['Second top theme']:
             df.at[i, 'Top theme'] = new_theme
             # Set 'Second top theme' to updated 'Top theme'
             df.at[i, 'Second top theme'] = new_theme
+
+print(df)

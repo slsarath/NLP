@@ -1,44 +1,40 @@
-import ast  # Importing ast to safely evaluate string as list
+import pandas as pd
 
-# Function to get the category based on phrase extraction and category dictionary
-def get_category(phrase_list_str):
-    try:
-        # Convert string to actual list
-        phrase_list = ast.literal_eval(phrase_list_str)
-        if isinstance(phrase_list, list) and phrase_list:  # Ensure it's a non-empty list
-            first_phrase = phrase_list[0]
-            for cat, keywords in category.items():
-                if first_phrase in keywords:
-                    return cat
-    except (ValueError, SyntaxError):
-        pass  # Handle cases where string is not a valid list format
-    return None  # Return None if no matching category found or list is empty
+# Sample Data
+# Replace this with your actual file loading
+big_df = pd.DataFrame({
+    'narrative': ['Refund due to error', 'System issue caused refund', 'Another refund'],
+    'other_col': [1, 2, 3]
+})
+unique_df = pd.DataFrame({
+    'narrative': ['refund due to error', 'system issue caused refund'],
+    'col1': [10, 20],
+    'col2': [15, 25],
+    'col3': [5, 10],
+    'col4': [8, 18]
+})
 
-# Function to check word count and update themes
-def update_theme_based_on_length(row, text_field_name):
-    try:
-        # Calculate word count of the original text field
-        total_words = len(row[text_field_name].split())
-        if total_words < 80:  # Check if word count is less than 80
-            return "Short Text Theme"  # Default theme for short text
-    except AttributeError:
-        pass
-    return row['Top theme']  # Return existing Top theme if conditions not met
+# Function to standardize narratives
+def standardize_text(text):
+    if pd.isnull(text):
+        return None
+    text = text.lower().strip()  # Lowercase and strip whitespace
+    text = ' '.join(text.split())  # Remove extra spaces
+    return text
 
-# Applying logic
-for i, row in df.iterrows():
-    if row['Top phrase similarity score'] != 1:
-        # Update theme based on category match
-        new_theme = get_category(row['phrase extraction'])
-        # Update theme if valid category found and themes are different
-        if new_theme and row['Top theme'] != row['Second top theme']:
-            df.at[i, 'Top theme'] = new_theme
-            df.at[i, 'Second top theme'] = new_theme
+# Apply standardization
+big_df['standardized_narrative'] = big_df['narrative'].apply(standardize_text)
+unique_df['standardized_narrative'] = unique_df['narrative'].apply(standardize_text)
 
-    # Update theme for short text using the original text field
-    updated_theme = update_theme_based_on_length(row, 'original_text_field')
-    if updated_theme != row['Top theme']:  # If updated, set both themes
-        df.at[i, 'Top theme'] = updated_theme
-        df.at[i, 'Second top theme'] = updated_theme
+# Merge the datasets on the standardized narrative
+merged_df = big_df.merge(
+    unique_df[['standardized_narrative', 'col1', 'col2', 'col3', 'col4']],
+    on='standardized_narrative',
+    how='left'
+)
 
-print(df)
+# Drop the standardized narrative column if not needed
+merged_df = merged_df.drop(columns=['standardized_narrative'])
+
+# Display final dataset
+print(merged_df)

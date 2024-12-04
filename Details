@@ -1,40 +1,26 @@
 import pandas as pd
 
-# Sample Data
-# Replace this with your actual file loading
-big_df = pd.DataFrame({
-    'narrative': ['Refund due to error', 'System issue caused refund', 'Another refund'],
-    'other_col': [1, 2, 3]
-})
-unique_df = pd.DataFrame({
-    'narrative': ['refund due to error', 'system issue caused refund'],
-    'col1': [10, 20],
-    'col2': [15, 25],
-    'col3': [5, 10],
-    'col4': [8, 18]
-})
+# Sample DataFrame
+data = {
+    'text_col1': ['The quick brown fox', 'Lazy dog jumps over the wall', 'Lorem Ipsum is just placeholder text'],
+    'text_col2': ['Hello world', 'Python is fun and powerful', 'Test the code with care'],
+    'text_col3': ['Exact word match here', 'Random words and phrases', 'Matching text example for testing']
+}
+df = pd.DataFrame(data)
 
-# Function to standardize narratives
-def standardize_text(text):
-    if pd.isnull(text):
-        return None
-    text = text.lower().strip()  # Lowercase and strip whitespace
-    text = ' '.join(text.split())  # Remove extra spaces
-    return text
+# List of words and phrases to search
+search_list = ['quick', 'Python', 'Lorem Ipsum', 'Random words']
 
-# Apply standardization
-big_df['standardized_narrative'] = big_df['narrative'].apply(standardize_text)
-unique_df['standardized_narrative'] = unique_df['narrative'].apply(standardize_text)
+# Function to check for exact presence of words or phrases
+def check_words_or_phrases(row, search_list):
+    for phrase in search_list:
+        # Check for exact match in any text column
+        if any(phrase in str(row[col]) for col in ['text_col1', 'text_col2', 'text_col3']):
+            return phrase  # Return the matching word or phrase
+    return None  # Return None if no match
 
-# Merge the datasets on the standardized narrative
-merged_df = big_df.merge(
-    unique_df[['standardized_narrative', 'col1', 'col2', 'col3', 'col4']],
-    on='standardized_narrative',
-    how='left'
-)
+# Apply function to the DataFrame
+df['matched_item'] = df.apply(check_words_or_phrases, axis=1, search_list=search_list)
 
-# Drop the standardized narrative column if not needed
-merged_df = merged_df.drop(columns=['standardized_narrative'])
-
-# Display final dataset
-print(merged_df)
+# Display the updated DataFrame
+print(df)

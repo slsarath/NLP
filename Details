@@ -9,13 +9,24 @@ data = {
 df = pd.DataFrame(data)
 
 # List of words and phrases to search
-search_list = ['quick', 'Python', 'Lorem Ipsum', 'Random words']
+search_list = ['quick', 'Python', 'lorem ipsum', 'random words']
+
+# Preprocess text for consistency
+def preprocess_text(text):
+    if pd.isnull(text):
+        return ""
+    return text.lower().strip()  # Convert to lowercase and remove extra spaces
+
+# Preprocess the search list
+search_list = [phrase.lower().strip() for phrase in search_list]
 
 # Function to check for exact presence of words or phrases
 def check_words_or_phrases(row, search_list):
+    # Preprocess all text columns
+    preprocessed_texts = [preprocess_text(row[col]) for col in ['text_col1', 'text_col2', 'text_col3']]
+    # Check for any match in the preprocessed text columns
     for phrase in search_list:
-        # Check for exact match in any text column
-        if any(phrase in str(row[col]) for col in ['text_col1', 'text_col2', 'text_col3']):
+        if any(phrase in text for text in preprocessed_texts):
             return phrase  # Return the matching word or phrase
     return None  # Return None if no match
 

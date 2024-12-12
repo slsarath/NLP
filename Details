@@ -1,31 +1,28 @@
-import requests
+I’ll walk you through the results of our analysis on the quality of risk events based on a defined set of criteria.
 
-# Define the streaming API URL
-streaming_api_url = "https://example.com/streaming-api"  # Replace with your API URL
+1. Narrative Quality Assessment:
+The first part of our analysis focused on assessing the quality of the narratives. We evaluated them against the following key criteria:
+	•	Word Count Threshold: Ensuring that narratives meet the required length to provide adequate detail.
+	•	Acronym Extraction: Identifying acronyms and mapping them to their full forms to improve clarity and standardization.
 
-# Define any headers or authentication (if required)
-headers = {
-    "Authorization": "Bearer your_access_token",  # Replace with your token
-    "Accept": "application/json",
-}
+This ensures that narratives are comprehensive, detailed, and easily understandable, especially when reviewed by stakeholders or external auditors.
 
-try:
-    # Establish a connection to the streaming API
-    response = requests.get(streaming_api_url, headers=headers, stream=True)
+2. Financial Value Patterns:
+The second part of our analysis focused on identifying patterns related to financial values.
+	•	We extracted patterns such as amounts reflecting financial values within the narratives.
+	•	These extracted patterns were then matched with the financial impact value to verify alignment and consistency.
 
-    # Check for a successful connection
-    if response.status_code == 200:
-        print("Connected to the streaming API. Receiving data...")
-        
-        # Iterate through the streamed data
-        for line in response.iter_lines():
-            if line:
-                # Decode and process each line of the stream
-                data = line.decode("utf-8")
-                print(f"Received: {data}")
-    else:
-        print(f"Failed to connect. Status code: {response.status_code}")
-        print(f"Response: {response.text}")
+This step helps ensure that financial details provided in the narratives accurately reflect the actual impact, reducing the risk of discrepancies.
 
-except requests.exceptions.RequestException as e:
-    print(f"An error occurred: {e}")
+3. PII Extraction:
+In addition to narrative and financial analysis, we also conducted PII (Personally Identifiable Information) extraction.
+	•	This includes identifying sensitive information such as email addresses, account numbers, sort codes, customer names, and other PII elements.
+
+This step is critical for compliance and ensures that any sensitive data is flagged and handled appropriately as per regulatory standards.
+
+Closing and Next Steps:
+In summary, our analysis provides a comprehensive review of narrative quality, financial value consistency, and PII compliance. This ensures that risk events are documented accurately and meet the expected quality standards.
+
+If there are any specific areas you’d like us to delve deeper into or if you have any feedback, we’d be happy to incorporate that into our next steps.
+
+Thank you, and I’m happy to answer any questions or discuss this further.

@@ -1,37 +1,31 @@
-import pandas as pd
+import requests
 
-# Sample DataFrame
-data = {
-    'text_col1': ['The quick brown fox', 'Lazy dog jumps over the wall', 'Lorem Ipsum is just placeholder text'],
-    'text_col2': ['Hello world', 'Python is fun and powerful', 'Test the code with care'],
-    'text_col3': ['Exact word match here', 'Random words and phrases', 'Matching text example for testing']
+# Define the streaming API URL
+streaming_api_url = "https://example.com/streaming-api"  # Replace with your API URL
+
+# Define any headers or authentication (if required)
+headers = {
+    "Authorization": "Bearer your_access_token",  # Replace with your token
+    "Accept": "application/json",
 }
-df = pd.DataFrame(data)
 
-# List of words and phrases to search
-search_list = ['quick', 'Python', 'lorem ipsum', 'random words']
+try:
+    # Establish a connection to the streaming API
+    response = requests.get(streaming_api_url, headers=headers, stream=True)
 
-# Preprocess text for consistency
-def preprocess_text(text):
-    if pd.isnull(text):
-        return ""
-    return text.lower().strip()  # Convert to lowercase and remove extra spaces
+    # Check for a successful connection
+    if response.status_code == 200:
+        print("Connected to the streaming API. Receiving data...")
+        
+        # Iterate through the streamed data
+        for line in response.iter_lines():
+            if line:
+                # Decode and process each line of the stream
+                data = line.decode("utf-8")
+                print(f"Received: {data}")
+    else:
+        print(f"Failed to connect. Status code: {response.status_code}")
+        print(f"Response: {response.text}")
 
-# Preprocess the search list
-search_list = [phrase.lower().strip() for phrase in search_list]
-
-# Function to check for exact presence of words or phrases
-def check_words_or_phrases(row, search_list):
-    # Preprocess all text columns
-    preprocessed_texts = [preprocess_text(row[col]) for col in ['text_col1', 'text_col2', 'text_col3']]
-    # Check for any match in the preprocessed text columns
-    for phrase in search_list:
-        if any(phrase in text for text in preprocessed_texts):
-            return phrase  # Return the matching word or phrase
-    return None  # Return None if no match
-
-# Apply function to the DataFrame
-df['matched_item'] = df.apply(check_words_or_phrases, axis=1, search_list=search_list)
-
-# Display the updated DataFrame
-print(df)
+except requests.exceptions.RequestException as e:
+    print(f"An error occurred: {e}")

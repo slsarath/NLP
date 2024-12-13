@@ -1,28 +1,10 @@
-I’ll walk you through the results of our analysis on the quality of risk events based on a defined set of criteria.
+First and foremost, I apologize for the delay.
 
-1. Narrative Quality Assessment:
-The first part of our analysis focused on assessing the quality of the narratives. We evaluated them against the following key criteria:
-	•	Word Count Threshold: Ensuring that narratives meet the required length to provide adequate detail.
-	•	Acronym Extraction: Identifying acronyms and mapping them to their full forms to improve clarity and standardization.
+Please find attached a picture of myself.
 
-This ensures that narratives are comprehensive, detailed, and easily understandable, especially when reviewed by stakeholders or external auditors.
+I am a part of the CCO Data Science and Analytics I chose this workstream because I strongly believe in the importance of giving back to the community and creating a meaningful impact beyond our professional roles. Corporate citizenship represents an opportunity to contribute to causes that align with my personal values, such as sustainability, education, and community development.
 
-2. Financial Value Patterns:
-The second part of our analysis focused on identifying patterns related to financial values.
-	•	We extracted patterns such as amounts reflecting financial values within the narratives.
-	•	These extracted patterns were then matched with the financial impact value to verify alignment and consistency.
+This initiative resonates with me as it allows us to drive positive change while fostering a sense of purpose and collaboration within the organization. Being part of this workstream means actively participating in efforts that make a difference, both at an individual and collective level, and that is something I’m deeply passionate about.
 
-This step helps ensure that financial details provided in the narratives accurately reflect the actual impact, reducing the risk of discrepancies.
 
-3. PII Extraction:
-In addition to narrative and financial analysis, we also conducted PII (Personally Identifiable Information) extraction.
-	•	This includes identifying sensitive information such as email addresses, account numbers, sort codes, customer names, and other PII elements.
 
-This step is critical for compliance and ensures that any sensitive data is flagged and handled appropriately as per regulatory standards.
-
-Closing and Next Steps:
-In summary, our analysis provides a comprehensive review of narrative quality, financial value consistency, and PII compliance. This ensures that risk events are documented accurately and meet the expected quality standards.
-
-If there are any specific areas you’d like us to delve deeper into or if you have any feedback, we’d be happy to incorporate that into our next steps.
-
-Thank you, and I’m happy to answer any questions or discuss this further.

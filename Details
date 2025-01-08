@@ -1,53 +1,14 @@
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
-# Define a function to derive the funding date
 def derive_funding_date(date_str):
-    if pd.isna(date_str):  # Handle NaN values
-        return None
     try:
-        return datetime.strptime(date_str[:10], '%d/%m/%Y').date()
-    except Exception:
+        # Extract components of the date
+        day = int(date_str[:2])  # First 2 characters (day)
+        month = int(date_str[3:5])  # Characters 4 and 5 (month)
+        year = int(date_str[6:10])  # Characters 7 to 10 (year)
+        
+        # Create a date object
+        return datetime(year, month, day).date()
+    except (ValueError, TypeError):
+        # Return None if the input is invalid
         return None
-
-# Define a function to filter and process data
-def process_data(sheet_name, df, output_sheets, current_date, filter_team):
-    # Create a new column "funding date- Derived"
-    df['funding date- Derived'] = df['A'].apply(derive_funding_date)
-
-    # Filter rows for the last 12 months from today’s date
-    last_12_months = current_date - timedelta(days=365)
-    df_filtered = df[df['funding date- Derived'] >= last_12_months]
-
-    # If filtering on Team column is required
-    if filter_team and 'Team' in df.columns:
-        df_filtered = df_filtered[df_filtered['Team'].notna()]
-
-    # Save the filtered data to a new sheet
-    output_sheets[sheet_name] = df_filtered
-
-# Read the Excel file
-input_file = "data.xlsx"  # Replace with your input file path
-output_file = "filtered_data.xlsx"  # Output file path
-excel_data = pd.ExcelFile(input_file)
-
-# Define current date
-current_date = datetime.now().date()
-
-# Initialize a dictionary to store output sheets
-output_sheets = {}
-
-# Process India data (filter on Team column)
-india_df = excel_data.parse("India")
-process_data("India_12M", india_df, output_sheets, current_date, filter_team=True)
-
-# Process China data (skip filtering on Team column)
-china_df = excel_data.parse("China")
-process_data("China_12M", china_df, output_sheets, current_date, filter_team=False)
-
-# Write the filtered data to a new Excel file
-with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-    for sheet_name, df in output_sheets.items():
-        df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-print(f"Filtered data has been saved to {output_file}")

@@ -1,76 +1,12 @@
-def apply_color_coding(self, file_path):
-    logging.info(f"Applying color coding to {file_path}")
-    try:
-        excel = win32.Dispatch('Excel.Application')
-        excel.Visible = False
-        wb = excel.Workbooks.Open(file_path)
-        ws = wb.Sheets(1)
-        ws.Cells.WrapText = True
-        ws.Rows.RowHeight = 14.4
-        ws.Columns.ColumnWidth = 28
+Subject: Assistance Required for Extracting Equity Product Information
 
-        # Correct RGB values
-        green_rgb = 0x00FF00  # Green color in RGB
-        amber_rgb = 0xFFC000  # Amber color in RGB
+Dear [Recipient’s Name],
 
-        # Apply color coding only for columns DR to DU (122 to 125)
-        for row in range(2, ws.UsedRange.Rows.Count + 1):
-            for col in range(122, 126):  # Columns 122 to 125 (DR to DU)
-                cell = ws.Cells(row, col)
-                if cell.Value == "PASS":
-                    cell.Interior.Color = green_rgb
-                elif cell.Value == "FAIL":
-                    cell.Interior.Color = amber_rgb
+I got your contact from the help page. I am part of the Data Science team and currently working on a task to extract equity product information.
 
-        # Create a new sheet for pivot tables
-        pivot_sheet = wb.Sheets.Add()
-        pivot_sheet.Name = "Summary"
+I am using the code snippet below but am not receiving any response. I would greatly appreciate your guidance on resolving this issue. If you have any pre-existing code or resources related to this, sharing them would be extremely helpful.
 
-        # Define the source range
-        source_range = ws.UsedRange
+Looking forward to your support.
 
-        # Create Pivot Table for "Managed By Legal Function Check"
-        pivot_cache = wb.PivotCaches().Create(
-            SourceType=win32.constants.xlDatabase,
-            SourceData=source_range,
-            Version=win32.constants.xlPivotTableVersion14
-        )
-        pivot_table = pivot_cache.CreatePivotTable(
-            TableDestination=pivot_sheet.Cells(1, 1),
-            TableName="PivotTable1"
-        )
-        pivot_table.PivotFields("Managed By Legal Function Check").Orientation = win32.constants.xlRowField
-        pivot_table.AddDataField(pivot_table.PivotFields("Managed By Legal Function Check"), "Count", win32.constants.xlCount)
-
-        # Create Pivot Table for "Aggregate Check"
-        pivot_cache2 = wb.PivotCaches().Create(
-            SourceType=win32.constants.xlDatabase,
-            SourceData=source_range,
-            Version=win32.constants.xlPivotTableVersion14
-        )
-        pivot_table2 = pivot_cache2.CreatePivotTable(
-            TableDestination=pivot_sheet.Cells(10, 1),
-            TableName="PivotTable2"
-        )
-        pivot_table2.PivotFields("Aggregate Check").Orientation = win32.constants.xlRowField
-        pivot_table2.AddDataField(pivot_table2.PivotFields("Aggregate Check"), "Count", win32.constants.xlCount)
-
-        # Create Pivot Table for "Anticipated Additional Direct Loss Check"
-        pivot_cache3 = wb.PivotCaches().Create(
-            SourceType=win32.constants.xlDatabase,
-            SourceData=source_range,
-            Version=win32.constants.xlPivotTableVersion14
-        )
-        pivot_table3 = pivot_cache3.CreatePivotTable(
-            TableDestination=pivot_sheet.Cells(20, 1),
-            TableName="PivotTable3"
-        )
-        pivot_table3.PivotFields("Anticipated Additional Direct Loss Check").Orientation = win32.constants.xlRowField
-        pivot_table3.AddDataField(pivot_table3.PivotFields("Anticipated Additional Direct Loss Check"), "Count", win32.constants.xlCount)
-
-        wb.Save()
-        wb.Close()
-        excel.Quit()
-    except Exception as e:
-        logging.error(f"Error applying color coding: {e}")
-        raise
+Best regards,
+[Your Name]

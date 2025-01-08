@@ -1,1 +1,43 @@
-sa
+import pandas as pd
+from datetime import datetime, timedelta
+
+# Step 1: Load the Excel file
+file_path = "your_file.xlsx"  # Replace with your file path
+xls = pd.ExcelFile(file_path)
+
+# Load India and China sheets
+india_data = xls.parse("India")
+china_data = xls.parse("China")
+
+# Step 2: Define a function to process data
+def process_sheet(data, sheet_name):
+    # Create "Funding Date - Derived" column
+    data["Funding Date - Derived"] = pd.to_datetime(
+        data["funding date"].str[:10], format="%d-%m-%Y", errors="coerce"
+    )
+    
+    # Step 4: Filter data for the last 12 months
+    today = datetime.today()
+    last_12_months = today - timedelta(days=365)
+    filtered_data = data[
+        (data["Funding Date - Derived"] >= last_12_months)
+        & (data["Funding Date - Derived"] <= today)
+    ]
+    
+    # Step 5: Filter out blank rows in the "Team" column
+    filtered_data = filtered_data[filtered_data["Team"].notna()]
+    
+    # Step 6: Save to a new sheet
+    return filtered_data
+
+# Process India and China sheets
+processed_india = process_sheet(india_data, "India")
+processed_china = process_sheet(china_data, "China")
+
+# Step 7: Save the filtered data to a new Excel file
+output_file = "processed_output.xlsx"
+with pd.ExcelWriter(output_file) as writer:
+    processed_india.to_excel(writer, sheet_name="India_12M", index=False)
+    processed_china.to_excel(writer, sheet_name="China_12M", index=False)
+
+print(f"Processed data saved to {output_file}")

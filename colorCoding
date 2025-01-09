@@ -1,12 +1,27 @@
-Subject: Assistance Required for Extracting Equity Product Information
+import requests
+import xml.etree.ElementTree as ET
 
-Dear [Recipient’s Name],
+url = "https://api.example.com/endpoint"  # Replace with your API URL
+headers = {
+    "Authorization": "Bearer YOUR_TOKEN",  # Add your token if required
+    "Content-Type": "application/xml",
+}
 
-I got your contact from the help page. I am part of the Data Science team and currently working on a task to extract equity product information.
+response = requests.get(url, headers=headers)
 
-I am using the code snippet below but am not receiving any response. I would greatly appreciate your guidance on resolving this issue. If you have any pre-existing code or resources related to this, sharing them would be extremely helpful.
+# Check the status code
+print("Status Code:", response.status_code)
 
-Looking forward to your support.
+# Decode and print the XML response
+xml_content = response.content.decode('utf-8')
+print("XML Content:")
+print(xml_content)
 
-Best regards,
-[Your Name]
+# Parse the XML
+try:
+    root = ET.fromstring(xml_content)
+    print("Parsed XML Data:")
+    for element in root.iter():
+        print(f"{element.tag}: {element.text}")
+except ET.ParseError as e:
+    print("Failed to parse XML:", e)

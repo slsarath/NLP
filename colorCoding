@@ -17,7 +17,7 @@ def derive_funding_date(date_str):
         return None
 
 
-# Function to filter and process data
+# Function to filter data
 def filter_data(sheet_name, df, current_date, filter_team):
     # Create a new column "funding date- Derived"
     df['funding date- Derived'] = df['A'].apply(derive_funding_date)
@@ -33,7 +33,7 @@ def filter_data(sheet_name, df, current_date, filter_team):
     return df_filtered
 
 
-# Function to generate pivot tables for a dataset
+# Function to generate pivot tables
 def create_pivots(sheet_name, df, exclusion_list):
     pivots = []
 
@@ -73,14 +73,15 @@ def process_and_save(input_file, exclusion_file, output_file, log_text):
         wb = Workbook()
         current_date = datetime.now().date()
 
-        # Step 1: Add original raw data
-        combined_raw_data = pd.concat([excel_data.parse("India"), excel_data.parse("China")], ignore_index=True)
-        ws_raw = wb.create_sheet(title="Original Raw Data")
-        for r_idx, row in enumerate(dataframe_to_rows(combined_raw_data, index=False, header=True), start=1):
-            for c_idx, value in enumerate(row, start=1):
-                ws_raw.cell(row=r_idx, column=c_idx, value=value)
+        # Step 1: Add Original Raw Data
+        for sheet_name in ["India", "China"]:
+            raw_df = excel_data.parse(sheet_name)
+            ws_raw = wb.create_sheet(title=f"{sheet_name} Raw Data")
+            for r_idx, row in enumerate(dataframe_to_rows(raw_df, index=False, header=True), start=1):
+                for c_idx, value in enumerate(row, start=1):
+                    ws_raw.cell(row=r_idx, column=c_idx, value=value)
 
-        # Step 2: Filter India and China data
+        # Step 2: Add Filtered Data and Generate Pivot Tables
         for sheet_name, filter_team in [("India", True), ("China", False)]:
             df = excel_data.parse(sheet_name)
             filtered_df = filter_data(sheet_name, df, current_date, filter_team)
@@ -91,7 +92,7 @@ def process_and_save(input_file, exclusion_file, output_file, log_text):
                 for c_idx, value in enumerate(row, start=1):
                     ws_filtered.cell(row=r_idx, column=c_idx, value=value)
 
-            # Step 3: Generate Pivot Tables
+            # Generate Pivot Tables
             pivots = create_pivots(sheet_name, filtered_df, exclusion_list)
 
             # Add all pivot tables to a single sheet
@@ -107,6 +108,10 @@ def process_and_save(input_file, exclusion_file, output_file, log_text):
                         ws_pivot.cell(row=r_idx, column=c_idx, value=value)
 
                 start_row += len(pivot_table) + 4  # Leave some space before the next pivot table
+
+        # Remove the default sheet created by openpyxl
+        if "Sheet" in wb.sheetnames:
+            del wb["Sheet"]
 
         # Save the final workbook
         wb.save(output_file)

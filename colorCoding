@@ -1,12 +1,12 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
 import pandas as pd
 from datetime import datetime, timedelta
+import tkinter as tk
+from tkinter import filedialog, messagebox, scrolledtext
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.worksheet.pivot import PivotTable
 
-# Function to derive the funding date
+
+# Function to derive funding date
 def derive_funding_date(date_str):
     try:
         day = int(date_str[:2])  # First 2 characters (day)
@@ -17,173 +17,98 @@ def derive_funding_date(date_str):
         return None
 
 
-# Function to process data and create the output
-def process_files(input_file, exclusion_file, output_file, log_text):
+# Function to filter and process data
+def filter_data(sheet_name, df, current_date, filter_team):
+    # Create a new column "funding date- Derived"
+    df['funding date- Derived'] = df['A'].apply(derive_funding_date)
+
+    # Filter rows for the last 12 months from today’s date
+    last_12_months = current_date - timedelta(days=365)
+    df_filtered = df[df['funding date- Derived'] >= last_12_months]
+
+    # If filtering on Team column is required
+    if filter_team and 'Team' in df.columns:
+        df_filtered = df_filtered[df_filtered['Team'].notna()]
+
+    return df_filtered
+
+
+# Function to generate pivot tables for a dataset
+def create_pivots(sheet_name, df, exclusion_list):
+    pivots = []
+
+    # Deceased Pivot
+    deceased_df = df[df['Deceased'] == "Yes"]
+    pivots.append(("Deceased", deceased_df.pivot_table(index=["Team", "Banker"], values="Deceased", aggfunc="count")))
+
+    # AUM < 10,000 Pivot
+    aum_df = df[df['AUM'] < 10000]
+    pivots.append(("AUM < 10,000", aum_df.pivot_table(index=["Team", "Banker"], values="AUM", aggfunc="count")))
+
+    # Historic Bankers Pivot
+    df['Is_Excluded'] = df.apply(
+        lambda x: (x['Banker'], x['Team']) in zip(exclusion_list['Banker Name'], exclusion_list['Team']), axis=1
+    )
+    excluded_df = df[df['Is_Excluded']]
+    pivots.append(("Historic Bankers", excluded_df.pivot_table(index=["Team", "Banker"], values="Is_Excluded", aggfunc="count")))
+
+    # Breaches Pivot
+    breaches_df = df[df['Current Status'] == "Breach"]
+    pivots.append(("Breaches", breaches_df.pivot_table(index=["Team", "Banker"], values="Current Status", aggfunc="count")))
+
+    return pivots
+
+
+# Main processing function
+def process_and_save(input_file, exclusion_file, output_file, log_text):
     try:
         log_text.insert(tk.END, "Processing started...\n")
 
-        # Load input file and exclusion file
-        filtered_data = pd.ExcelFile(input_file)
+        # Load input and exclusion files
+        excel_data = pd.ExcelFile(input_file)
         exclusion_list = pd.read_excel(exclusion_file)
         log_text.insert(tk.END, "Files loaded successfully.\n")
 
-        # Read India and China data
-        india_df = filtered_data.parse("India")
-        china_df = filtered_data.parse("China")
-
-        # Combine India and China data
-        combined_df = pd.concat([india_df, china_df], ignore_index=True)
-
-        # Initialize the output workbook
+        # Initialize workbook
         wb = Workbook()
+        current_date = datetime.now().date()
 
-        # Process India and China sheets
-        for df, sheet_name in [(india_df, "India_12M"), (china_df, "China_12M")]:
-            df['funding date- Derived'] = df['A'].apply(derive_funding_date)
-            last_12_months = datetime.now().date() - timedelta(days=365)
-            df_filtered = df[df['funding date- Derived'] >= last_12_months]
+        # Step 1: Add original raw data
+        combined_raw_data = pd.concat([excel_data.parse("India"), excel_data.parse("China")], ignore_index=True)
+        ws_raw = wb.create_sheet(title="Original Raw Data")
+        for r_idx, row in enumerate(dataframe_to_rows(combined_raw_data, index=False, header=True), start=1):
+            for c_idx, value in enumerate(row, start=1):
+                ws_raw.cell(row=r_idx, column=c_idx, value=value)
 
-            if sheet_name == "India_12M" and "Team" in df_filtered.columns:
-                df_filtered = df_filtered[df_filtered['Team'].notna()]
+        # Step 2: Filter India and China data
+        for sheet_name, filter_team in [("India", True), ("China", False)]:
+            df = excel_data.parse(sheet_name)
+            filtered_df = filter_data(sheet_name, df, current_date, filter_team)
 
-            # Add filtered data to the workbook
-            ws = wb.create_sheet(title=sheet_name)
-            for r_idx, row in enumerate(dataframe_to_rows(df_filtered, index=False, header=True), start=1):
+            # Add filtered data to a new sheet
+            ws_filtered = wb.create_sheet(title=f"{sheet_name} Filtered Data")
+            for r_idx, row in enumerate(dataframe_to_rows(filtered_df, index=False, header=True), start=1):
                 for c_idx, value in enumerate(row, start=1):
-                    ws.cell(row=r_idx, column=c_idx, value=value)
+                    ws_filtered.cell(row=r_idx, column=c_idx, value=value)
 
-        # Generate Pivot Tables
-        pivot_sheets = [
-            {"title": "Deceased_Clients", "filter_col": "Deceased", "filter_val": "Yes", "index": ["Team", "Banker"]},
-            {"title": "AUM_Less_Than_10000", "filter_col": "AUM", "filter_val": 10000, "index": ["Team", "Banker"], "condition": "lt"},
-            {"title": "Historic_Bankers", "exclusion": True, "index": ["Team", "Banker"]},
-            {"title": "Breaches", "filter_col": "Current Status", "filter_val": "Breach", "index": ["Team", "Banker"]},
-        ]
+            # Step 3: Generate Pivot Tables
+            pivots = create_pivots(sheet_name, filtered_df, exclusion_list)
 
-        for sheet in pivot_sheets:
-            # Add a new sheet for the pivot
-            ws = wb.create_sheet(title=sheet["title"])
+            # Add all pivot tables to a single sheet
+            ws_pivot = wb.create_sheet(title=f"{sheet_name} Pivot Tables")
+            start_row = 1
+            for title, pivot_table in pivots:
+                # Add pivot table title
+                ws_pivot.cell(row=start_row, column=1, value=title)
 
-            if "exclusion" in sheet:
-                combined_df['Is_Excluded'] = combined_df.apply(
-                    lambda x: (x['Banker'], x['Team']) in zip(exclusion_list['Banker Name'], exclusion_list['Team']),
-                    axis=1
-                )
-                df_pivot = combined_df[combined_df['Is_Excluded']]
-            elif "condition" in sheet and sheet["condition"] == "lt":
-                df_pivot = combined_df[combined_df[sheet["filter_col"]] < sheet["filter_val"]]
-            else:
-                df_pivot = combined_df[combined_df[sheet["filter_col"]] == sheet["filter_val"]]
+                # Write pivot table data
+                for r_idx, row in enumerate(dataframe_to_rows(pivot_table, index=True, header=True), start=start_row + 1):
+                    for c_idx, value in enumerate(row, start=1):
+                        ws_pivot.cell(row=r_idx, column=c_idx, value=value)
 
-            # Convert the filtered data to rows in Excel
-            for r_idx, row in enumerate(dataframe_to_rows(df_pivot, index=False, header=True), start=1):
-                for c_idx, value in enumerate(row, start=1):
-                    ws.cell(row=r_idx, column=c_idx, value=value)
+                start_row += len(pivot_table) + 4  # Leave some space before the next pivot table
 
-            # Create a pivot table
-            pivot_ws = wb.create_sheet(title=f"{sheet['title']}_Pivot")
-            data_range = f"A1:{chr(64+len(df_pivot.columns))}{len(df_pivot)+1}"
-            pivot = PivotTable(cache=True, ref=data_range)
-
-            pivot.column_cells=""
-
-To properly integrate real Excel pivot tables into the output file, we need to modify the code to leverage `openpyxl`'s `PivotCache` and `PivotTable` features. Below is the finalized and working version of the code that handles this correctly.
-
----
-
-### Final Code with Real Pivot Tables
-```python
-import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
-import pandas as pd
-from datetime import datetime, timedelta
-from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.worksheet.pivot import TableRange, PivotTableCacheDefinition, PivotTableDefinition
-
-
-# Function to derive the funding date
-def derive_funding_date(date_str):
-    try:
-        day = int(date_str[:2])  # First 2 characters (day)
-        month = int(date_str[3:5])  # Characters 4 and 5 (month)
-        year = int(date_str[6:10])  # Characters 7 to 10 (year)
-        return datetime(year, month, day).date()
-    except (ValueError, TypeError):
-        return None
-
-
-# Function to process files and create real Excel pivot tables
-def process_files(input_file, exclusion_file, output_file, log_text):
-    try:
-        log_text.insert(tk.END, "Processing started...\n")
-
-        # Load input file and exclusion file
-        filtered_data = pd.ExcelFile(input_file)
-        exclusion_list = pd.read_excel(exclusion_file)
-        log_text.insert(tk.END, "Files loaded successfully.\n")
-
-        # Read India and China data
-        india_df = filtered_data.parse("India")
-        china_df = filtered_data.parse("China")
-
-        # Combine India and China data
-        combined_df = pd.concat([india_df, china_df], ignore_index=True)
-
-        # Initialize the workbook
-        wb = Workbook()
-
-        # Process India and China sheets
-        for df, sheet_name in [(india_df, "India_12M"), (china_df, "China_12M")]:
-            df['funding date- Derived'] = df['A'].apply(derive_funding_date)
-            last_12_months = datetime.now().date() - timedelta(days=365)
-            df_filtered = df[df['funding date- Derived'] >= last_12_months]
-
-            if sheet_name == "India_12M" and "Team" in df_filtered.columns:
-                df_filtered = df_filtered[df_filtered['Team'].notna()]
-
-            # Add filtered data to a worksheet
-            ws = wb.create_sheet(title=sheet_name)
-            for r_idx, row in enumerate(dataframe_to_rows(df_filtered, index=False, header=True), start=1):
-                for c_idx, value in enumerate(row, start=1):
-                    ws.cell(row=r_idx, column=c_idx, value=value)
-
-        # Create pivot sheets
-        pivot_sheets = [
-            {"title": "Deceased_Clients", "filter_col": "Deceased", "filter_val": "Yes", "index": ["Team", "Banker"]},
-            {"title": "AUM_Less_Than_10000", "filter_col": "AUM", "filter_val": 10000, "condition": "lt", "index": ["Team", "Banker"]},
-            {"title": "Historic_Bankers", "exclusion": True, "index": ["Team", "Banker"]},
-            {"title": "Breaches", "filter_col": "Current Status", "filter_val": "Breach", "index": ["Team", "Banker"]},
-        ]
-
-        for sheet in pivot_sheets:
-            # Add a worksheet for the pivot source
-            ws = wb.create_sheet(title=sheet["title"])
-
-            if "exclusion" in sheet:
-                combined_df['Is_Excluded'] = combined_df.apply(
-                    lambda x: (x['Banker'], x['Team']) in zip(exclusion_list['Banker Name'], exclusion_list['Team']),
-                    axis=1
-                )
-                df_pivot = combined_df[combined_df['Is_Excluded']]
-            elif "condition" in sheet and sheet["condition"] == "lt":
-                df_pivot = combined_df[combined_df[sheet["filter_col"]] < sheet["filter_val"]]
-            else:
-                df_pivot = combined_df[combined_df[sheet["filter_col"]] == sheet["filter_val"]]
-
-            # Write pivot data to the sheet
-            for r_idx, row in enumerate(dataframe_to_rows(df_pivot, index=False, header=True), start=1):
-                for c_idx, value in enumerate(row, start=1):
-                    ws.cell(row=r_idx, column=c_idx, value=value)
-
-            # Create a pivot table
-            pivot_ws = wb.create_sheet(title=f"{sheet['title']}_Pivot")
-            source_ref = TableRange(ws, f"A1:{chr(64 + len(df_pivot.columns))}{len(df_pivot) + 1}")
-            pivot_cache = PivotTableCacheDefinition(source=source_ref, name=f"{sheet['title']}_Cache")
-            pivot_table = PivotTableDefinition(source=pivot_cache, destination="A1")
-            pivot_ws.add_pivot_table(pivot_table)
-
-        # Save the workbook
+        # Save the final workbook
         wb.save(output_file)
         log_text.insert(tk.END, f"Processing completed. Output saved to {output_file}\n")
     except Exception as e:
@@ -191,10 +116,10 @@ def process_files(input_file, exclusion_file, output_file, log_text):
         messagebox.showerror("Error", str(e))
 
 
-# GUI Setup
+# GUI Application
 def create_gui():
     root = tk.Tk()
-    root.title("Excel Pivot Table Generator")
+    root.title("Excel Data Filter and Pivot Tool")
 
     # Input File
     tk.Label(root, text="Input File:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
@@ -221,8 +146,8 @@ def create_gui():
 
     # Process Button
     tk.Button(
-        root, text="Process",
-        command=lambda: process_files(input_entry.get(), exclusion_entry.get(), output_entry.get(), log_text)
+        root, text="Process and Save",
+        command=lambda: process_and_save(input_entry.get(), exclusion_entry.get(), output_entry.get(), log_text)
     ).grid(row=4, column=1, padx=10, pady=10)
 
     root.mainloop()

@@ -1,65 +1,22 @@
-import pandas as pd
-from datetime import datetime, timedelta
-import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
-from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl import Workbook
 
+# Helper function to add pivot table (handles empty pivots)
+def add_pivot_to_sheet(ws, start_row, title, pivot_table):
+    # If the pivot table is empty, we add a placeholder message
+    if pivot_table.empty:
+        ws.cell(row=start_row, column=1, value=title)
+        ws.cell(row=start_row + 1, column=1, value="No Data Available")
+        return start_row + 3  # Move to next available row with some space
+    else:
+        # If the pivot table has data, write it to the sheet
+        ws.cell(row=start_row, column=1, value=title)
+        for r_idx, row in enumerate(dataframe_to_rows(pivot_table, index=True, header=True), start=start_row + 1):
+            for c_idx, value in enumerate(row, start=1):
+                ws.cell(row=r_idx, column=c_idx, value=value)
+        return start_row + len(pivot_table) + 4  # Leave space for the next pivot
 
-# Function to derive funding date
-def derive_funding_date(date_str):
-    try:
-        day = int(date_str[:2])  # First 2 characters (day)
-        month = int(date_str[3:5])  # Characters 4 and 5 (month)
-        year = int(date_str[6:10])  # Characters 7 to 10 (year)
-        return datetime(year, month, day).date()
-    except (ValueError, TypeError):
-        return None
-
-
-# Function to filter data
-def filter_data(df, current_date, filter_team):
-    # Create a new column "funding date- Derived"
-    df['funding date- Derived'] = df['A'].apply(derive_funding_date)
-
-    # Filter rows for the last 12 months from today’s date
-    last_12_months = current_date - timedelta(days=365)
-    df_filtered = df[df['funding date- Derived'] >= last_12_months]
-
-    # If filtering on Team column is required
-    if filter_team and 'Team' in df.columns:
-        df_filtered = df_filtered[df_filtered['Team'].notna()]
-
-    return df_filtered
-
-
-# Function to generate pivot tables
-def create_pivots(df, exclusion_list):
-    pivots = []
-
-    # Deceased Pivot
-    deceased_df = df[df['Deceased'] == "Yes"]
-    pivots.append(("Deceased", deceased_df.pivot_table(index=["Team", "Banker"], values="Deceased", aggfunc="count")))
-
-    # AUM < 10,000 Pivot
-    aum_df = df[df['AUM'] < 10000]
-    pivots.append(("AUM < 10,000", aum_df.pivot_table(index=["Team", "Banker"], values="AUM", aggfunc="count")))
-
-    # Historic Bankers Pivot
-    df['Is_Excluded'] = df.apply(
-        lambda x: (x['Banker'], x['Team']) in zip(exclusion_list['Banker Name'], exclusion_list['Team']), axis=1
-    )
-    excluded_df = df[df['Is_Excluded']]
-    pivots.append(("Historic Bankers", excluded_df.pivot_table(index=["Team", "Banker"], values="Is_Excluded", aggfunc="count")))
-
-    # Breaches Pivot
-    breaches_df = df[df['Current Status'] == "Breach"]
-    pivots.append(("Breaches", breaches_df.pivot_table(index=["Team", "Banker"], values="Current Status", aggfunc="count")))
-
-    return pivots
-
-
-# Main processing function
+# Function to process and save data, including pivot handling
 def process_and_save(input_file, exclusion_file, output_file, country, log_text):
     try:
         log_text.insert(tk.END, "Processing started...\n")
@@ -69,13 +26,21 @@ def process_and_save(input_file, exclusion_file, output_file, country, log_text)
         exclusion_list = pd.read_excel(exclusion_file)
         log_text.insert(tk.END, f"Loaded data for {country}...\n")
 
-        # Check if the selected sheet exists
-        if country not in excel_data.sheet_names:
-            raise ValueError(f"Sheet for {country} not found in input file.")
+        # Define configurations for each country
+        country_config = {
+            "India": {"filter_team": True},
+            "China": {"filter_team": False},
+        }
 
-        # Load the selected country's data
+        # Check if the selected country is valid
+        if country not in country_config:
+            raise ValueError(f"Configuration for {country} is not defined.")
+
+        # Load the sheet for the selected country
         df = excel_data.parse(country)
-        filter_team = country == "India"  # Only filter Team for India
+
+        # Get configuration values
+        filter_team = country_config[country]["filter_team"]
         current_date = datetime.now().date()
 
         # Step 1: Add raw data
@@ -96,16 +61,10 @@ def process_and_save(input_file, exclusion_file, output_file, country, log_text)
         pivots = create_pivots(filtered_df, exclusion_list)
         ws_pivots = wb.create_sheet(title=f"{country} Pivot Tables")
         start_row = 1
+
+        # Add each pivot table, handle empty tables with a placeholder
         for title, pivot_table in pivots:
-            # Add pivot table title
-            ws_pivots.cell(row=start_row, column=1, value=title)
-
-            # Write pivot table data
-            for r_idx, row in enumerate(dataframe_to_rows(pivot_table, index=True, header=True), start=start_row + 1):
-                for c_idx, value in enumerate(row, start=1):
-                    ws_pivots.cell(row=r_idx, column=c_idx, value=value)
-
-            start_row += len(pivot_table) + 4  # Leave some space before the next pivot table
+            start_row = add_pivot_to_sheet(ws_pivots, start_row, title, pivot_table)
 
         # Remove the default sheet created by openpyxl
         if "Sheet" in wb.sheetnames:
@@ -117,66 +76,3 @@ def process_and_save(input_file, exclusion_file, output_file, country, log_text)
     except Exception as e:
         log_text.insert(tk.END, f"Error: {e}\n")
         messagebox.showerror("Error", str(e))
-
-
-# GUI Application
-def create_gui():
-    root = tk.Tk()
-    root.title("Excel Data Filter and Pivot Tool")
-
-    # Input File
-    tk.Label(root, text="Input File:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
-    input_entry = tk.Entry(root, width=50)
-    input_entry.grid(row=0, column=1, padx=10, pady=5)
-    tk.Button(root, text="Browse", command=lambda: browse_file(input_entry)).grid(row=0, column=2, padx=10, pady=5)
-
-    # Exclusion File
-    tk.Label(root, text="Exclusion File:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
-    exclusion_entry = tk.Entry(root, width=50)
-    exclusion_entry.grid(row=1, column=1, padx=10, pady=5)
-    tk.Button(root, text="Browse", command=lambda: browse_file(exclusion_entry)).grid(row=1, column=2, padx=10, pady=5)
-
-    # Output File
-    tk.Label(root, text="Output File:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
-    output_entry = tk.Entry(root, width=50)
-    output_entry.grid(row=2, column=1, padx=10, pady=5)
-    tk.Button(root, text="Browse", command=lambda: browse_output(output_entry)).grid(row=2, column=2, padx=10, pady=5)
-
-    # Country Selection Dropdown
-    tk.Label(root, text="Country:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
-    country_var = tk.StringVar(root)
-    country_var.set("India")  # Default value
-    country_dropdown = ttk.Combobox(root, textvariable=country_var, values=["India", "China"], state="readonly")
-    country_dropdown.grid(row=3, column=1, padx=10, pady=5)
-
-    # Log Window
-    tk.Label(root, text="Logs:").grid(row=4, column=0, padx=10, pady=5, sticky="nw")
-    log_text = scrolledtext.ScrolledText(root, width=60, height=15)
-    log_text.grid(row=4, column=1, columnspan=2, padx=10, pady=5)
-
-    # Process Button
-    tk.Button(
-        root, text="Process and Save",
-        command=lambda: process_and_save(
-            input_entry.get(), exclusion_entry.get(), output_entry.get(), country_var.get(), log_text
-        )
-    ).grid(row=5, column=1, padx=10, pady=10)
-
-    root.mainloop()
-
-
-# Utility functions for file dialogs
-def browse_file(entry):
-    file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
-    entry.delete(0, tk.END)
-    entry.insert(0, file_path)
-
-
-def browse_output(entry):
-    file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
-    entry.delete(0, tk.END)
-    entry.insert(0, file_path)
-
-
-if __name__ == "__main__":
-    create_gui()

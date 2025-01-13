@@ -1,22 +1,7 @@
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl import Workbook
+from openpyxl.worksheet.pivot import TableRange, PivotTableCacheDefinition, PivotTableDefinition
+from openpyxl.utils import get_column_letter
 
-# Helper function to add pivot table (handles empty pivots)
-def add_pivot_to_sheet(ws, start_row, title, pivot_table):
-    # If the pivot table is empty, we add a placeholder message
-    if pivot_table.empty:
-        ws.cell(row=start_row, column=1, value=title)
-        ws.cell(row=start_row + 1, column=1, value="No Data Available")
-        return start_row + 3  # Move to next available row with some space
-    else:
-        # If the pivot table has data, write it to the sheet
-        ws.cell(row=start_row, column=1, value=title)
-        for r_idx, row in enumerate(dataframe_to_rows(pivot_table, index=True, header=True), start=start_row + 1):
-            for c_idx, value in enumerate(row, start=1):
-                ws.cell(row=r_idx, column=c_idx, value=value)
-        return start_row + len(pivot_table) + 4  # Leave space for the next pivot
 
-# Function to process and save data, including pivot handling
 def process_and_save(input_file, exclusion_file, output_file, country, log_text):
     try:
         log_text.insert(tk.END, "Processing started...\n")
@@ -58,17 +43,37 @@ def process_and_save(input_file, exclusion_file, output_file, country, log_text)
                 ws_filtered.cell(row=r_idx, column=c_idx, value=value)
 
         # Step 3: Generate pivot tables
-        pivots = create_pivots(filtered_df, exclusion_list)
-        ws_pivots = wb.create_sheet(title=f"{country} Pivot Tables")
-        start_row = 1
+        ws_pivot = wb.create_sheet(title=f"{country} Pivot Tables")
 
-        # Add each pivot table, handle empty tables with a placeholder
-        for title, pivot_table in pivots:
-            start_row = add_pivot_to_sheet(ws_pivots, start_row, title, pivot_table)
+        # Create actual pivot table for "Deceased"
+        deceased_df = filtered_df[filtered_df["Deceased"] == "Yes"]
+        if not deceased_df.empty:
+            add_actual_pivot_table(
+                wb,
+                ws_pivot,
+                title="Deceased Pivot Table",
+                source_ws=ws_filtered,
+                rows=["Team", "Banker"],
+                filter_field="Deceased",
+                filter_value="Yes",
+                values={"Deceased": "count"},
+                start_cell="A1",
+            )
 
-        # Remove the default sheet created by openpyxl
-        if "Sheet" in wb.sheetnames:
-            del wb["Sheet"]
+        # Create actual pivot table for "Current Status"
+        breaches_df = filtered_df[filtered_df["Current Status"] == "Breach"]
+        if not breaches_df.empty:
+            add_actual_pivot_table(
+                wb,
+                ws_pivot,
+                title="Breach Pivot Table",
+                source_ws=ws_filtered,
+                rows=["Team", "Banker"],
+                filter_field="Current Status",
+                filter_value="Breach",
+                values={"Current Status": "count"},
+                start_cell="A20",  # Add below the first pivot table
+            )
 
         # Save the final workbook
         wb.save(output_file)
@@ -76,3 +81,42 @@ def process_and_save(input_file, exclusion_file, output_file, country, log_text)
     except Exception as e:
         log_text.insert(tk.END, f"Error: {e}\n")
         messagebox.showerror("Error", str(e))
+
+
+def add_actual_pivot_table(wb, ws_pivot, title, source_ws, rows, filter_field, filter_value, values, start_cell):
+    """
+    Function to add an actual pivot table in Excel format.
+    """
+    # Define the range for the pivot table source
+    min_row = 2  # Assuming header starts from row 1
+    max_row = source_ws.max_row
+    min_col = 1
+    max_col = source_ws.max_column
+
+    # Create a Pivot Cache
+    cache = PivotTableCacheDefinition(
+        source=TableRange(
+            min_row=min_row,
+            max_row=max_row,
+            min_col=min_col,
+            max_col=max_col,
+            worksheet=source_ws.title,
+        )
+    )
+
+    # Create the Pivot Table
+    pivot_table = PivotTableDefinition(
+        cache=cache,
+        ref=start_cell,
+        title=title,
+    )
+
+    # Add rows, values, and filters to the pivot table
+    pivot_table.rows = rows
+    pivot_table.values = values
+
+    if filter_field and filter_value:
+        pivot_table.filters = {filter_field: filter_value}
+
+    # Add the pivot table to the worksheet
+    ws_pivot.add_pivot_table(pivot_table)

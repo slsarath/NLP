@@ -1,104 +1,23 @@
-import pandas as pd
-from datetime import datetime, timedelta
-import win32com.client as win32
-
-def create_actual_pivot(output_file, country):
-    """
-    Create actual pivot tables in the Excel output file for the given country.
-    """
-    excel = win32.gencache.EnsureDispatch("Excel.Application")
-    excel.Visible = False  # Set to True to see the Excel file while processing
-
-    try:
-        # Open the workbook
-        workbook = excel.Workbooks.Open(output_file)
-
-        # Access the filtered data sheet
-        filtered_sheet = workbook.Sheets[f"{country} Filtered Data"]
-
-        # Add a new sheet for pivot tables
-        pivot_sheet = workbook.Sheets.Add()
-        pivot_sheet.Name = f"{country} Pivot Tables"
-
-        # Create Pivot Table Cache
-        pivot_cache = workbook.PivotCaches().Create(
-            SourceType=1,  # xlDatabase
-            SourceData=filtered_sheet.UsedRange,
-            Version=6,  # Excel 2016+
+# Add Pivot Table for "AUM < 10,000"
+        aum_pivot_table = pivot_cache.CreatePivotTable(
+            TableDestination=pivot_sheet.Cells(40, 1),  # Below the second pivot table
+            TableName="AUMPivot",
+        )
+        aum_pivot_table.PivotFields("Team").Orientation = 1  # xlRowField
+        aum_pivot_table.PivotFields("Banker").Orientation = 1  # xlRowField
+        aum_pivot_table.AddDataField(
+            aum_pivot_table.PivotFields("AUM"), "Count of AUM < 10,000", -4112  # xlCount
         )
 
-        # Add Pivot Table for "Deceased"
-        deceased_pivot_table = pivot_cache.CreatePivotTable(
-            TableDestination=pivot_sheet.Cells(1, 1),
-            TableName="DeceasedPivot",
+        # Add Pivot Table for "Historic Bankers"
+        historic_pivot_table = pivot_cache.CreatePivotTable(
+            TableDestination=pivot_sheet.Cells(60, 1),  # Below the third pivot table
+            TableName="HistoricBankersPivot",
+        )
+        historic_pivot_table.PivotFields("Team").Orientation = 1  # xlRowField
+        historic_pivot_table.PivotFields("Banker").Orientation = 1  # xlRowField
+        historic_pivot_table.AddDataField(
+            historic_pivot_table.PivotFields("Banker"), "Count of Historic Bankers", -4112  # xlCount
         )
 
-        # Configure rows, values, and filters for Deceased Pivot
-        deceased_pivot_table.PivotFields("Team").Orientation = 1  # xlRowField
-        deceased_pivot_table.PivotFields("Banker").Orientation = 1  # xlRowField
-        deceased_pivot_table.PivotFields("Deceased").Orientation = 3  # xlFilterField
-        deceased_pivot_table.PivotFields("Deceased").CurrentPage = "Yes"  # Filter value
-        deceased_pivot_table.AddDataField(
-            deceased_pivot_table.PivotFields("Deceased"), "Count of Deceased", -4112  # xlCount
-        )
-
-        # Add Pivot Table for "Current Status"
-        breach_pivot_table = pivot_cache.CreatePivotTable(
-            TableDestination=pivot_sheet.Cells(20, 1),  # Below the first pivot table
-            TableName="BreachPivot",
-        )
-
-        # Configure rows, values, and filters for Breach Pivot
-        breach_pivot_table.PivotFields("Team").Orientation = 1  # xlRowField
-        breach_pivot_table.PivotFields("Banker").Orientation = 1  # xlRowField
-        breach_pivot_table.PivotFields("Current Status").Orientation = 3  # xlFilterField
-        breach_pivot_table.PivotFields("Current Status").CurrentPage = "Breach"  # Filter value
-        breach_pivot_table.AddDataField(
-            breach_pivot_table.PivotFields("Current Status"), "Count of Current Status", -4112  # xlCount
-        )
-
-        # Save and close the workbook
-        workbook.Save()
-        workbook.Close()
-        excel.Quit()
-
-        print(f"Actual pivot tables created successfully in '{output_file}'.")
-
-    except Exception as e:
-        print(f"Error while creating pivot tables: {e}")
-        excel.Quit()
-
-def process_and_save(input_file, exclusion_file, output_file, country):
-    # Load input data
-    excel_data = pd.ExcelFile(input_file)
-    df = excel_data.parse(country)
-    current_date = datetime.now().date()
-
-    # Filter data
-    filter_team = country == "India"
-    filtered_df = filter_data(df, current_date, filter_team)
-
-    # Write raw data and filtered data to Excel
-    with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
-        df.to_excel(writer, sheet_name=f"{country} Raw Data", index=False)
-        filtered_df.to_excel(writer, sheet_name=f"{country} Filtered Data", index=False)
-
-    # Add actual pivot tables
-    create_actual_pivot(output_file, country)
-
-def filter_data(df, current_date, filter_team):
-    df["funding date- Derived"] = df["A"].apply(derive_funding_date)
-    last_12_months = current_date - timedelta(days=365)
-    df_filtered = df[df["funding date- Derived"] >= last_12_months]
-    if filter_team and "Team" in df.columns:
-        df_filtered = df_filtered[df_filtered["Team"].notna()]
-    return df_filtered
-
-def derive_funding_date(date_str):
-    try:
-        day = int(date_str[:2])
-        month = int(date_str[3:5])
-        year = int(date_str[6:10])
-        return datetime(year, month, day).date()
-    except (ValueError, TypeError):
-        return None
+        

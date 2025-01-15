@@ -1,18 +1,62 @@
-def filter_data(df, current_date, filter_team):
-    """Filter data for the last 12 months and optionally remove blanks in the 'Team/Security' column."""
-    # Derive funding date
-    df["funding date- Derived"] = df["A"].apply(derive_funding_date)
+When starting a new project as an IT professional, it’s essential to gather detailed information to understand the objectives, value addition, and technical aspects. Below is a comprehensive list of questions you should ask stakeholders:
 
-    # Ensure funding date and current_date are timezone-naive
-    df["funding date- Derived"] = pd.to_datetime(df["funding date- Derived"]).dt.tz_localize(None)
-    current_date = pd.Timestamp(current_date).tz_localize(None)
+1. Understanding the Project Objective
+	•	What is the primary goal of this project?
+	•	What specific problem are we trying to solve?
+	•	How will this project align with the organization’s strategic objectives?
+	•	What are the expected outcomes or deliverables?
 
-    # Filter for the last 12 months
-    last_12_months = current_date - timedelta(days=365)
-    df_filtered = df[df["funding date- Derived"] >= last_12_months]
+2. Value Addition
+	•	What value does this project bring to the business?
+	•	How will this improve current processes or systems?
+	•	Are there any measurable KPIs or metrics to track the success of this project?
+	•	Who will benefit from this project (e.g., internal teams, customers)?
 
-    # Optionally filter non-blank 'Team/Security' for India
-    if filter_team and "Team/Security" in df.columns:
-        df_filtered = df_filtered[df_filtered["Team/Security"].notna()]
+3. Scope and Requirements
+	•	What are the project’s scope and boundaries?
+	•	Are there any specific business or regulatory requirements that need to be met?
+	•	What features or functionalities are critical for this project?
+	•	Are there any non-functional requirements (e.g., performance, scalability, security)?
 
-    return df_filtered
+4. Existing Systems and Dependencies
+	•	Are there existing systems or tools that this project will integrate with?
+	•	What data sources or databases will this project rely on?
+	•	Are there any dependencies or constraints that might impact the project?
+
+5. Stakeholders and Communication
+	•	Who are the key stakeholders involved in this project?
+	•	Who will be the primary point of contact for requirements, clarifications, or approvals?
+	•	What is the preferred mode of communication (e.g., email, meetings, tools)?
+	•	Are there any regular updates or reporting requirements?
+
+6. Timeline and Milestones
+	•	What are the timelines or deadlines for the project?
+	•	Are there specific milestones or phases for this project?
+	•	What is the urgency of this project?
+	•	Are there any dependencies on external events or projects?
+
+7. Budget and Resources
+	•	What is the allocated budget for this project?
+	•	Are there any resource limitations (e.g., personnel, tools, licenses)?
+	•	Will additional tools, software, or hardware be required?
+
+8. Risks and Challenges
+	•	What are the potential risks or challenges for this project?
+	•	Are there any known issues with the current systems or processes that might impact this project?
+	•	How will we address data privacy, security, or compliance requirements?
+
+9. Testing and Validation
+	•	What testing approach will be used to validate the solution?
+	•	Are there specific test cases or scenarios that need to be covered?
+	•	Who will be responsible for testing and sign-off?
+
+10. Post-Implementation Support
+	•	What is the plan for post-implementation support and maintenance?
+	•	Who will manage ongoing updates or changes after project delivery?
+	•	Are there any training requirements for the end users?
+
+11. Long-Term Vision
+	•	How will this project scale to meet future needs?
+	•	Are there any plans for subsequent phases or enhancements?
+
+By addressing these questions, you’ll gain a clear understanding of the project’s scope, value, and technical requirements, enabling you to deliver a solution aligned with stakeholder expectations. Let me know if you’d like help tailoring this list for a specific project!

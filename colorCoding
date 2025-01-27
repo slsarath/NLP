@@ -21,69 +21,64 @@ semantic_questions = {
     "Rationale": "What is the rationale for this transaction?"
 }
 
-def process_comments(df, column_name, criteria_keywords, semantic_questions, model):
-    """
-    Process a DataFrame column to extract information dynamically for matching sentences and similarity scores.
-
-    Parameters:
-    - df: DataFrame containing the column to process
-    - column_name: The name of the column in the DataFrame containing the comments
-    - criteria_keywords: A dictionary containing keywords for each criterion
-    - semantic_questions: A dictionary containing fallback questions for semantic matching
-    - model: The SentenceTransformer model for semantic similarity
-
-    Returns:
-    - The DataFrame with dynamically created columns for each criterion's matching sentence and similarity score
-    """
-    def extract_aspects(comment, criteria_keywords, semantic_questions, model):
-        # Initialize a dictionary to store the extracted aspects
-        extracted_data = {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria_keywords}
-        
-        # Split the comment into sentences for semantic matching
-        sentences = [sentence.strip() for sentence in comment.split('.') if sentence.strip()]
-        
-        try:
-            for criterion, keywords in criteria_keywords.items():
-                # First, try keyword-based extraction
-                for keyword in keywords:
-                    match = re.search(keyword + r"(.+?)(?:\.|$)", comment, re.IGNORECASE)
-                    if match:
-                        extracted_data[criterion]["Matching Sentence"] = match.group(1).strip()
-                        extracted_data[criterion]["Similarity Score"] = 1.0  # Keyword match is exact
-                        break
-                
-                # If no keyword-based match is found, use semantic matching
-                if not extracted_data[criterion]["Matching Sentence"]:
-                    question_embedding = model.encode(semantic_questions[criterion], convert_to_tensor=True)
-                    max_similarity = 0
-                    matching_sentence = None
-
-                    for sentence in sentences:
-                        sentence_embedding = model.encode(sentence, convert_to_tensor=True)
-                        similarity = util.pytorch_cos_sim(question_embedding, sentence_embedding).item()
-                        
-                        if similarity > max_similarity:
-                            max_similarity = similarity
-                            matching_sentence = sentence
-                    
-                    # Store the best semantic match
-                    extracted_data[criterion]["Matching Sentence"] = matching_sentence
-                    extracted_data[criterion]["Similarity Score"] = max_similarity
-
-        except Exception as e:
-            print(f"Error during extraction: {e}")
-        
-        return extracted_data
-
-    # Apply the function to the DataFrame column
-    results = df[column_name].apply(lambda x: extract_aspects(x, criteria_keywords, semantic_questions, model))
-
-    # Create new columns dynamically for each criterion
-    for criterion in criteria_keywords.keys():
-        df[f"{criterion} Matching Sentence"] = results.apply(lambda x: x[criterion]["Matching Sentence"])
-        df[f"{criterion} Similarity Score"] = results.apply(lambda x: x[criterion]["Similarity Score"])
+def extract_aspects(comment, criteria_keywords, semantic_questions, model):
+    # Initialize a dictionary to store the extracted aspects
+    extracted_data = {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria_keywords}
     
-    return df
+    # Split the comment into sentences for semantic matching
+    sentences = [sentence.strip() for sentence in comment.split('.') if sentence.strip()]
+    
+    try:
+        for criterion, keywords in criteria_keywords.items():
+            # First, try keyword-based extraction
+            for keyword in keywords:
+                match = re.search(keyword + r"(.+?)(?:\.|$)", comment, re.IGNORECASE)
+                if match:
+                    extracted_data[criterion]["Matching Sentence"] = match.group(1).strip()
+                    extracted_data[criterion]["Similarity Score"] = 1.0  # Keyword match is exact
+                    break
+            
+            # If no keyword-based match is found, use semantic matching
+            if not extracted_data[criterion]["Matching Sentence"]:
+                question_embedding = model.encode(semantic_questions[criterion], convert_to_tensor=True)
+                max_similarity = 0
+                matching_sentence = None
 
-# Example usage:
-# df = process_comments(df, "comments", criteria_keywords, semantic_questions, model)
+                for sentence in sentences:
+                    sentence_embedding = model.encode(sentence, convert_to_tensor=True)
+                    similarity = util.pytorch_cos_sim(question_embedding, sentence_embedding).item()
+                    
+                    if similarity > max_similarity:
+                        max_similarity = similarity
+                        matching_sentence = sentence
+                
+                # Store the best semantic match
+                extracted_data[criterion]["Matching Sentence"] = matching_sentence
+                extracted_data[criterion]["Similarity Score"] = max_similarity
+
+    except Exception as e:
+        print(f"Error during extraction: {e}")
+    
+    return extracted_data
+
+# Sample DataFrame
+data = {
+    "comments": [
+        """Source of funds: Cash held in USD account 00099. Where the funds have come from: Internal transfer from Wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of Centessa shares which paid in USD into this account earlier this month.""",
+        """SOW: Proceeds from house sale. Origin: Transferred from joint account. Purpose: Used for buying investments. Rationale: Funds cleared as per compliance.""",
+        """Source: Monthly salary credited to account. Purpose of these funds: Savings for future investments."""
+    ]
+}
+
+df = pd.DataFrame(data)
+
+# Apply the extraction function to the DataFrame
+results = df["comments"].apply(lambda x: extract_aspects(x, criteria_keywords, semantic_questions, model))
+
+# Create new columns dynamically for each criterion
+for criterion in criteria_keywords.keys():
+    df[f"{criterion} Matching Sentence"] = results.apply(lambda x: x[criterion]["Matching Sentence"])
+    df[f"{criterion} Similarity Score"] = results.apply(lambda x: x[criterion]["Similarity Score"])
+
+# Display the DataFrame
+df

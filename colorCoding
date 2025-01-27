@@ -1,19 +1,21 @@
 from sentence_transformers import util
 
-def evaluate_comment(comment, criteria, model):
+def evaluate_comment_with_details(comment, criteria, model):
     if not comment or not criteria:  # Check for None or empty inputs
-        return {}
+        return {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria}
     
     try:
         # Split the comment into sentences
         sentences = comment.split(".")  # Splitting by period; adjust if needed
-        evaluation = {}
+        results = {}
         
         for criterion, question in criteria.items():
             # Encode the criterion question only once
             criterion_embedding = model.encode(question, convert_to_tensor=True)
             
             max_similarity = 0  # Initialize max similarity
+            matching_sentence = None  # Track the matching sentence
+            
             for sentence in sentences:
                 sentence = sentence.strip()  # Clean up whitespace
                 if not sentence:  # Skip empty sentences
@@ -25,18 +27,28 @@ def evaluate_comment(comment, criteria, model):
                 # Compute similarity
                 similarity = util.pytorch_cos_sim(sentence_embedding, criterion_embedding).item()
                 
-                # Update max similarity for this criterion
+                # Update max similarity and matching sentence
                 if similarity > max_similarity:
                     max_similarity = similarity
+                    matching_sentence = sentence
             
-            evaluation[criterion] = max_similarity  # Store the highest similarity for the criterion
+            # Store the best match for the current criterion
+            results[criterion] = {
+                "Matching Sentence": matching_sentence,
+                "Similarity Score": max_similarity,
+            }
         
-        return evaluation
+        return results
     except Exception as e:
         print(f"Error during evaluation: {e}")
-        return {}
+        return {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria}
 
 # Apply evaluation to each comment
-raw_data["evaluation"] = raw_data["Semantic_Cleaned_Comment"].apply(
-    lambda x: evaluate_comment(x, criteria, model_mpnet) if x else {}
+evaluation_results = raw_data["Semantic_Cleaned_Comment"].apply(
+    lambda x: evaluate_comment_with_details(x, criteria, model_mpnet) if x else {}
 )
+
+# Create new columns dynamically based on the criteria
+for criterion in criteria:
+    raw_data[f"{criterion} Matching Sentence"] = evaluation_results.apply(lambda x: x.get(criterion, {}).get("Matching Sentence"))
+    raw_data[f"{criterion} Similarity Score"] = evaluation_results.apply(lambda x: x.get(criterion, {}).get("Similarity Score"))

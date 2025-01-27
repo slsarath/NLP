@@ -1,54 +1,76 @@
-from sentence_transformers import util
+from sentence_transformers import SentenceTransformer, util
+import re
 
-def evaluate_comment_with_details(comment, criteria, model):
-    if not comment or not criteria:  # Check for None or empty inputs
-        return {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria}
+# Load the sentence transformer model for semantic matching
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Define keywords for each aspect
+criteria_keywords = {
+    "Source of Funds": [r"source of funds[:\-]", r"sow[:\-]", r"sow summary[:\-]"],
+    "Purpose of Funds": [r"purpose of these funds[:\-]", r"purpose[:\-]"],
+    "Where the Funds Have Come From": [r"where the funds have come from[:\-]", r"origin[:\-]"],
+    "Rationale": [r"rationale[:\-]"]
+}
+
+# Define semantic fallback questions for each aspect
+semantic_questions = {
+    "Source of Funds": "What is the source of funds?",
+    "Purpose of Funds": "What is the purpose of these funds?",
+    "Where the Funds Have Come From": "Where have the funds come from?",
+    "Rationale": "What is the rationale for this transaction?"
+}
+
+def extract_aspects(comment, criteria_keywords, semantic_questions, model):
+    # Initialize a dictionary to store the extracted aspects
+    extracted_data = {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria_keywords}
+    
+    # Split the comment into sentences for semantic matching
+    sentences = [sentence.strip() for sentence in comment.split('.') if sentence.strip()]
     
     try:
-        # Split the comment into sentences
-        sentences = comment.split(".")  # Splitting by period; adjust if needed
-        results = {}
-        
-        for criterion, question in criteria.items():
-            # Encode the criterion question only once
-            criterion_embedding = model.encode(question, convert_to_tensor=True)
+        for criterion, keywords in criteria_keywords.items():
+            # First, try keyword-based extraction
+            for keyword in keywords:
+                match = re.search(keyword + r"(.+?)(?:\.|$)", comment, re.IGNORECASE)
+                if match:
+                    extracted_data[criterion]["Matching Sentence"] = match.group(1).strip()
+                    extracted_data[criterion]["Similarity Score"] = 1.0  # Keyword match is exact
+                    break
             
-            max_similarity = 0  # Initialize max similarity
-            matching_sentence = None  # Track the matching sentence
-            
-            for sentence in sentences:
-                sentence = sentence.strip()  # Clean up whitespace
-                if not sentence:  # Skip empty sentences
-                    continue
+            # If no keyword-based match is found, use semantic matching
+            if not extracted_data[criterion]["Matching Sentence"]:
+                question_embedding = model.encode(semantic_questions[criterion], convert_to_tensor=True)
+                max_similarity = 0
+                matching_sentence = None
+
+                for sentence in sentences:
+                    sentence_embedding = model.encode(sentence, convert_to_tensor=True)
+                    similarity = util.pytorch_cos_sim(question_embedding, sentence_embedding).item()
+                    
+                    if similarity > max_similarity:
+                        max_similarity = similarity
+                        matching_sentence = sentence
                 
-                # Encode the sentence
-                sentence_embedding = model.encode(sentence, convert_to_tensor=True)
-                
-                # Compute similarity
-                similarity = util.pytorch_cos_sim(sentence_embedding, criterion_embedding).item()
-                
-                # Update max similarity and matching sentence
-                if similarity > max_similarity:
-                    max_similarity = similarity
-                    matching_sentence = sentence
-            
-            # Store the best match for the current criterion
-            results[criterion] = {
-                "Matching Sentence": matching_sentence,
-                "Similarity Score": max_similarity,
-            }
-        
-        return results
+                # Store the best semantic match
+                extracted_data[criterion]["Matching Sentence"] = matching_sentence
+                extracted_data[criterion]["Similarity Score"] = max_similarity
+
     except Exception as e:
-        print(f"Error during evaluation: {e}")
-        return {criterion: {"Matching Sentence": None, "Similarity Score": 0} for criterion in criteria}
+        print(f"Error during extraction: {e}")
+    
+    return extracted_data
 
-# Apply evaluation to each comment
-evaluation_results = raw_data["Semantic_Cleaned_Comment"].apply(
-    lambda x: evaluate_comment_with_details(x, criteria, model_mpnet) if x else {}
-)
+# Example comment text
+comment_text = """Source of funds: Cash held in USD account 00099 
+Where the funds have come from: Internal transfer from Wealth USD account into EDS account.
+Purpose of these funds: Transferred to NS&I for a better rate of interest. 
+Rationale: We are comfortable with this transaction, funds originate from sale of Centessa shares which paid in USD into this account earlier this month."""
 
-# Create new columns dynamically based on the criteria
-for criterion in criteria:
-    raw_data[f"{criterion} Matching Sentence"] = evaluation_results.apply(lambda x: x.get(criterion, {}).get("Matching Sentence"))
-    raw_data[f"{criterion} Similarity Score"] = evaluation_results.apply(lambda x: x.get(criterion, {}).get("Similarity Score"))
+# Apply the extraction function
+extracted_results = extract_aspects(comment_text, criteria_keywords, semantic_questions, model)
+
+# Display results
+for aspect, details in extracted_results.items():
+    print(f"{aspect}:")
+    print(f"  Matching Sentence: {details['Matching Sentence']}")
+    print(f"  Similarity Score: {details['Similarity Score']:.2f}")

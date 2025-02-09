@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-# Define regex patterns for each category with clear boundaries
+# Define regex patterns for each category with word boundaries
 patterns = {
     "Source of Funds": [
         r"(?i)\bsource of funds[:\-\?\s]*", r"(?i)\bsow summary[:\-\?\s]*",
@@ -21,7 +21,7 @@ patterns = {
     ]
 }
 
-# Combine all patterns into a regex pattern for stopping extraction at next keyword
+# Combine all patterns into a regex pattern for stopping extraction at next keyword OR full stop (.)
 all_patterns = "|".join([pat for sublist in patterns.values() for pat in sublist])
 
 def preprocess_text(text):
@@ -35,7 +35,9 @@ def preprocess_text(text):
 
 def extract_statements(text, patterns, all_patterns):
     """
-    Extracts statements after predefined expressions using regex, stopping at the next key phrase.
+    Extracts statements after predefined expressions using regex,
+    stopping at the next key phrase or the next full stop (.)
+    while preserving punctuation.
     """
     text = preprocess_text(text)  # Preprocess text before extraction
     extracted_data = {category: None for category in patterns.keys()}
@@ -45,7 +47,8 @@ def extract_statements(text, patterns, all_patterns):
 
     for category, regex_list in patterns.items():
         for regex in regex_list:
-            match = re.search(regex + r"(.*?)(?=" + all_patterns + r"|$)", text, re.IGNORECASE | re.DOTALL)
+            # Extract full statement until next key phrase or first full stop (.)
+            match = re.search(regex + r"([\s\S]*?)(?=\s*(" + all_patterns + r")|(?<!\b(?:dr|mr|ms|mrs)\b)\.\s|$)", text, re.IGNORECASE)
             if match:
                 extracted_data[category] = match.group(1).strip()
                 break  # Stop at first match
@@ -55,7 +58,7 @@ def extract_statements(text, patterns, all_patterns):
 # Sample DataFrame
 data = {
     "comments": [
-        "Source of funds: Cash held in USD account 3333 55555 Where the funds have come from: Internal transfer from Wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: we are comfortable with this transaction, funds originate from sale of Cente shares which paid in USD into this account earlier this month."
+        "Source of funds: Cash held in USD account 3333 55555. Where the funds have come from: Internal transfer from wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of cente shares which paid in USD into this account earlier this month."
     ]
 }
 

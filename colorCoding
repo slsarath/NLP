@@ -1,41 +1,26 @@
-def determine_commentary_quality(row):
+# Function to calculate quality score ensuring 0% for "None of the parameters present" and "Not enough information in comments"
+def calculate_quality_score(row):
     """
-    Checks how many key parameters (SOF, POF, WF, Rationale) are present in the extracted statements 
-    and assigns a quality label accordingly. Also marks 'Not enough information in comments' if no parameters are found 
-    and comment length is less than 150 characters.
+    Assigns a quality score based on the number of extracted commentary parameters.
+    Ensures 0% score for "None of the parameters present" and "Not enough information in comments".
     """
-    parameters = []
-    
-    if pd.notna(row["Source of Funds Statement"]) and row["Source of Funds Statement"].strip():
-        parameters.append("SOF")
-    if pd.notna(row["Purpose of Funds Statement"]) and row["Purpose of Funds Statement"].strip():
-        parameters.append("POF")
-    if pd.notna(row["Where the Funds Have Come From Statement"]) and row["Where the Funds Have Come From Statement"].strip():
-        parameters.append("WF")
-    if pd.notna(row["Rationale Statement"]) and row["Rationale Statement"].strip():
-        parameters.append("Rationale")
-    
-    if not parameters:
-        comment_length = len(str(row["comments"])) if pd.notna(row["comments"]) else 0
-        if comment_length < 150:
-            return "Not enough information in comments"
-        return "None of the parameters present"
-    elif len(parameters) == 4:
-        return "All parameters found"
-    else:
-        return ", ".join(parameters)
+    if row["Commentary Quality"] in ["None of the parameters present", "Not enough information in comments"]:
+        return 0  # Assign a score of 0
 
-# Ensure the DataFrame includes comments column
-df["comments"] = [
-    "SOF: Cash held in USD account 3333555. Where the funds have come from: Internal transfer from wealth USD account.",
-    "Short comment here.",
-    "Source: Savings account deposit. WF: Transfer from employer account.",
-    "This is a very short comment that doesn't provide enough details."
-]
+    count = 0
+    if "SOF" in row["Commentary Quality"]:
+        count += 1
+    if "POF" in row["Commentary Quality"]:
+        count += 1
+    if "WF" in row["Commentary Quality"]:
+        count += 1
+    if "Rationale" in row["Commentary Quality"]:
+        count += 1
 
-# Apply the function to create the new "Commentary Quality" column
-df["Commentary Quality"] = df.apply(determine_commentary_quality, axis=1)
+    return (count / 4) * 100  # Since there are 4 parameters
 
-# Display the updated DataFrame with the new column
-import ace_tools as tools
-tools.display_dataframe_to_user(name="Commentary Quality Assessment", dataframe=df)
+# Recalculate the quality score with the updated logic
+df["Quality Score (%)"] = df.apply(calculate_quality_score, axis=1)
+
+# Display the updated DataFrame with the corrected quality scores
+tools.display_dataframe_to_user(name="Updated Quality Score Assessment", dataframe=df)

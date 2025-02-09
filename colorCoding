@@ -1,59 +1,41 @@
-# Updated implementation to extract all financial values from comments and compare with transaction amount
-
-import pandas as pd
-import re
-
-# Sample DataFrame with comments and transaction amount column
-data = {
-    "comments": [
-        "SOF: Cash held in USD account 3333555. Where the funds have come from: Internal transfer from wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. The amount transferred was 1,200,000.",
-        "SOF - Savings from previous employment, 1567890. Purpose: Investment in property. Another transfer of 3,456,000 was also made.",
-        "Source: Savings account deposit. WF: Transfer from employer account 10,00,000. POF: Future investment. Loan repayment of 2,50,000 was done.",
-        "The total transfer was 5000000 and was completed successfully. The transaction included 750,000 from savings.",
-        "Scot has made his wealth through employment in RSS service limited. No specific financial details given."
-    ],
-    "transaction_amount": ["3,333,555", "1,567,890", "10,00,000", "5,000,000", "50,000"]
-}
-
-df = pd.DataFrame(data)
-
-def extract_financial_values(text):
+def determine_commentary_quality(row):
     """
-    Extracts all financial values (numbers, both comma-separated and non-comma-separated) from the given text.
+    Checks how many key parameters (SOF, POF, WF, Rationale) are present in the extracted statements 
+    and assigns a quality label accordingly. Also marks 'Not enough information in comments' if no parameters are found 
+    and comment length is less than 150 characters.
     """
-    if not text or not isinstance(text, str):
-        return None
-
-    # Match financial values (numbers with or without comma separators)
-    financial_values = re.findall(r"\b\d{1,3}(?:,\d{3})*\b|\b\d+\b", text)
-
-    return ", ".join(financial_values) if financial_values else None
-
-def normalize_number(number_str):
-    """
-    Normalize a number by removing commas for accurate comparison.
-    """
-    return number_str.replace(",", "") if number_str else None
-
-def check_financial_match(financial_values, transaction_amount):
-    """
-    Checks if any extracted financial value matches the transaction amount.
-    """
-    if not financial_values or not transaction_amount:
-        return "No Match"
+    parameters = []
     
-    # Convert extracted values and transaction amounts to normalized sets for accurate comparison
-    extracted_set = {normalize_number(val) for val in financial_values.split(", ")}
-    transaction_set = {normalize_number(transaction_amount)}
+    if pd.notna(row["Source of Funds Statement"]) and row["Source of Funds Statement"].strip():
+        parameters.append("SOF")
+    if pd.notna(row["Purpose of Funds Statement"]) and row["Purpose of Funds Statement"].strip():
+        parameters.append("POF")
+    if pd.notna(row["Where the Funds Have Come From Statement"]) and row["Where the Funds Have Come From Statement"].strip():
+        parameters.append("WF")
+    if pd.notna(row["Rationale Statement"]) and row["Rationale Statement"].strip():
+        parameters.append("Rationale")
+    
+    if not parameters:
+        comment_length = len(str(row["comments"])) if pd.notna(row["comments"]) else 0
+        if comment_length < 150:
+            return "Not enough information in comments"
+        return "None of the parameters present"
+    elif len(parameters) == 4:
+        return "All parameters found"
+    else:
+        return ", ".join(parameters)
 
-    return "Match" if extracted_set & transaction_set else "No Match"
+# Ensure the DataFrame includes comments column
+df["comments"] = [
+    "SOF: Cash held in USD account 3333555. Where the funds have come from: Internal transfer from wealth USD account.",
+    "Short comment here.",
+    "Source: Savings account deposit. WF: Transfer from employer account.",
+    "This is a very short comment that doesn't provide enough details."
+]
 
-# Extract financial values from comments
-df["Extracted Financial Values"] = df["comments"].apply(extract_financial_values)
+# Apply the function to create the new "Commentary Quality" column
+df["Commentary Quality"] = df.apply(determine_commentary_quality, axis=1)
 
-# Check if any extracted value matches the transaction amount
-df["Financial Match"] = df.apply(lambda row: check_financial_match(row["Extracted Financial Values"], row["transaction_amount"]), axis=1)
-
-# Display DataFrame with new columns
+# Display the updated DataFrame with the new column
 import ace_tools as tools
-tools.display_dataframe_to_user(name="Financial Pattern Matching", dataframe=df)
+tools.display_dataframe_to_user(name="Commentary Quality Assessment", dataframe=df)

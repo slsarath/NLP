@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-# Define regex patterns for each category
+# Define regex patterns for each category with word boundaries
 patterns = {
     "Source of Funds": [
         r"(?i)source of funds[:\-\?\s]*", r"(?i)sow summary[:\-\?\s]*",
@@ -21,9 +21,12 @@ patterns = {
     ]
 }
 
-def extract_statements(text, patterns):
+# Combine all patterns into a regex pattern for sentence boundaries
+all_patterns = "|".join([pat for sublist in patterns.values() for pat in sublist])
+
+def extract_statements(text, patterns, all_patterns):
     """
-    Extracts statements after predefined expressions using regex.
+    Extracts statements after predefined expressions using regex but stops at the next key phrase.
     """
     extracted_data = {category: None for category in patterns.keys()}
 
@@ -32,7 +35,7 @@ def extract_statements(text, patterns):
 
     for category, regex_list in patterns.items():
         for regex in regex_list:
-            match = re.search(regex + r"(.*)", text, re.IGNORECASE)
+            match = re.search(regex + r"(.*?)(?=" + all_patterns + r"|$)", text, re.IGNORECASE | re.DOTALL)
             if match:
                 extracted_data[category] = match.group(1).strip()
                 break  # Stop at first match
@@ -42,17 +45,14 @@ def extract_statements(text, patterns):
 # Sample DataFrame
 data = {
     "comments": [
-        "Source of funds: Cash held in USD account 00099. Where the funds have come from: Internal transfer from Wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of Centessa shares which paid in USD into this account earlier this month.",
-        "SOW: Proceeds from house sale. Origin: Transferred from joint account. Purpose: Used for buying investments. Rationale: Funds cleared as per compliance.",
-        "Source: Monthly salary credited to account. Purpose of these funds: Savings for future investments.",
-        "WF: Transferred from savings account. POF: Investment in stock market. Rationale: Advised by financial planner."
+        "Source of funds: Cash held in USD account 3333 55555 Where the funds have come from: Internal transfer from Wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: we are comfortable with this transaction, funds originate from sale of Cente shares which paid in USD into this account earlier this month."
     ]
 }
 
 df = pd.DataFrame(data)
 
 # Apply extraction function
-results = df["comments"].apply(lambda x: extract_statements(x, patterns))
+results = df["comments"].apply(lambda x: extract_statements(x, patterns, all_patterns))
 
 # Add extracted information as new columns dynamically
 for category in patterns.keys():

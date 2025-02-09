@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-# Define regex patterns for each category with word boundaries
+# Define regex patterns for each category
 patterns = {
     "Source of Funds": [
         r"(?i)\bsource of funds[:\-\?\s]*", r"(?i)\bsow summary[:\-\?\s]*",
@@ -21,23 +21,21 @@ patterns = {
     ]
 }
 
-# Combine all patterns into a regex pattern for stopping extraction at next keyword OR full stop (.)
+# Create a regex pattern that includes all keywords as stopping conditions
 all_patterns = "|".join([pat for sublist in patterns.values() for pat in sublist])
 
 def preprocess_text(text):
     """
     Preprocess text by normalizing spaces, special characters, and ensuring clean format.
     """
-    text = text.lower()  # Convert to lowercase for uniformity
-    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
     text = text.strip()  # Trim spaces at the start and end
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
     return text
 
 def extract_statements(text, patterns, all_patterns):
     """
     Extracts statements after predefined expressions using regex,
-    stopping at the next key phrase or the next full stop (.)
-    while preserving punctuation.
+    stopping at the next key phrase or the next full stop (.) while preserving punctuation.
     """
     text = preprocess_text(text)  # Preprocess text before extraction
     extracted_data = {category: None for category in patterns.keys()}
@@ -47,10 +45,10 @@ def extract_statements(text, patterns, all_patterns):
 
     for category, regex_list in patterns.items():
         for regex in regex_list:
-            # Capture the statement and ensure it stops at the next key phrase OR punctuation
-            match = re.search(regex + r"([\s\S]*?)(?=\s*(?:{}|\.)|$)".format(all_patterns), text, re.IGNORECASE)
+            # Capture the full statement until the next key phrase or full stop (.)
+            match = re.search(regex + r"([\s\S]+?)(?=\s*(?:{}|[.!?])|$)".format(all_patterns), text, re.IGNORECASE)
             if match:
-                extracted_data[category] = match.group(1).strip()
+                extracted_data[category] = match.group(1).strip()  # Preserve punctuation
                 break  # Stop at first match
 
     return extracted_data

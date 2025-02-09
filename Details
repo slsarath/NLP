@@ -1,135 +1,63 @@
-To solve the problem of comparing the derivative product order timestamp with the chat transcripts timestamp, where the chat transcripts are stored in a third-party application and are only available in a zipped format, here are the possible solutions using Python:
-
-1. Automate the Download Process:
-
-You will need to automate the process of downloading the chat transcripts. Depending on the third-party application, you may use one of the following methods:
-
-a. Using APIs (if available):
-	•	If the third-party application provides an API for downloading the transcripts, you can write a Python script that interacts with the API to download the chat transcript files.
-Example:
-
-import requests
-
-url = "https://example.com/api/chat_transcripts"
-headers = {"Authorization": "Bearer YOUR_API_TOKEN"}
-
-response = requests.get(url, headers=headers)
-
-if response.status_code == 200:
-    with open('chat_transcripts.zip', 'wb') as file:
-        file.write(response.content)
-
-
-
-b. Using Web Scraping (if API isn’t available):
-	•	If there is no API and you can download the file manually, you can use tools like Selenium or BeautifulSoup to automate the downloading process from the web interface.
-Example using Selenium to download a file:
-
-from selenium import webdriver
-import time
-
-# Start the driver and open the web page
-driver = webdriver.Chrome()
-driver.get("https://example.com/chat-transcripts")
-
-# Interact with the page (e.g., login, click download button)
-# driver.find_element_by_id("download_button").click()
-
-# Wait for the download to complete
-time.sleep(10)
-driver.quit()
-
-2. Extract Data from ZIP File:
-
-Once you have the ZIP file, you can use Python to extract and read the data from the zip file.
-
-import zipfile
-import os
-
-# Path to the downloaded zip file
-zip_file_path = 'path_to_zip/chat_transcripts.zip'
-extract_folder = 'path_to_extract_folder'
-
-# Unzip the file
-with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-    zip_ref.extractall(extract_folder)
-
-3. Process the Extracted Files (If in CSV, JSON, or Text Format):
-
-After extraction, the chat transcripts will likely be in CSV, JSON, or text format. You can process these files using appropriate Python libraries.
-	•	For CSV files:
-
 import pandas as pd
+import re
 
-# Read the CSV file
-chat_df = pd.read_csv(os.path.join(extract_folder, 'chat_transcript.csv'))
+# Define regex patterns for each category
+patterns = {
+    "Source of Funds": [
+        r"(?i)source of funds[:\-\?\s]*", r"(?i)sow summary[:\-\?\s]*",
+        r"(?i)sow[:\-\?\s]*", r"(?i)\?source of funds\?", r"(?i)source[\s]*[\-\[\]]*"
+    ],
+    "Purpose of Funds": [
+        r"(?i)purpose of these funds[:\-\?\s]*", r"(?i)pof[:\-\?\s]*", 
+        r"(?i)wf/pof[:\-\?\s]*", r"(?i)purpose[:\-\?\s]*"
+    ],
+    "Where the Funds Have Come From": [
+        r"(?i)where the funds have come from[:\-\?\s]*", r"(?i)wf[:\-\?\s]*", 
+        r"(?i)bwwf[:\-\?\s]*"
+    ],
+    "Rationale": [
+        r"(?i)rationale[:\-\?\s]*", r"(?i)r[:\-\?\s]*", 
+        r"(?i)rationale why[\s\w]*[:\-\?\s]*"
+    ]
+}
 
-# Process the timestamps and match with orders
-chat_df['timestamp'] = pd.to_datetime(chat_df['timestamp'], format='%Y-%m-%d %H:%M:%S')
+def extract_statements(text, patterns):
+    """
+    Extracts statements after predefined expressions using regex.
+    """
+    extracted_data = {category: None for category in patterns.keys()}
 
+    if not text or not isinstance(text, str):
+        return extracted_data  # Return empty if no valid text
 
-	•	For JSON files:
+    for category, regex_list in patterns.items():
+        for regex in regex_list:
+            match = re.search(regex + r"(.*)", text, re.IGNORECASE)
+            if match:
+                extracted_data[category] = match.group(1).strip()
+                break  # Stop at first match
 
-import json
+    return extracted_data
 
-with open(os.path.join(extract_folder, 'chat_transcript.json'), 'r') as f:
-    chat_data = json.load(f)
+# Sample DataFrame
+data = {
+    "comments": [
+        "Source of funds: Cash held in USD account 00099. Where the funds have come from: Internal transfer from Wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of Centessa shares which paid in USD into this account earlier this month.",
+        "SOW: Proceeds from house sale. Origin: Transferred from joint account. Purpose: Used for buying investments. Rationale: Funds cleared as per compliance.",
+        "Source: Monthly salary credited to account. Purpose of these funds: Savings for future investments.",
+        "WF: Transferred from savings account. POF: Investment in stock market. Rationale: Advised by financial planner."
+    ]
+}
 
-# Extract timestamp information
-timestamps = [entry['timestamp'] for entry in chat_data]
+df = pd.DataFrame(data)
 
+# Apply extraction function
+results = df["comments"].apply(lambda x: extract_statements(x, patterns))
 
-	•	For Text files:
+# Add extracted information as new columns dynamically
+for category in patterns.keys():
+    df[f"{category} Statement"] = results.apply(lambda x: x[category])
 
-with open(os.path.join(extract_folder, 'chat_transcript.txt'), 'r') as file:
-    chat_lines = file.readlines()
-
-# Process text to extract timestamp (if needed)
-
-4. Comparing with Order Timestamps:
-
-Once you have both the order timestamps (from the orders dataset) and the chat transcript timestamps (extracted from the files), you can compare the timestamps.
-
-Example: Matching Order Timestamp with Chat Transcript Timestamp
-
-# Example DataFrames for orders and chat transcripts
-orders_df = pd.DataFrame({
-    'order_id': [1, 2, 3],
-    'order_timestamp': pd.to_datetime(['2025-02-01 10:05:00', '2025-02-01 11:15:00', '2025-02-01 12:25:00'])
-})
-
-# Assuming chat_df has been loaded as mentioned in earlier steps
-chat_df = pd.DataFrame({
-    'chat_id': [101, 102, 103],
-    'timestamp': pd.to_datetime(['2025-02-01 10:06:00', '2025-02-01 11:20:00', '2025-02-01 12:30:00'])
-})
-
-# Merge or compare the dataframes based on timestamps (with a tolerance, if needed)
-merged_df = pd.merge_asof(orders_df, chat_df, left_on='order_timestamp', right_on='timestamp', direction='nearest', tolerance=pd.Timedelta('1 min'))
-
-print(merged_df)
-
-This will match orders with the closest chat timestamps within the specified tolerance.
-
-5. Automated Reporting or Alerts:
-
-You can automate reporting or flagging any discrepancies in timestamp matches by using Python’s data analysis tools.
-	•	Create an alert system for mismatched timestamps.
-	•	Generate a report showing mismatched timestamps and their corresponding order details.
-
-Example:
-
-# Identify mismatches
-mismatched_rows = merged_df[merged_df['order_timestamp'] != merged_df['timestamp']]
-
-# Generate a report
-mismatched_rows.to_csv('mismatched_transactions.csv', index=False)
-
-Summary of Solution:
-	•	Automate Data Extraction: Use APIs or web scraping (if needed) to automate the downloading of chat transcripts.
-	•	Extract Data from ZIP: Use Python’s zipfile to extract files from the downloaded ZIP.
-	•	Process Extracted Files: Use appropriate libraries (pandas, json, etc.) to parse the data and extract timestamps.
-	•	Compare Timestamps: Use Python’s merge_asof() to compare the order timestamps with chat transcript timestamps, adding tolerance for near matches.
-	•	Automate Reports: Generate reports or alerts for discrepancies.
-
-Would you like to see any part of the solution implemented in more detail? Let me know!
+# Display DataFrame
+import ace_tools as tools
+tools.display_dataframe_to_user(name="Processed Commentary Data", dataframe=df)

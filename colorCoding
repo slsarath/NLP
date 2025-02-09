@@ -1,78 +1,59 @@
+# Updated implementation to extract all financial values from comments and compare with transaction amount
+
 import pandas as pd
 import re
 
-# Updated regex patterns ensuring "R" is only considered if followed by ":" or "-"
-patterns = {
-    "Source of Funds": [
-        r"(?i)\bsource of funds[:\-\?\s]+", r"(?i)\bsow summary[:\-\?\s]+",
-        r"(?i)\bsow[:\-\?\s]+", r"(?i)\?source of funds\?", r"(?i)\bsource[\s]*[\-\[\]]*"
-    ],
-    "Purpose of Funds": [
-        r"(?i)\bpurpose of these funds[:\-\?\s]+", r"(?i)\bpof[:\-\?\s]+", 
-        r"(?i)\bwf/pof[:\-\?\s]+", r"(?i)\bpurpose[:\-\?\s]+"
-    ],
-    "Where the Funds Have Come From": [
-        r"(?i)\bwhere the funds have come from[:\-\?\s]+", r"(?i)\bwf[:\-\?\s]+", 
-        r"(?i)\bbwwf[:\-\?\s]+"
-    ],
-    "Rationale": [
-        r"(?i)\br[:\-\s]+", r"(?i)\brationale[:\-\?\s]+", 
-        r"(?i)\brationale why[\s\w]*[:\-\?\s]+"
-    ]
-}
-
-# Create a regex pattern that includes all keywords as stopping conditions
-all_patterns = "|".join([f"(?:{pat})" for sublist in patterns.values() for pat in sublist])
-
-def preprocess_text(text):
-    """
-    Preprocess text by normalizing spaces, special characters, and ensuring clean format.
-    """
-    text = text.strip()  # Trim spaces at the start and end
-    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
-    return text
-
-def extract_statements(text, patterns, all_patterns):
-    """
-    Extracts statements after predefined expressions using regex,
-    stopping at the next key phrase or the next full stop (.) while preserving punctuation.
-    """
-    text = preprocess_text(text)  # Preprocess text before extraction
-    extracted_data = {category: None for category in patterns.keys()}
-
-    if not text or not isinstance(text, str):
-        return extracted_data  # Return empty if no valid text
-
-    for category, regex_list in patterns.items():
-        for regex in regex_list:
-            # Capture the full statement until the next key phrase or full stop (.), keeping punctuation
-            compiled_pattern = re.compile(regex + r"([\s\S]+?)(?=\s*(?:{}|[.!?])|$)".format(all_patterns), re.IGNORECASE)
-            match = compiled_pattern.search(text)
-            if match:
-                extracted_data[category] = match.group(1).strip()  # Preserve punctuation
-                break  # Stop at first match
-
-    return extracted_data
-
-# Sample DataFrame
+# Sample DataFrame with comments and transaction amount column
 data = {
     "comments": [
-        "Source of funds: Cash held in USD account 3333 55555. Where the funds have come from: Internal transfer from wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of cente shares which paid in USD into this account earlier this month.",
-        "R: Transaction is legitimate. Purpose: Investment in property.",
-        "Source: Savings account deposit. WF: Transfer from employer account. POF: Future investment.",
-        "Scot has made his wealth through employment in RSS service limited."
-    ]
+        "SOF: Cash held in USD account 3333555. Where the funds have come from: Internal transfer from wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. The amount transferred was 1,200,000.",
+        "SOF - Savings from previous employment, 1567890. Purpose: Investment in property. Another transfer of 3,456,000 was also made.",
+        "Source: Savings account deposit. WF: Transfer from employer account 10,00,000. POF: Future investment. Loan repayment of 2,50,000 was done.",
+        "The total transfer was 5000000 and was completed successfully. The transaction included 750,000 from savings.",
+        "Scot has made his wealth through employment in RSS service limited. No specific financial details given."
+    ],
+    "transaction_amount": ["3,333,555", "1,567,890", "10,00,000", "5,000,000", "50,000"]
 }
 
 df = pd.DataFrame(data)
 
-# Apply extraction function
-results = df["comments"].apply(lambda x: extract_statements(x, patterns, all_patterns))
+def extract_financial_values(text):
+    """
+    Extracts all financial values (numbers, both comma-separated and non-comma-separated) from the given text.
+    """
+    if not text or not isinstance(text, str):
+        return None
 
-# Add extracted information as new columns dynamically
-for category in patterns.keys():
-    df[f"{category} Statement"] = results.apply(lambda x: x[category])
+    # Match financial values (numbers with or without comma separators)
+    financial_values = re.findall(r"\b\d{1,3}(?:,\d{3})*\b|\b\d+\b", text)
 
-# Display DataFrame
+    return ", ".join(financial_values) if financial_values else None
+
+def normalize_number(number_str):
+    """
+    Normalize a number by removing commas for accurate comparison.
+    """
+    return number_str.replace(",", "") if number_str else None
+
+def check_financial_match(financial_values, transaction_amount):
+    """
+    Checks if any extracted financial value matches the transaction amount.
+    """
+    if not financial_values or not transaction_amount:
+        return "No Match"
+    
+    # Convert extracted values and transaction amounts to normalized sets for accurate comparison
+    extracted_set = {normalize_number(val) for val in financial_values.split(", ")}
+    transaction_set = {normalize_number(transaction_amount)}
+
+    return "Match" if extracted_set & transaction_set else "No Match"
+
+# Extract financial values from comments
+df["Extracted Financial Values"] = df["comments"].apply(extract_financial_values)
+
+# Check if any extracted value matches the transaction amount
+df["Financial Match"] = df.apply(lambda row: check_financial_match(row["Extracted Financial Values"], row["transaction_amount"]), axis=1)
+
+# Display DataFrame with new columns
 import ace_tools as tools
-tools.display_dataframe_to_user(name="Processed Commentary Data", dataframe=df)
+tools.display_dataframe_to_user(name="Financial Pattern Matching", dataframe=df)

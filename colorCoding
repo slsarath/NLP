@@ -47,8 +47,8 @@ def extract_statements(text, patterns, all_patterns):
 
     for category, regex_list in patterns.items():
         for regex in regex_list:
-            # Extract full statement until next key phrase or first full stop (.)
-            match = re.search(regex + r"([\s\S]*?)(?=\s*(" + all_patterns + r")|(?<!\b(?:dr|mr|ms|mrs)\b)\.\s|$)", text, re.IGNORECASE)
+            # Capture the statement and ensure it stops at the next key phrase OR punctuation
+            match = re.search(regex + r"([\s\S]*?)(?=\s*(?:{}|\.)|$)".format(all_patterns), text, re.IGNORECASE)
             if match:
                 extracted_data[category] = match.group(1).strip()
                 break  # Stop at first match

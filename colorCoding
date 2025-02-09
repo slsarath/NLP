@@ -1,8 +1,76 @@
-# Create new columns dynamically for each criterion
-for criterion in criteria_keywords.keys():
-    df[f"{criterion} Matching Sentence"] = results.apply(
-        lambda x: x.get(criterion, {}).get("Matching Sentence", None)
-    )
-    df[f"{criterion} Similarity Score"] = results.apply(
-        lambda x: x.get(criterion, {}).get("Similarity Score", 0)
-    )
+import pandas as pd
+import re
+
+# Define regex patterns for each category with word boundaries
+patterns = {
+    "Source of Funds": [
+        r"(?i)\bsource of funds[:\-\?\s]*", r"(?i)\bsow summary[:\-\?\s]*",
+        r"(?i)\bsow[:\-\?\s]*", r"(?i)\?source of funds\?", r"(?i)\bsource[\s]*[\-\[\]]*"
+    ],
+    "Purpose of Funds": [
+        r"(?i)\bpurpose of these funds[:\-\?\s]*", r"(?i)\bpof[:\-\?\s]*", 
+        r"(?i)\bwf/pof[:\-\?\s]*", r"(?i)\bpurpose[:\-\?\s]*"
+    ],
+    "Where the Funds Have Come From": [
+        r"(?i)\bwhere the funds have come from[:\-\?\s]*", r"(?i)\bwf[:\-\?\s]*", 
+        r"(?i)\bbwwf[:\-\?\s]*"
+    ],
+    "Rationale": [
+        r"(?i)\brationale[:\-\?\s]*", r"(?i)\br[:\-\?\s]*", 
+        r"(?i)\brationale why[\s\w]*[:\-\?\s]*"
+    ]
+}
+
+# Combine all patterns into a regex pattern for stopping extraction at next keyword OR full stop (.)
+all_patterns = "|".join([pat for sublist in patterns.values() for pat in sublist])
+
+def preprocess_text(text):
+    """
+    Preprocess text by normalizing spaces, special characters, and ensuring clean format.
+    """
+    text = text.lower()  # Convert to lowercase for uniformity
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
+    text = text.strip()  # Trim spaces at the start and end
+    return text
+
+def extract_statements(text, patterns, all_patterns):
+    """
+    Extracts statements after predefined expressions using regex,
+    stopping at the next key phrase or the next full stop (.)
+    while preserving punctuation.
+    """
+    text = preprocess_text(text)  # Preprocess text before extraction
+    extracted_data = {category: None for category in patterns.keys()}
+
+    if not text or not isinstance(text, str):
+        return extracted_data  # Return empty if no valid text
+
+    for category, regex_list in patterns.items():
+        for regex in regex_list:
+            # Extract full statement until next key phrase or first full stop (.)
+            match = re.search(regex + r"([\s\S]*?)(?=\s*(" + all_patterns + r")|(?<!\b(?:dr|mr|ms|mrs)\b)\.\s|$)", text, re.IGNORECASE)
+            if match:
+                extracted_data[category] = match.group(1).strip()
+                break  # Stop at first match
+
+    return extracted_data
+
+# Sample DataFrame
+data = {
+    "comments": [
+        "Source of funds: Cash held in USD account 3333 55555. Where the funds have come from: Internal transfer from wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of cente shares which paid in USD into this account earlier this month."
+    ]
+}
+
+df = pd.DataFrame(data)
+
+# Apply extraction function
+results = df["comments"].apply(lambda x: extract_statements(x, patterns, all_patterns))
+
+# Add extracted information as new columns dynamically
+for category in patterns.keys():
+    df[f"{category} Statement"] = results.apply(lambda x: x[category])
+
+# Display DataFrame
+import ace_tools as tools
+tools.display_dataframe_to_user(name="Processed Commentary Data", dataframe=df)

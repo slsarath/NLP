@@ -1,33 +1,43 @@
 import pandas as pd
 import re
 
-# Define regex patterns for each category with word boundaries
+# Define regex patterns for each category with clear boundaries
 patterns = {
     "Source of Funds": [
-        r"(?i)source of funds[:\-\?\s]*", r"(?i)sow summary[:\-\?\s]*",
-        r"(?i)sow[:\-\?\s]*", r"(?i)\?source of funds\?", r"(?i)source[\s]*[\-\[\]]*"
+        r"(?i)\bsource of funds[:\-\?\s]*", r"(?i)\bsow summary[:\-\?\s]*",
+        r"(?i)\bsow[:\-\?\s]*", r"(?i)\?source of funds\?", r"(?i)\bsource[\s]*[\-\[\]]*"
     ],
     "Purpose of Funds": [
-        r"(?i)purpose of these funds[:\-\?\s]*", r"(?i)pof[:\-\?\s]*", 
-        r"(?i)wf/pof[:\-\?\s]*", r"(?i)purpose[:\-\?\s]*"
+        r"(?i)\bpurpose of these funds[:\-\?\s]*", r"(?i)\bpof[:\-\?\s]*", 
+        r"(?i)\bwf/pof[:\-\?\s]*", r"(?i)\bpurpose[:\-\?\s]*"
     ],
     "Where the Funds Have Come From": [
-        r"(?i)where the funds have come from[:\-\?\s]*", r"(?i)wf[:\-\?\s]*", 
-        r"(?i)bwwf[:\-\?\s]*"
+        r"(?i)\bwhere the funds have come from[:\-\?\s]*", r"(?i)\bwf[:\-\?\s]*", 
+        r"(?i)\bbwwf[:\-\?\s]*"
     ],
     "Rationale": [
-        r"(?i)rationale[:\-\?\s]*", r"(?i)r[:\-\?\s]*", 
-        r"(?i)rationale why[\s\w]*[:\-\?\s]*"
+        r"(?i)\brationale[:\-\?\s]*", r"(?i)\br[:\-\?\s]*", 
+        r"(?i)\brationale why[\s\w]*[:\-\?\s]*"
     ]
 }
 
-# Combine all patterns into a regex pattern for sentence boundaries
+# Combine all patterns into a regex pattern for stopping extraction at next keyword
 all_patterns = "|".join([pat for sublist in patterns.values() for pat in sublist])
+
+def preprocess_text(text):
+    """
+    Preprocess text by normalizing spaces, special characters, and ensuring clean format.
+    """
+    text = text.lower()  # Convert to lowercase for uniformity
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
+    text = text.strip()  # Trim spaces at the start and end
+    return text
 
 def extract_statements(text, patterns, all_patterns):
     """
-    Extracts statements after predefined expressions using regex but stops at the next key phrase.
+    Extracts statements after predefined expressions using regex, stopping at the next key phrase.
     """
+    text = preprocess_text(text)  # Preprocess text before extraction
     extracted_data = {category: None for category in patterns.keys()}
 
     if not text or not isinstance(text, str):

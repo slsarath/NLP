@@ -1,76 +1,110 @@
-import pandas as pd
-import re
+📢 10-Minute Presentation Script: Stakeholder Insights from Transaction Commentary Analysis
 
-# Define regex patterns for each category with word boundaries
-patterns = {
-    "Source of Funds": [
-        r"(?i)\bsource of funds[:\-\?\s]*", r"(?i)\bsow summary[:\-\?\s]*",
-        r"(?i)\bsow[:\-\?\s]*", r"(?i)\?source of funds\?", r"(?i)\bsource[\s]*[\-\[\]]*"
-    ],
-    "Purpose of Funds": [
-        r"(?i)\bpurpose of these funds[:\-\?\s]*", r"(?i)\bpof[:\-\?\s]*", 
-        r"(?i)\bwf/pof[:\-\?\s]*", r"(?i)\bpurpose[:\-\?\s]*"
-    ],
-    "Where the Funds Have Come From": [
-        r"(?i)\bwhere the funds have come from[:\-\?\s]*", r"(?i)\bwf[:\-\?\s]*", 
-        r"(?i)\bbwwf[:\-\?\s]*"
-    ],
-    "Rationale": [
-        r"(?i)\brationale[:\-\?\s]*", r"(?i)\br[:\-\?\s]*", 
-        r"(?i)\brationale why[\s\w]*[:\-\?\s]*"
-    ]
-}
+Slide 1: Introduction
 
-# Combine all patterns into a regex pattern for stopping extraction at next keyword OR full stop (.)
-all_patterns = "|".join([pat for sublist in patterns.values() for pat in sublist])
+(Time: 0:00 - 1:00)
+“Good [morning/afternoon/evening] everyone. Today, I am excited to present key insights from our transaction commentary analysis. Over the past few weeks, we have focused on improving transparency and risk management by analyzing transactional data, commentary quality, overdue patterns, and financial alignment.”
 
-def preprocess_text(text):
-    """
-    Preprocess text by normalizing spaces, special characters, and ensuring clean format.
-    """
-    text = text.lower()  # Convert to lowercase for uniformity
-    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
-    text = text.strip()  # Trim spaces at the start and end
-    return text
+“This presentation will cover:
+	1.	The methodology we used to extract insights
+	2.	Key findings from our analysis
+	3.	How the commentary quality mechanism works
+	4.	Actionable takeaways for better decision-making”
 
-def extract_statements(text, patterns, all_patterns):
-    """
-    Extracts statements after predefined expressions using regex,
-    stopping at the next key phrase or the next full stop (.)
-    while preserving punctuation.
-    """
-    text = preprocess_text(text)  # Preprocess text before extraction
-    extracted_data = {category: None for category in patterns.keys()}
+Slide 2: Our Approach
 
-    if not text or not isinstance(text, str):
-        return extracted_data  # Return empty if no valid text
+(Time: 1:00 - 3:00)
+“To achieve these insights, we used a structured approach that included:
+	1.	Data Extraction: We analyzed transactional data, including comments provided by bankers.
+	2.	Automated Commentary Analysis: We used Natural Language Processing (NLP) techniques to extract key details such as:
+	•	Source of Funds
+	•	Purpose of Funds
+	•	Where the Funds Came From
+	•	Rationale for the Transaction
+	3.	Quality Scoring System: Based on extracted information, we assigned a quality score (%) to measure completeness.
+	4.	Financial Pattern Matching: We checked whether financial values in comments matched transaction amounts.
+	5.	Overdue Analysis: We identified transactions overdue beyond 14 days and flagged repeated banker defaulters.
+	6.	Pivot-Based Insights: We created multiple pivot tables to summarize risk classification, banker trends, commentary quality, and overdue transactions.”
 
-    for category, regex_list in patterns.items():
-        for regex in regex_list:
-            # Extract full statement until next key phrase or first full stop (.)
-            match = re.search(regex + r"([\s\S]*?)(?=\s*(" + all_patterns + r")|(?<!\b(?:dr|mr|ms|mrs)\b)\.\s|$)", text, re.IGNORECASE)
-            if match:
-                extracted_data[category] = match.group(1).strip()
-                break  # Stop at first match
+“By automating this process, we ensured consistency, accuracy, and efficiency in assessing transaction risk and compliance.”
 
-    return extracted_data
+Slide 3: How the Commentary Quality Mechanism Works
 
-# Sample DataFrame
-data = {
-    "comments": [
-        "Source of funds: Cash held in USD account 3333 55555. Where the funds have come from: Internal transfer from wealth USD account into EDS account. Purpose of these funds: Transferred to NS&I for a better rate of interest. Rationale: We are comfortable with this transaction, funds originate from sale of cente shares which paid in USD into this account earlier this month."
-    ]
-}
+(Time: 3:00 - 5:00)
+“A key component of our analysis is the Commentary Quality Mechanism, which evaluates how well transaction comments capture relevant details. Here’s how it works:”
+	1.	Keyword & Pattern Recognition
+	•	Using predefined patterns & NLP models, we detect key transaction details such as:
+	•	Source of Funds (SOF) – “SOF:”, “Source of Funds:”, etc.
+	•	Purpose of Funds (POF) – “Purpose of these funds:”, “POF:”
+	•	Where the Funds Came From (WF) – “Where the funds have come from:”, “WF:”
+	•	Rationale (Rationale) – “Rationale:”, “R:”
+	2.	Quality Score Calculation
+	•	Each of these four parameters contributes 25% to the total quality score.
+	•	Formula: (Number of parameters found / 4) * 100%
+	•	Example:
+	•	All 4 parameters present → 100% Quality Score
+	•	Only SOF & POF present → 50% Quality Score
+	3.	Handling Missing or Insufficient Comments
+	•	If no parameters are found, we categorize the comment as:
+	•	"None of the parameters present"
+	•	"Not enough information in comments" (if comment length < 150 characters)
+	•	In these cases, the quality score is automatically set to 0%.
 
-df = pd.DataFrame(data)
+“By implementing this scoring mechanism, we ensure that complete and well-documented transactions receive higher scores, while incomplete or vague commentary is flagged for review.”
 
-# Apply extraction function
-results = df["comments"].apply(lambda x: extract_statements(x, patterns, all_patterns))
+Slide 4: Key Findings
 
-# Add extracted information as new columns dynamically
-for category in patterns.keys():
-    df[f"{category} Statement"] = results.apply(lambda x: x[category])
+(Time: 5:00 - 7:00)
+“Our analysis revealed some interesting trends:”
+	1.	Incomplete Commentary Trends
+	•	X% of transactions lacked complete details in comments.
+	•	Y% of transactions had ‘Not enough information in comments’ or missing commentary.
+	2.	Overdue Transactions & Risk
+	•	Z% of transactions were overdue, with High-Risk AML transactions forming a major chunk.
+	•	Some bankers had multiple overdue cases, indicating process inefficiencies.
+	3.	Commentary Quality Score Insights
+	•	The average commentary quality score was X%.
+	•	Transactions with a higher quality score had better financial alignment and fewer compliance issues.
+	4.	Financial Pattern Matching
+	•	Y% of transactions had mismatched financial values, indicating inconsistencies between comments and actual transactions.
+	•	Transactions with complete comments had a Z% higher chance of matching financial details.
 
-# Display DataFrame
-import ace_tools as tools
-tools.display_dataframe_to_user(name="Processed Commentary Data", dataframe=df)
+Slide 5: Data-Driven Insights & Actions
+
+(Time: 7:00 - 8:30)
+“Based on our findings, we recommend the following actions:”
+	1.	Enhancing Commentary Guidelines
+	•	Educate teams on adding complete and accurate transaction details.
+	•	Standardize commentary templates.
+	2.	Addressing High-Risk Transactions
+	•	Introduce proactive monitoring for overdue transactions.
+	•	Conduct deeper risk assessment for frequently overdue bankers.
+	3.	Leveraging AI for Automated Monitoring
+	•	Implement real-time NLP analysis to flag missing details automatically.
+	•	Improve financial validation mechanisms to detect mismatches early.
+
+Slide 6: Next Steps
+
+(Time: 8:30 - 9:30)
+“To operationalize these insights, our next steps include:”
+	•	Refining our Commentary Quality Model to improve accuracy.
+	•	Introducing Banker Risk Profiling for repeated defaulters.
+	•	Rolling Out Monthly Reports with real-time insights.
+	•	Training Sessions for Bankers to improve documentation practices.
+
+“With these improvements, we can significantly enhance risk assessment and compliance, ensuring better decision-making and process efficiency.”
+
+Slide 7: Conclusion & Q&A
+
+(Time: 9:30 - 10:00)
+“To summarize, our automated analysis has helped us:”
+	•	Identify missing or incomplete commentary.
+	•	Detect overdue transactions & high-risk patterns.
+	•	Measure commentary quality and financial alignment.
+	•	Provide actionable recommendations for risk mitigation.
+
+“I appreciate your time today and look forward to your questions!”
+
+(Pause for Q&A)
+
+✅ This script provides a structured and engaging way to present your findings. Let me know if you need any refinements! 🚀

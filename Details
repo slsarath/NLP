@@ -1,26 +1,98 @@
 import re
+import pandas as pd
 
-# Function to clean the text by adding spaces around specific words
-def add_spaces_around_keywords(text):
-    # Define the keywords to be processed
-    keywords = ["source", "purpose", "where", "sof", "sow"]
-    
-    # Loop through each keyword and ensure spaces before and after it
-    for keyword in keywords:
-        # 1. Add a space before the keyword if it's directly preceded by a number or special character
-        text = re.sub(r"(\S)("+keyword+r")", r"\1 \2", text, flags=re.IGNORECASE)  # Match non-space before the keyword
-        
-        # 2. Add a space after the keyword if it's directly followed by a number or special character
-        text = re.sub(r"("+keyword+r")(\S)", r"\1 \2", text, flags=re.IGNORECASE)  # Match non-space after the keyword
+# Updated regex patterns ensuring "SOF" variations are included in Source of Funds extraction
+patterns = {
+    "Source of Funds": [
+        r"(?i)\bsource of funds[:\-\?\s]+", r"(?i)\bsow summary[:\-\?\s]+",
+        r"(?i)\bsow[:\-\?\s]+", r"(?i)\?source of funds\?", r"(?i)\bsource[\s]*[\-\[\]]*",
+        r"(?i)\bsof[:\-\s]+"  # Added "SOF" variations
+    ],
+    "Purpose of Funds": [
+        r"(?i)\bpurpose of these funds[:\-\?\s]+", r"(?i)\bpof[:\-\?\s]+", 
+        r"(?i)\bwf/pof[:\-\?\s]+", r"(?i)\bpurpose[:\-\?\s]+"
+    ],
+    "Where the Funds Have Come From": [
+        r"(?i)\bwhere the funds have come from[:\-\?\s]+", r"(?i)\bwf[:\-\?\s]+", 
+        r"(?i)\bbwwf[:\-\?\s]+"
+    ],
+    "Rationale": [
+        r"(?i)\br[:\-\s]+",  # "R" must be followed by ":" or "-"
+        r"(?i)\brationale[:\-\?\s]+", 
+        r"(?i)\brationale why[\s\w]*[:\-\?\s]+"
+    ]
+}
 
-    return text.strip()
+# Combine stopping patterns, excluding same category phrases
+def generate_stopping_patterns(exclude_category):
+    """Generates a regex pattern that matches any key phrase from categories other than exclude_category."""
+    other_patterns = [
+        f"(?:{pat})"
+        for category, sublist in patterns.items()
+        if category != exclude_category  # Exclude phrases from the current category being extracted
+        for pat in sublist
+    ]
+    return "|".join(other_patterns)
 
-# Example usage with the comment
-comment_text = "i ahve something $10mwhere the funds have come from - they have come from client?s by way of bonus."
+# Preprocess text (normalize spaces, remove unnecessary characters)
+def preprocess_text(text):
+    """Preprocesses text by normalizing spaces, special characters, and ensuring clean format."""
+    text = text.strip()  # Trim spaces at the start and end
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with a single space
+    return text
 
-# Apply the function to clean the comment
-cleaned_comment = add_spaces_around_keywords(comment_text)
+# Updated function to extract statements dynamically
+def extract_statements(text, patterns):
+    """
+    Extracts statements after predefined expressions using regex,
+    stopping at the next key phrase from another parameter or the next full stop (.).
+    """
+    text = preprocess_text(text)  # Preprocess text before extraction
+    extracted_data = {category: None for category in patterns.keys()}
 
-# Display the result
-print("Original Comment:", comment_text)
-print("Cleaned Comment:", cleaned_comment)
+    if not text or not isinstance(text, str):
+        return extracted_data  # Return empty if no valid text
+
+    for category, regex_list in patterns.items():
+        stopping_patterns = generate_stopping_patterns(category)  # Stop at other categories or full stop
+
+        for regex in regex_list:
+            try:
+                # Capture the full statement until the next key phrase from another category or full stop (.)
+                compiled_pattern = re.compile(
+                    regex + r"([\s\S]+?)(?=\s*(?:{}|[.!?])|$)".format(stopping_patterns), re.IGNORECASE
+                )
+                match = compiled_pattern.search(text)
+
+                if match:
+                    extracted_data[category] = match.group(1).strip()  # Preserve punctuation
+                    break  # Stop at first match within this category
+                
+            except re.error as e:
+                print(f"Regex error: {e}")
+
+    return extracted_data
+
+# Example DataFrame
+data = {
+    "comments": [
+        """This payment was not expected and was discussed with client post arrival. See at SE link - https://bsdsuk-b2c.lighdstning.force.com/lightningss/r/Interaction/0kzJ500dsfs00014Az9IAE/view?ws=2Flightning®:2Fr%2FAccount%2F001466Gdd0sasda0002Z90PGQAZ®2Fview
+        Source of funds: The source of funds for this payment was Ram and Sita investment portfolio with Brown Shipley Where have funds come from: Cash from settled investment sales at Brown Shipley was paid to Ram and Sita account with us as Barclays remains their main transactional bank. 
+        Purpose of funds: Ram and Christine have subsequently paid funds away to Ellisons solicitors for a land purchase. See call with WMCS - https://bsdsuk-b2c.lighdstning.force.com/lightningss/x/Interaction/0kzJ500dsfs00014Az9IAE/view
+        ?ws=:2Flightning:2Fr:2FAccount:2F001466Gdd0sasda0002Z90PGQAZ?2FviewConfirmation of comfort with the transaction:
+        Based on the above detail, I confirm I am comfortable with the size and nature of this payment and that it is in line with the expected payment behaviours of this client and our recorded transaction profile"""
+    ]
+}
+
+df = pd.DataFrame(data)
+
+# Apply extraction function
+results = df["comments"].apply(lambda x: extract_statements(x, patterns))
+
+# Add extracted information as new columns dynamically
+for category in patterns.keys():
+    df[f"{category} Statement"] = results.apply(lambda x: x[category])
+
+# Display DataFrame
+import ace_tools as tools
+tools.display_dataframe_to_user(name="Processed Commentary Data", dataframe=df)

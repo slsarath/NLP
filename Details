@@ -1,3 +1,24 @@
-=IF(AND([@AML Classification]="Standard Risk", [@Transaction Value]>=300000, [@Status]="WM Completed"), "Valid",
-IF(AND(OR([@AML Classification]="PEP", [@AML Classification]="High Risk"), [@Transaction Value]>75000, [@Status]="WM Completed"), "Valid",
-IF(AND(OR([@AML Classification]="PEP", [@AML Classification]="High Risk"), [@Transaction Value]>500000, OR([@Status]="WM Completed", [@Status]="TM Completed")), "Valid", "Invalid")))
+import re
+
+# Function to clean the text by adding spaces around specific words
+def add_spaces_around_keywords(text):
+    # Define the keywords to be processed
+    keywords = ["source", "purpose", "where", "sof", "sow"]
+    
+    # Loop through each keyword and ensure spaces before and after it
+    for keyword in keywords:
+        # Add a space before the keyword if not already present, even when preceded by numbers or special characters
+        text = re.sub(r"(?<!\s)(?=\S)("+keyword+r")(?!\s)", r" \1 ", text, flags=re.IGNORECASE)  # for word followed by keyword
+        text = re.sub(r"(?<=\S)(?=\b)("+keyword+r")", r" \1 ", text, flags=re.IGNORECASE)  # for keyword followed by word
+    
+    return text.strip()
+
+# Example usage with the comment
+comment_text = "94msource where94 sowPurpose  sof sowsome other text $10where the funds."
+
+# Apply the function to clean the comment
+cleaned_comment = add_spaces_around_keywords(comment_text)
+
+# Display the result
+print("Original Comment:", comment_text)
+print("Cleaned Comment:", cleaned_comment)

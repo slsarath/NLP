@@ -16,7 +16,7 @@ def add_spaces_around_keywords(text):
     return text.strip()
 
 # Example usage with the comment
-comment_text = "94msource where94 sowPurpose sof sowsome other text $10where the funds."
+comment_text = "i ahve something $10mwhere the funds have come from - they have come from client?s by way of bonus."
 
 # Apply the function to clean the comment
 cleaned_comment = add_spaces_around_keywords(comment_text)

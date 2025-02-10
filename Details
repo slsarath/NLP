@@ -7,11 +7,11 @@ def add_spaces_around_keywords(text):
     
     # Loop through each keyword and ensure spaces before and after it
     for keyword in keywords:
-        # Add a space before the keyword if it is directly preceded by a number or special character
-        text = re.sub(r"(\S)("+keyword+r")", r"\1 \2", text, flags=re.IGNORECASE)
+        # 1. Add a space before the keyword if it's directly preceded by a number or special character
+        text = re.sub(r"(\S)("+keyword+r")", r"\1 \2", text, flags=re.IGNORECASE)  # Match non-space before the keyword
         
-        # Add a space after the keyword if it is directly followed by a number or special character
-        text = re.sub(r"("+keyword+r")(\S)", r"\1 \2", text, flags=re.IGNORECASE)
+        # 2. Add a space after the keyword if it's directly followed by a number or special character
+        text = re.sub(r"("+keyword+r")(\S)", r"\1 \2", text, flags=re.IGNORECASE)  # Match non-space after the keyword
 
     return text.strip()
 

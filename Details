@@ -7,14 +7,18 @@ def add_spaces_around_keywords(text):
     
     # Loop through each keyword and ensure spaces before and after it
     for keyword in keywords:
-        # Add a space before the keyword if not already present, even when preceded by numbers or special characters
-        text = re.sub(r"(?<!\s)(?=\S)("+keyword+r")(?!\s)", r" \1 ", text, flags=re.IGNORECASE)  # for word followed by keyword
-        text = re.sub(r"(?<=\S)(?=\b)("+keyword+r")", r" \1 ", text, flags=re.IGNORECASE)  # for keyword followed by word
-    
+        # Add space before the keyword if not already present
+        # This will handle cases like "94msource" -> "94m source"
+        text = re.sub(r"(?<=\S)(" + keyword + r")", r" \1", text, flags=re.IGNORECASE)
+
+        # Add space after the keyword if not already present
+        # This will handle cases like "source94" -> "source 94"
+        text = re.sub(r"(" + keyword + r")(?=\S)", r"\1 ", text, flags=re.IGNORECASE)
+
     return text.strip()
 
 # Example usage with the comment
-comment_text = "94msource where94 sowPurpose  sof sowsome other text $10where the funds."
+comment_text = "94msource where94 sowPurpose sof sowsome other text $10where the funds."
 
 # Apply the function to clean the comment
 cleaned_comment = add_spaces_around_keywords(comment_text)

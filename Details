@@ -1,23 +1,125 @@
-import pandas as pd
-import re
+Presentation Script for Large Transaction Reporting
 
-# Function to clean text data
-def clean_text(value):
-    if isinstance(value, str):
-        value = re.sub(r'[^\x20-\x7E]', '', value)  # Remove non-printable characters
-        value = value.strip()  # Trim spaces
-    return value
+Introduction
 
-# Function to prevent Excel formula injection
-def prevent_formula_injection(value):
-    if isinstance(value, str) and value.startswith(("=", "+", "-")):
-        return "'" + value  # Add a leading apostrophe to prevent formula execution
-    return value
+Good [morning/afternoon], everyone. Today, I am excited to walk you through the automated process we developed to enhance Large Transaction Reporting, which was previously done manually.
 
-# Apply cleaning functions to the DataFrame
-df = df.applymap(clean_text)  # Clean invalid characters
-df = df.applymap(prevent_formula_injection)  # Prevent formula injection
-df.columns = [col.replace("\n", " ").strip() for col in df.columns]  # Fix column names
+Background & Business Problem
 
-# Save to Excel safely
-df.to_excel("output.xlsx", index=False, encoding="utf-8")
+As discussed with Ram and Shyam, their team currently selects samples manually and conducts analysis based on two key aspects:
+	1.	Timeliness of the Transaction – Checking if transactions are processed within the expected time frame.
+	2.	Commentary Quality – Ensuring that transaction justifications contain all necessary details to be considered complete.
+
+In the existing manual process, commentary completeness is assessed based on four key parameters:
+	•	Source of Funds – Where the money originally comes from.
+	•	Purpose of Funds – The reason for the transaction.
+	•	Where the Funds Have Come From – The movement of funds before the transaction.
+	•	Rationale for the Transaction – Why the transaction is justified.
+
+We have now automated this process by extracting and analyzing these parameters programmatically.
+
+Key Enhancements & Automation Steps
+
+1. Timeliness Check (Overdue Analysis)
+
+Previously, overdue transactions were identified manually. We automated this by introducing a day counter condition:
+✅ If the transaction is delayed beyond 14 days, it is automatically tagged as overdue.
+
+This eliminates the need for manual review of each transaction’s timeliness.
+
+2. Commentary Quality Assessment
+
+When analyzing the comments, we noticed that users enter these four key parameters in different ways, sometimes using abbreviations or informal terms.
+
+To handle this, we developed a custom text extraction process using Natural Language Processing (NLP) techniques.
+
+Challenges We Addressed:
+	•	Comments were written inconsistently (e.g., “SOF:”, “SOW:”, “Source of Wealth”)
+	•	Some details were mixed with other parameters
+	•	Keywords could be attached to other words without spaces
+
+To solve this, we built a text preprocessing and extraction mechanism that:
+✔ Standardizes text formats (removing extra spaces, handling abbreviations)
+✔ Extracts relevant phrases dynamically (detects sentences related to each parameter)
+✔ Ensures completeness by checking if all four parameters are present
+
+3. Advanced Text Extraction & Processing
+
+We developed a custom rule-based extraction engine to capture key details from the comments.
+
+How It Works:
+✅ First, we clean and normalize the text (removing unwanted characters, fixing missing spaces).
+✅ Next, we search for predefined patterns that indicate each parameter.
+✅ If a parameter is found, we capture its full statement until either:
+	•	A full stop (.)
+	•	The start of another key parameter
+
+For example, consider this original comment:
+
+	“Source of funds: The source of funds for this payment was Ram and Sita investment portfolio with Brown Shipley. Where have funds come from: Cash from settled investment sales at Brown Shipley.”
+
+Extracted Results:
+✔ Source of Funds → The source of funds for this payment was Ram and Sita investment portfolio with Brown Shipley.
+✔ Where the Funds Have Come From → Cash from settled investment sales at Brown Shipley.
+
+This ensures high accuracy while keeping the information structured.
+
+4. Quality Scoring Mechanism
+
+Once all four commentary parameters are extracted, we assign a Commentary Quality Score based on completeness:
+
+Parameters Found	Commentary Score (%)
+4 Parameters (All Found)	100% (Likely Complete)
+3 Parameters	75%
+2 Parameters	50% (Needs Review)
+1 Parameter	25%
+0 Parameters	0% (Likely Incomplete)
+No parameters + Short Comment	Not enough information
+
+This automates the evaluation process and eliminates manual subjectivity in assessing completeness.
+
+5. Financial Match Check
+
+To enhance validation, we also extract financial values from the comments and compare them with the transaction amount.
+✅ If the extracted amount matches the recorded transaction value, we flag it as a valid match.
+✅ If no match is found, it suggests potential missing or incorrect information.
+
+6. Overdue & Defaulter Analysis (Pivot Insights)
+
+Using the extracted insights, we created Pivot Table-based views for:
+✅ Overdue Analysis – Identifying repeated defaulters who frequently miss deadlines.
+✅ AML Risk Segmentation – Tracking overdue cases across High Risk, PEP (Politically Exposed Persons), and Standard Risk categories.
+✅ Banker Performance View – Highlighting how individual bankers manage large transactions.
+
+Impact & Key Benefits
+
+💡 100% Automation of Manual Checks – No need for manual sample selection & review.
+💡 Consistent & Accurate Evaluation – Eliminates human subjectivity in commentary assessment.
+💡 Proactive Risk Management – Identifies overdue transactions instantly.
+💡 Clear Justifications for Large Transactions – Ensures all required details are present in commentary.
+💡 Faster Reporting & Insights – Enables quicker decision-making for transaction approvals.
+
+Demo of Output Excel File
+
+Now, let me walk you through the final output in Excel, where you will see:
+	1.	Overdue Transactions Flag
+	2.	Extracted Commentary Parameters
+	3.	Commentary Quality Score (%)
+	4.	Financial Match Check
+	5.	Pivot Views for Overdue Analysis & Banker-Level Reporting
+
+Conclusion & Next Steps
+
+This automated solution significantly reduces manual effort while ensuring that transaction reports remain accurate, complete, and timely.
+
+I would be happy to take any questions and discuss potential refinements based on your feedback. 🚀
+
+(End of Presentation)
+
+This script ensures a clear and structured explanation for non-technical stakeholders, covering:
+✅ Why we built this
+✅ How we automated it
+✅ Key insights from the data
+✅ How it benefits the business
+
+Let me know if you need any adjustments! 🚀

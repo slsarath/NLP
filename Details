@@ -1,10 +1,17 @@
-1.	Risk – A possible problem that could happen in the future.
-Example: If a bank gives a loan to someone, there is a risk they might not repay it.
-	2.	Issue – A problem that has already happened.
-Example: The bank realizes that a customer has missed their loan payments multiple times.
-	3.	Control – A safeguard or rule to reduce risk.
-Example: Before approving a loan, the bank checks the customer’s credit score to make sure they can repay it.
-	4.	Process – A set of steps to complete a task.
-Example: The process of opening a bank account includes identity verification, filling out forms, and making an initial deposit.
-	5.	Risk Event – A specific situation where a risk actually happens.
-Example: A customer defaults on their loan, causing the bank to lose money.
+Here’s how risk, issue, and control are linked together in financial services:
+	1.	Risk is the potential for something bad to happen.
+	•	Example: A bank may face the risk of a customer not repaying a loan (default risk).
+	2.	Control is put in place to prevent that risk from happening or to minimize its impact.
+	•	Example: To reduce the risk of loan defaults, the bank checks the customer’s credit score, looks at their repayment history, and asks for collateral.
+	3.	If the control is ineffective or not followed, it can lead to an issue.
+	•	Example: If the credit check is not done properly, the bank might approve a loan for someone who can’t repay. This leads to the issue of the customer defaulting on their loan.
+
+Linking them:
+	•	Risk identifies the possibility of a problem (e.g., loan default).
+	•	Control is the action or process taken to prevent or reduce the impact of the risk (e.g., credit score check).
+	•	If the control fails, it can lead to an issue (e.g., the customer defaulting on the loan).
+
+In summary:
+	•	Risk is potential trouble.
+	•	Control is a safety measure to avoid that trouble.
+	•	Issue happens when the trouble (risk) occurs despite controls.

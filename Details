@@ -1,17 +1,29 @@
-Here’s how risk, issue, and control are linked together in financial services:
-	1.	Risk is the potential for something bad to happen.
-	•	Example: A bank may face the risk of a customer not repaying a loan (default risk).
-	2.	Control is put in place to prevent that risk from happening or to minimize its impact.
-	•	Example: To reduce the risk of loan defaults, the bank checks the customer’s credit score, looks at their repayment history, and asks for collateral.
-	3.	If the control is ineffective or not followed, it can lead to an issue.
-	•	Example: If the credit check is not done properly, the bank might approve a loan for someone who can’t repay. This leads to the issue of the customer defaulting on their loan.
+import pandas as pd
 
-Linking them:
-	•	Risk identifies the possibility of a problem (e.g., loan default).
-	•	Control is the action or process taken to prevent or reduce the impact of the risk (e.g., credit score check).
-	•	If the control fails, it can lead to an issue (e.g., the customer defaulting on the loan).
+# Sample DataFrame
+data = {
+    "model_output": [
+        [('failure to follow procedure', 0.4987), ('resulting from erroneous payments due to gap in the process', 0.4939), ('staff error', 0.4927)]
+    ],
+    "erroneous_payment": ["Some Value"]  # Non-blank value triggers reordering
+}
 
-In summary:
-	•	Risk is potential trouble.
-	•	Control is a safety measure to avoid that trouble.
-	•	Issue happens when the trouble (risk) occurs despite controls.
+df = pd.DataFrame(data)
+
+# Function to reorder tuples if 'erroneous payment' column is not blank
+def reorder_model_output(row):
+    if pd.notna(row["erroneous_payment"]) and row["erroneous_payment"].strip():  # Check for non-blank values
+        phrases = row["model_output"]
+        erroneous_tuples = [t for t in phrases if "erroneous" in t[0].lower()]
+        other_tuples = [t for t in phrases if "erroneous" not in t[0].lower()]
+        
+        # If there's an "erroneous" phrase, move it to the front
+        if erroneous_tuples:
+            return erroneous_tuples + other_tuples[:2]  # Keep only top 3 values
+    return row["model_output"]
+
+# Apply function to reorder the model output
+df["model_output"] = df.apply(reorder_model_output, axis=1)
+
+# Display updated DataFrame
+print(df)

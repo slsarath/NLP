@@ -1,35 +1,4 @@
-import pandas as pd
+import ast
 
-def map_semantic_search(semantics, mapping):
-    if not semantics:  # Check if semantics is empty
-        return None  
-
-    semantics1 = [i[0] for i in semantics]  # Extract only the phrases
-
-    first_phrase = semantics1[0] if semantics1 else None  # Get first phrase safely
-
-    if first_phrase:
-        return [key for key, values in mapping.items() if first_phrase in values]
-    return []
-
-# Sample DataFrame
-raw_data = pd.DataFrame({
-    'combined_top_three': [
-        [('failure to follow procedure', 0.4987), ('resulting from erroneous payments', 0.4939), ('staff error', 0.4927)],
-        [('system error', 0.52), ('human oversight', 0.48)],
-        []  # Example of an empty list that could cause errors
-    ]
-})
-
-# Handling list indexing properly to avoid errors
-raw_data['Top Phrase'] = raw_data['combined_top_three'].apply(lambda x: x[0][0] if len(x) > 0 else None)
-raw_data['Top Phrase Similarity Score'] = raw_data['combined_top_three'].apply(lambda x: x[0][1] if len(x) > 0 else None)
-
-raw_data['Second Top Phrase'] = raw_data['combined_top_three'].apply(lambda x: x[1][0] if len(x) > 1 else None)
-raw_data['Second Top Phrase Similarity Score'] = raw_data['combined_top_three'].apply(lambda x: x[1][1] if len(x) > 1 else None)
-
-raw_data['Third Top Phrase'] = raw_data['combined_top_three'].apply(lambda x: x[2][0] if len(x) > 2 else None)
-raw_data['Third Top Phrase Similarity Score'] = raw_data['combined_top_three'].apply(lambda x: x[2][1] if len(x) > 2 else None)
-
-# Display result
-print(raw_data)
+# Convert string to list format
+raw_data['combined_top_three'] = raw_data['combined_top_three'].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)

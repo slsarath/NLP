@@ -1,29 +1,35 @@
 import pandas as pd
 
+def map_semantic_search(semantics, mapping):
+    if not semantics:  # Check if semantics is empty
+        return None  
+
+    semantics1 = [i[0] for i in semantics]  # Extract only the phrases
+
+    first_phrase = semantics1[0] if semantics1 else None  # Get first phrase safely
+
+    if first_phrase:
+        return [key for key, values in mapping.items() if first_phrase in values]
+    return []
+
 # Sample DataFrame
-data = {
-    "model_output": [
-        [('failure to follow procedure', 0.4987), ('resulting from erroneous payments due to gap in the process', 0.4939), ('staff error', 0.4927)]
-    ],
-    "erroneous_payment": ["Some Value"]  # Non-blank value triggers reordering
-}
+raw_data = pd.DataFrame({
+    'combined_top_three': [
+        [('failure to follow procedure', 0.4987), ('resulting from erroneous payments', 0.4939), ('staff error', 0.4927)],
+        [('system error', 0.52), ('human oversight', 0.48)],
+        []  # Example of an empty list that could cause errors
+    ]
+})
 
-df = pd.DataFrame(data)
+# Handling list indexing properly to avoid errors
+raw_data['Top Phrase'] = raw_data['combined_top_three'].apply(lambda x: x[0][0] if len(x) > 0 else None)
+raw_data['Top Phrase Similarity Score'] = raw_data['combined_top_three'].apply(lambda x: x[0][1] if len(x) > 0 else None)
 
-# Function to reorder tuples if 'erroneous payment' column is not blank
-def reorder_model_output(row):
-    if pd.notna(row["erroneous_payment"]) and row["erroneous_payment"].strip():  # Check for non-blank values
-        phrases = row["model_output"]
-        erroneous_tuples = [t for t in phrases if "erroneous" in t[0].lower()]
-        other_tuples = [t for t in phrases if "erroneous" not in t[0].lower()]
-        
-        # If there's an "erroneous" phrase, move it to the front
-        if erroneous_tuples:
-            return erroneous_tuples + other_tuples[:2]  # Keep only top 3 values
-    return row["model_output"]
+raw_data['Second Top Phrase'] = raw_data['combined_top_three'].apply(lambda x: x[1][0] if len(x) > 1 else None)
+raw_data['Second Top Phrase Similarity Score'] = raw_data['combined_top_three'].apply(lambda x: x[1][1] if len(x) > 1 else None)
 
-# Apply function to reorder the model output
-df["model_output"] = df.apply(reorder_model_output, axis=1)
+raw_data['Third Top Phrase'] = raw_data['combined_top_three'].apply(lambda x: x[2][0] if len(x) > 2 else None)
+raw_data['Third Top Phrase Similarity Score'] = raw_data['combined_top_three'].apply(lambda x: x[2][1] if len(x) > 2 else None)
 
-# Display updated DataFrame
-print(df)
+# Display result
+print(raw_data)

@@ -1,23 +1,5 @@
 import pandas as pd
 
-# Load the Excel files
-df1 = pd.read_excel('file1.xlsx')  # Contains 'process name' and 'id'
-df2 = pd.read_excel('file2.xlsx')  # Contains 'process name' to match
-
-# Merge DataFrames on 'process name'
-merged_df = pd.merge(df2, df1[['process name', 'id']], on='process name', how='left')
-
-# Handle missing IDs
-merged_df['id'].fillna('Not Found', inplace=True)
-
-# Save the result to a new Excel file
-merged_df.to_excel('merged_output.xlsx', index=False)
-
-print("Merging complete. The output is saved as 'merged_output.xlsx'.")
-
-
-import pandas as pd
-
 # Load both Excel files
 file1 = "risk_data.xlsx"  # First file with Risk ID, Risk Name, L1, L2, L3, L4
 file2 = "lookup_risks.xlsx"  # Second file with Risk Names ending with _L3 or _L4

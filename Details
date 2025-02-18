@@ -1,44 +1,34 @@
 import pandas as pd
+import re
 
-# Load primary file (contains 'risk id', 'process id', 'organization')
-df_primary = pd.read_excel('primary.xlsx')  # Replace with your actual file path
+# Sample DataFrame with three text fields: Name, description, and root cause
+data = {
+    'Name': ['Payment issue in DIS', 'Error in craft system', 'Network failure', 'Thir limited (UKC) delay'],
+    'description': ['There is a problem with DIS module', 'System crashed unexpectedly in craft', 'Minor hiccup observed', 'Delay in response from thir limited (ukc)'],
+    'root cause': ['DIS service outage', 'Bug in craft', 'No platform involved', 'Issue identified in thir limited (ukc)']
+}
 
-# List of file paths for the 6 files that contain 'risk id', 'process id', 'org name', and 'control id'
-file_list = ['file2.xlsx', 'file3.xlsx', 'file4.xlsx', 'file5.xlsx', 'file6.xlsx', 'file7.xlsx']
+df = pd.DataFrame(data)
 
-# Load each of the 6 files into a list of DataFrames
-dfs = [pd.read_excel(file) for file in file_list]
+# List of platforms to search for
+platforms = ["dis", "rishi payment gateway", "craft", "thir limited (ukc)"]
 
-# Standardize column names by stripping whitespace
-df_primary.columns = df_primary.columns.str.strip()
-for df in dfs:
-    df.columns = df.columns.str.strip()
-
-# Initialize a new column in the primary DataFrame for control id
-df_primary['control id'] = None
-
-# Loop through each row in the primary file
-for index, row in df_primary.iterrows():
-    risk_id = row['risk id']
-    process_id = row['process id']
-    org = row['organization']
+# Function to search for platform names across the three columns
+def find_platform(row):
+    # Combine all text fields and convert to lower case for case-insensitive matching
+    combined_text = " ".join([str(row['Name']), str(row['description']), str(row['root cause'])]).lower()
     
-    control_id_found = None  # To store the matched control id, if found
-    
-    # Loop through each of the 6 DataFrames
-    for df in dfs:
-        # In these files, assume the organization column is named 'org name'
-        match = df[(df['risk id'] == risk_id) & 
-                   (df['process id'] == process_id) & 
-                   (df['org name'] == org)]
-        if not match.empty:
-            control_id_found = match.iloc[0]['control id']  # Get the control id from the first matching row
-            break  # Stop checking further files once a match is found
-            
-    # If a match is found, assign the control id; otherwise, mark as 'Not Found'
-    df_primary.at[index, 'control id'] = control_id_found if control_id_found is not None else 'Not Found'
+    # Regular expression pattern to match whole words, ensuring we don't match substrings (e.g., 'dis' in 'disabled')
+    found = []
+    for platform in platforms:
+        pattern = r'\b' + re.escape(platform.lower()) + r'\b'  # \b matches word boundaries
+        if re.search(pattern, combined_text):
+            found.append(platform)
 
-# Save the updated primary DataFrame to a new Excel file
-df_primary.to_excel('primary_with_control_id.xlsx', index=False)
+    # Return a comma-separated string if any found, else return None or an empty string
+    return ", ".join(found) if found else None
 
-print("Completed merging. Updated file saved as 'primary_with_control_id.xlsx'.")
+# Apply the function to each row and store results in a new column
+df['Platform Found'] = df.apply(find_platform, axis=1)
+
+print(df)

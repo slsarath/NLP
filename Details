@@ -1,41 +1,21 @@
 import pandas as pd
 
-# Load both Excel files
-file1 = "risk_data.xlsx"  # First file with Risk ID, Risk Name, L1, L2, L3, L4
-file2 = "lookup_risks.xlsx"  # Second file with Risk Names ending with _L3 or _L4
+# Load the Excel files
+df1 = pd.read_excel('file1.xlsx')  # Contains 'risk id', 'process id', 'organization'
+df2 = pd.read_excel('file2.xlsx')  # Contains 'risk id', 'process id', 'org name', 'control id'
 
-df1 = pd.read_excel(file1)  # First Excel containing risk ID and levels
-df2 = pd.read_excel(file2)  # Second Excel containing risk names with _L3 or _L4
-
-# Ensure column names are correct
+# Ensure column names are correct and strip any leading/trailing spaces
 df1.columns = df1.columns.str.strip()
 df2.columns = df2.columns.str.strip()
 
-# Create a dictionary to map risk names to risk IDs
-risk_id_mapping = df1.set_index("risk name")["risk id"].to_dict()
+# Merge DataFrames on 'risk id', 'process id', and 'organization'/'org name'
+merged_df = pd.merge(df1, df2, left_on=['risk id', 'process id', 'organization'],
+                     right_on=['risk id', 'process id', 'org name'], how='left')
 
-# Function to get Risk ID based on suffix
-def get_risk_id(risk_name):
-    if risk_name.endswith("_L3"):
-        base_name = risk_name.replace("_L3", "")  # Remove _L3
-        return risk_id_mapping.get(base_name, "Not Found")  # Lookup Risk ID directly
+# Handle missing control ids
+merged_df['control id'].fillna('Not Found', inplace=True)
 
-    elif risk_name.endswith("_L4"):
-        base_name = risk_name.replace("_L4", "")  # Remove _L4
-        
-        # Find the matching row in df1
-        l3_value = df1.loc[df1["risk name"] == base_name, "L3"].values
-        
-        if len(l3_value) > 0:
-            # Find the Risk ID for the corresponding L3 value
-            return risk_id_mapping.get(l3_value[0], "Not Found")
+# Save the result to a new Excel file
+merged_df.to_excel('merged_output.xlsx', index=False)
 
-    return "Not Found"
-
-# Apply function to get Risk ID for each row
-df2["Mapped Risk ID"] = df2["risk name"].apply(get_risk_id)
-
-# Save the updated file
-df2.to_excel("updated_lookup_risks.xlsx", index=False)
-
-print("Process completed. Updated file saved as 'updated_lookup_risks.xlsx'.")
+print("Merging complete. The output is saved as 'merged_output.xlsx'.")

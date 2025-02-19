@@ -1,34 +1,28 @@
 import pandas as pd
-import re
 
-# Sample DataFrame with three text fields: Name, description, and root cause
+# Sample DataFrame with a column 'model_output'
 data = {
-    'Name': ['Payment issue in DIS', 'Error in craft system', 'Network failure', 'Thir limited (UKC) delay'],
-    'description': ['There is a problem with DIS module', 'System crashed unexpectedly in craft', 'Minor hiccup observed', 'Delay in response from thir limited (ukc)'],
-    'root cause': ['DIS service outage', 'Bug in craft', 'No platform involved', 'Issue identified in thir limited (ukc)']
+    'model_output': [
+        [('failure to follow procedure', 0.49871835112571716), 
+         ('resulting from erroneous payments due to gap in the process', 0.4939565062522888), 
+         ('staff error', 0.4927155375480652)]
+    ]
 }
 
 df = pd.DataFrame(data)
 
-# List of platforms to search for
-platforms = ["dis", "rishi payment gateway", "craft", "thir limited (ukc)"]
+def extract_erroneous_tuple(semantics):
+    """
+    Loop through a list of tuples and return the first tuple
+    whose phrase contains 'erroneous' (case-insensitive).
+    If not found, return (None, None).
+    """
+    for phrase, score in semantics:
+        if "erroneous" in phrase.lower():
+            return phrase, score
+    return None, None
 
-# Function to search for platform names across the three columns
-def find_platform(row):
-    # Combine all text fields and convert to lower case for case-insensitive matching
-    combined_text = " ".join([str(row['Name']), str(row['description']), str(row['root cause'])]).lower()
-    
-    # Regular expression pattern to match whole words, ensuring we don't match substrings (e.g., 'dis' in 'disabled')
-    found = []
-    for platform in platforms:
-        pattern = r'\b' + re.escape(platform.lower()) + r'\b'  # \b matches word boundaries
-        if re.search(pattern, combined_text):
-            found.append(platform)
-
-    # Return a comma-separated string if any found, else return None or an empty string
-    return ", ".join(found) if found else None
-
-# Apply the function to each row and store results in a new column
-df['Platform Found'] = df.apply(find_platform, axis=1)
+# Apply the function and create two new columns.
+df['Erroneous Phrase'], df['Erroneous Similarity Score'] = zip(*df['model_output'].apply(extract_erroneous_tuple))
 
 print(df)

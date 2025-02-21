@@ -1,37 +1,59 @@
 import pandas as pd
+import re  # For using regular expressions
 
-# Sample DataFrame with a column 'model_output'
+# Sample DataFrame with a column 'name' containing textual values
 data = {
-    'model_output': [
-        [('failure to follow procedure', 0.49871835112571716), 
-         ('resulting from erroneous payments due to gap in the process', 0.4939565062522888), 
-         ('staff error', 0.4927155375480652)],
-        [('no error', 0.0)],
-        [],  # Empty list to check for edge cases
-        [None]  # A case where an unexpected value (None) is present in the list
+    'name': [
+        'Incorrect value payment submitted by client',
+        'Duplicate payment due to system error',
+        'Low risk payment issue identified',
+        'Overpayment made by client',
+        'High risk payment detected',
+        'Underpayment adjustment required'
     ]
 }
 
 df = pd.DataFrame(data)
 
-def extract_erroneous_tuple(semantics):
-    """
-    Loop through a list of tuples and return the first tuple
-    whose phrase contains 'erroneous' (case-insensitive).
-    If not found, return (None, None).
-    """
-    if not semantics or not isinstance(semantics, list):
-        return (None, None)  # Handle empty lists or non-list values safely
-    
-    for entry in semantics:
-        if isinstance(entry, tuple) and len(entry) == 2:
-            phrase, score = entry
-            if "erroneous" in phrase.lower():  # Check if 'erroneous' is in phrase
-                return phrase, score
-    
-    return (None, None)  # Return (None, None) if no match found
+# List of phrases to search for
+search_phrases = ['incorrect', 'duplicate', 'low risk', 'high risk']
 
-# Apply the function and create two new columns, handling the unpacking
-df['Erroneous Phrase'], df['Erroneous Similarity Score'] = zip(*df['model_output'].apply(extract_erroneous_tuple))
+# Function to preprocess and extract the required information
+def extract_payment_info(text):
+    # Convert text to lowercase for case-insensitive comparison
+    text = text.lower()
+    
+    # Initialize variables for checking conditions
+    found_payment = 'payment' if 'payment' in text else None
+    found_overpayment = 'overpayment' if 'overpayment' in text else None
+    found_underpayment = 'underpayment' if 'underpayment' in text else None
+    
+    # Initialize a list for the phrases found
+    extracted_phrases = []
 
+    # If 'payment' found, check for the other phrases in the text
+    if found_payment:
+        for phrase in search_phrases:
+            if re.search(r'\b' + re.escape(phrase) + r'\b', text):  # Use word boundaries to match whole phrases
+                extracted_phrases.append(phrase)
+
+    # Prepare output string with payment + found phrase(s)
+    result = []
+    if found_payment:
+        result.append(found_payment)  # Add 'payment'
+    result.extend(extracted_phrases)  # Add the found phrases
+
+    # Include 'overpayment' or 'underpayment' if found
+    if found_overpayment:
+        result.append(found_overpayment)
+    if found_underpayment:
+        result.append(found_underpayment)
+
+    # Return a comma-separated string, or None if no matches
+    return ', '.join(result) if result else None
+
+# Apply the function to the 'name' column and create a new column 'extracted_info'
+df['extracted_info'] = df['name'].apply(extract_payment_info)
+
+# Display the DataFrame
 print(df)

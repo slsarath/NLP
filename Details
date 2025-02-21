@@ -1,64 +1,34 @@
 import pandas as pd
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
 
-# Sample DataFrame with a column 'name' containing textual values
+# Sample DataFrame with a column 'model_output'
 data = {
-    'name': [
-        'Incorrect value payment submitted by client',
-        'Duplicate payment due to system error',
-        'Low risk payment issue identified',
-        'Overpayment made by client',
-        'High risk payment detected',
-        'Underpayment adjustment required'
+    'model_output': [
+        [('failure to follow procedure', 0.49871835112571716), 
+         ('resulting from erroneous payments due to gap in the process', 0.4939565062522888), 
+         ('staff error', 0.4927155375480652)],
+        [('no error', 0.0)],
+        []  # Empty list to check for edge cases
     ]
 }
 
 df = pd.DataFrame(data)
 
-# List of phrases to search for
-search_phrases = ['incorrect', 'duplicate', 'low risk', 'high risk']
-
-# Initialize lemmatizer
-lemmatizer = WordNetLemmatizer()
-
-# Function to preprocess and extract the required information
-def extract_payment_info(text):
-    # Preprocess the text: Tokenize and lemmatize words
-    words = word_tokenize(text.lower())  # Convert to lower case and tokenize
-    lemmatized_words = [lemmatizer.lemmatize(word) for word in words]  # Lemmatize words
+def extract_erroneous_tuple(semantics):
+    """
+    Loop through a list of tuples and return the first tuple
+    whose phrase contains 'erroneous' (case-insensitive).
+    If not found, return (None, None).
+    """
+    if not semantics:
+        return (None, None)  # Handle empty lists safely
     
-    # Initialize variables for checking conditions
-    found_payment = 'payment' if 'payment' in lemmatized_words else None
-    found_overpayment = 'overpayment' if 'overpayment' in lemmatized_words else None
-    found_underpayment = 'underpayment' if 'underpayment' in lemmatized_words else None
+    for phrase, score in semantics:
+        if "erroneous" in phrase.lower():
+            return phrase, score  # Return the erroneous phrase and score
     
-    # Initialize a list for the phrases found
-    extracted_phrases = []
+    return (None, None)  # Return a tuple of (None, None) if no erroneous phrase is found
 
-    # If 'payment' found, check for the other phrases in the text
-    if found_payment:
-        for phrase in search_phrases:
-            if phrase in lemmatized_words:
-                extracted_phrases.append(phrase)
+# Apply the function and create two new columns, handling the unpacking
+df['Erroneous Phrase'], df['Erroneous Similarity Score'] = zip(*df['model_output'].apply(extract_erroneous_tuple))
 
-    # Prepare output string with payment + found phrase(s)
-    result = []
-    if found_payment:
-        result.append(found_payment)  # Add 'payment'
-    result.extend(extracted_phrases)  # Add the found phrases
-
-    # Include 'overpayment' or 'underpayment' if found
-    if found_overpayment:
-        result.append(found_overpayment)
-    if found_underpayment:
-        result.append(found_underpayment)
-
-    # Return a comma-separated string, or None if no matches
-    return ', '.join(result) if result else None
-
-# Apply the function to the 'name' column and create a new column 'extracted_info'
-df['extracted_info'] = df['name'].apply(extract_payment_info)
-
-# Display the DataFrame
 print(df)

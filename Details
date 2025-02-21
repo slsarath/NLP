@@ -9,43 +9,53 @@ data = {
         'Duplicate payment due to system error',
         'Low risk payment issue identified',
         'Overpayment made by client',
-        'High risk payment detected'
+        'High risk payment detected',
+        'Underpayment adjustment required'
     ]
 }
 
 df = pd.DataFrame(data)
 
-# Initialize lemmatizer
-lemmatizer = WordNetLemmatizer()
-
 # List of phrases to search for
 search_phrases = ['incorrect', 'duplicate', 'low risk', 'high risk']
+
+# Initialize lemmatizer
+lemmatizer = WordNetLemmatizer()
 
 # Function to preprocess and extract the required information
 def extract_payment_info(text):
     # Preprocess the text: Tokenize and lemmatize words
     words = word_tokenize(text.lower())  # Convert to lower case and tokenize
     lemmatized_words = [lemmatizer.lemmatize(word) for word in words]  # Lemmatize words
-
+    
     # Initialize variables for checking conditions
-    found_payment = None
+    found_payment = 'payment' if 'payment' in lemmatized_words else None
+    found_overpayment = 'overpayment' if 'overpayment' in lemmatized_words else None
+    found_underpayment = 'underpayment' if 'underpayment' in lemmatized_words else None
+    
+    # Initialize a list for the phrases found
     extracted_phrases = []
 
-    # Check if 'payment', 'overpayment', or 'underpayment' is in the text
-    if 'payment' in lemmatized_words or 'overpayment' in lemmatized_words or 'underpayment' in lemmatized_words:
-        found_payment = 'payment'
-
-    # Check for presence of other phrases
-    for phrase in search_phrases:
-        if phrase in lemmatized_words:
-            extracted_phrases.append(phrase)
-    
-    # If 'payment' found, add it to the list of extracted phrases
+    # If 'payment' found, check for the other phrases in the text
     if found_payment:
-        extracted_phrases.append(found_payment)
-    
-    # Return extracted phrases as a comma-separated string
-    return ', '.join(extracted_phrases) if extracted_phrases else None
+        for phrase in search_phrases:
+            if phrase in lemmatized_words:
+                extracted_phrases.append(phrase)
+
+    # Prepare output string with payment + found phrase(s)
+    result = []
+    if found_payment:
+        result.append(found_payment)  # Add 'payment'
+    result.extend(extracted_phrases)  # Add the found phrases
+
+    # Include 'overpayment' or 'underpayment' if found
+    if found_overpayment:
+        result.append(found_overpayment)
+    if found_underpayment:
+        result.append(found_underpayment)
+
+    # Return a comma-separated string, or None if no matches
+    return ', '.join(result) if result else None
 
 # Apply the function to the 'name' column and create a new column 'extracted_info'
 df['extracted_info'] = df['name'].apply(extract_payment_info)

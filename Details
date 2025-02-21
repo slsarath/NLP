@@ -7,7 +7,8 @@ data = {
          ('resulting from erroneous payments due to gap in the process', 0.4939565062522888), 
          ('staff error', 0.4927155375480652)],
         [('no error', 0.0)],
-        []  # Empty list to check for edge cases
+        [],  # Empty list to check for edge cases
+        [None]  # A case where an unexpected value (None) is present in the list
     ]
 }
 
@@ -19,14 +20,16 @@ def extract_erroneous_tuple(semantics):
     whose phrase contains 'erroneous' (case-insensitive).
     If not found, return (None, None).
     """
-    if not semantics:
-        return (None, None)  # Handle empty lists safely
+    if not semantics or not isinstance(semantics, list):
+        return (None, None)  # Handle empty lists or non-list values safely
     
-    for phrase, score in semantics:
-        if "erroneous" in phrase.lower():
-            return phrase, score  # Return the erroneous phrase and score
+    for entry in semantics:
+        if isinstance(entry, tuple) and len(entry) == 2:
+            phrase, score = entry
+            if "erroneous" in phrase.lower():  # Check if 'erroneous' is in phrase
+                return phrase, score
     
-    return (None, None)  # Return a tuple of (None, None) if no erroneous phrase is found
+    return (None, None)  # Return (None, None) if no match found
 
 # Apply the function and create two new columns, handling the unpacking
 df['Erroneous Phrase'], df['Erroneous Similarity Score'] = zip(*df['model_output'].apply(extract_erroneous_tuple))

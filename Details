@@ -1,59 +1,13 @@
-import pandas as pd
-import re  # For using regular expressions
+Stakeholder Presentation Script: Erroneous Payments Analysis
 
-# Sample DataFrame with a column 'name' containing textual values
-data = {
-    'name': [
-        'Incorrect value payment submitted by client',
-        'Duplicate payment due to system error',
-        'Low risk payment issue identified',
-        'Overpayment made by client',
-        'High risk payment detected',
-        'Underpayment adjustment required'
-    ]
-}
+“Good [morning/afternoon], everyone! Today, I’m going to walk you through the analysis we’ve done on erroneous payments based on risk events extracted from data, starting in 2024. Our model uses a semantic search approach to identify and tag risk events related to erroneous payments. Let me take you through the key findings and insights.
 
-df = pd.DataFrame(data)
+First, let’s look at the summary page. Here, we have the risk events that our model has identified as relating to erroneous payments. The model works by analyzing the descriptions and narratives associated with each event and matching them with known root cause phrases we’ve defined. In the first pivot table, we’re able to see the trend of these risk events. It shows how many events have occurred in each quarter and, more importantly, the financial impact caused by these events over time. This helps us understand how big an issue this is and how it has changed throughout the year. In the second pivot, we break down the erroneous payments further, showing a Level 2 bifurcation. This gives us more detailed insights into what types of erroneous payments are happening and where they are coming from.
 
-# List of phrases to search for
-search_phrases = ['incorrect', 'duplicate', 'low risk', 'high risk']
+Next, let’s move to the technical summary sheet. In this section, we look at the technical platforms related to the erroneous payments. This pivot extracts data from the descriptions, impacts, and root causes shared with us. By categorizing the data, we can better understand if there are specific technical platforms or systems involved in these errors. This helps us identify if certain systems are more prone to these issues, which could guide us toward potential areas for improvement.
 
-# Function to preprocess and extract the required information
-def extract_payment_info(text):
-    # Convert text to lowercase for case-insensitive comparison
-    text = text.lower()
-    
-    # Initialize variables for checking conditions
-    found_payment = 'payment' if 'payment' in text else None
-    found_overpayment = 'overpayment' if 'overpayment' in text else None
-    found_underpayment = 'underpayment' if 'underpayment' in text else None
-    
-    # Initialize a list for the phrases found
-    extracted_phrases = []
+Now, let’s look at the control summary. The first pivot here shows us the controls that have failed. Interestingly, about 50% of the erroneous payment risk events are tagged as ‘No control selected.’ This indicates that half of these issues happened because there was no control in place to prevent them, which is a key area we need to focus on going forward. In the second pivot, we provide a summary of the Process Risk Organization (PRO). This breaks down the risk events by process or team, showing us where these issues are originating within the organization and helping us pinpoint the areas that need the most attention.
 
-    # If 'payment' found, check for the other phrases in the text
-    if found_payment:
-        for phrase in search_phrases:
-            if re.search(r'\b' + re.escape(phrase) + r'\b', text):  # Use word boundaries to match whole phrases
-                extracted_phrases.append(phrase)
+Finally, we have the overall summary, where you can see a Management Information (MI) report. This provides an overview of the erroneous payments and their impact on a quarterly basis. The MI helps us track how the risk events have evolved over time and how the financial impact has shifted throughout the quarters. This will give us a quick snapshot of how the situation is developing and can guide decisions moving forward.
 
-    # Prepare output string with payment + found phrase(s)
-    result = []
-    if found_payment:
-        result.append(found_payment)  # Add 'payment'
-    result.extend(extracted_phrases)  # Add the found phrases
-
-    # Include 'overpayment' or 'underpayment' if found
-    if found_overpayment:
-        result.append(found_overpayment)
-    if found_underpayment:
-        result.append(found_underpayment)
-
-    # Return a comma-separated string, or None if no matches
-    return ', '.join(result) if result else None
-
-# Apply the function to the 'name' column and create a new column 'extracted_info'
-df['extracted_info'] = df['name'].apply(extract_payment_info)
-
-# Display the DataFrame
-print(df)
+To sum it up, our analysis has provided valuable insights into the erroneous payments, their causes, and the controls (or lack thereof) that are contributing to these issues. By addressing the areas where controls are missing or weak, we can reduce the occurrence of these errors in the future. I’m happy to take any questions or provide further clarification on any specific points.”

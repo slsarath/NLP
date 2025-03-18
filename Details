@@ -1,20 +1,20 @@
-Subject: Request for Folder and File Consistency for Automation Tool Debugging
+import re
+import pandas as pd
 
-Dear [Recipient’s Name],
+# Sample DataFrame
+data = {'text': ["This is a test ctrl-12345", "random text Ctrl-ABC", "No match here", "ctrl-xyz123 found"]}
+df = pd.DataFrame(data)
 
-I hope this email finds you well.
+# Function to extract 'ctrl-' pattern
+def extract_ctrl_pattern(text):
+    text = text.lower()  # Convert to lowercase
+    pattern = r'ctrl-\w+'  # Regex to match 'ctrl-' followed by alphanumeric characters
+    match = re.findall(pattern, text)
+    return ', '.join(match) if match else None  # Return matched patterns or None
 
-Upon review, we observed that the automation tool is designed to look for the folder corresponding to the last-to-last week’s Tuesday (04/03), which creates a new folder for the following Tuesday (11/03). However, the folder shared with us pertains to 25/02.
+# Apply function to the text column
+df['Extracted_Ctrl'] = df['text'].apply(extract_ctrl_pattern)
 
-Additionally, we noticed that the file structure has been manually updated in some instances. For example, in the file provided, a blank line has been added at the beginning. Such manual changes may cause execution failures in the automation tool.
-
-Kindly share the 04/03 folder with us so we can debug the current cause of failure. We would also appreciate it if you could review the earlier folders and files generated using the automation tool, ensuring consistency for manual runs.
-
-To avoid any further inconsistencies and smoothen the operation, I would advise running the automation tool as scheduled—from the Tuesday of the previous week to the Monday of the current week. This will ensure the tool operates in a timely and consistent manner.
-
-Thank you for your attention to this matter, and please let me know if you need any further clarification.
-
-Best regards,
-[Your Name]
-[Your Position]
-[Your Contact Information]
+# Display the DataFrame
+import ace_tools as tools
+tools.display_dataframe_to_user(name="Extracted Ctrl Patterns", dataframe=df)

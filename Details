@@ -1,1 +1,27 @@
-=IF(SUMPRODUCT(--ISNUMBER(SEARCH(TRIM(MID(SUBSTITUTE(LOWER(A2),",",REPT(" ",LEN(A2))), (ROW(INDIRECT("1:" & LEN(A2) - LEN(SUBSTITUTE(A2, ",", "")) + 1))-1)*LEN(A2) + 1, LEN(A2))), LOWER(B2))))>0, "Match", "No Match")
+import pandas as pd
+
+# Sample DataFrame
+data = {
+    'Extracted Controls': ['ctrl-4444', 'ctrl-4444, ctrl-6666', 'ctrl-1111, ctrl-2222', ''],
+    'Relative Control': ['CTRL-4444', 'CTRL-4444, CTRL-6666, CTRL-8888', 'CTRL-9999, CTRL-3333', 'CTRL-5555']
+}
+
+df = pd.DataFrame(data)
+
+# Function to check for matches
+def check_control_match(extracted, relative):
+    if pd.isna(extracted) or extracted.strip() == "":
+        return "No Match"
+    
+    # Convert both extracted and relative to lowercase and split them by comma
+    extracted_set = set(map(str.strip, extracted.lower().split(',')))
+    relative_set = set(map(str.strip, relative.lower().split(',')))
+
+    # Check for any intersection
+    return "Match" if extracted_set & relative_set else "No Match"
+
+# Apply function
+df['Control Match'] = df.apply(lambda row: check_control_match(row['Extracted Controls'], row['Relative Control']), axis=1)
+
+# Display the updated DataFrame
+print(df)

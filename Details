@@ -2,20 +2,20 @@ import pandas as pd
 
 # Sample DataFrame
 data = {
-    'Extracted Controls': ['ctrl-4444', 'ctrl-4444, ctrl-6666', 'ctrl-1111, ctrl-2222', ''],
-    'Relative Control': ['CTRL-4444', 'CTRL-4444, CTRL-6666, CTRL-8888', 'CTRL-9999, CTRL-3333', 'CTRL-5555']
+    'Extracted Controls': ['ctrl-4444', 'ctrl-4444, ctrl-6666', 'ctrl-1111, ctrl-2222', None, ''],
+    'Relative Control': ['CTRL-4444', 'CTRL-4444, CTRL-6666, CTRL-8888', 'CTRL-9999, CTRL-3333', 'CTRL-5555', None]
 }
 
 df = pd.DataFrame(data)
 
 # Function to check for matches
 def check_control_match(extracted, relative):
-    if pd.isna(extracted) or extracted.strip() == "":
+    if pd.isna(extracted) or extracted.strip() == "" or pd.isna(relative) or relative.strip() == "":
         return "No Match"
-    
+
     # Convert both extracted and relative to lowercase and split them by comma
-    extracted_set = set(map(str.strip, extracted.lower().split(',')))
-    relative_set = set(map(str.strip, relative.lower().split(',')))
+    extracted_set = set(map(str.strip, str(extracted).lower().split(',')))
+    relative_set = set(map(str.strip, str(relative).lower().split(',')))
 
     # Check for any intersection
     return "Match" if extracted_set & relative_set else "No Match"

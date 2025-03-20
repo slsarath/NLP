@@ -1,6 +1,1 @@
-	•	Heavily Manual Processes:
-Existing manual and semi-automated controls are resource-intensive, prone to human error, and lack scalability.
-	•	Periodic Assessments Insufficient:
-Scheduled testing intervals miss rapidly evolving threats, leaving significant windows of vulnerability, exposing Barclays to potential breaches, regulatory penalties, and reputational harm.
-	•	Limited Real-time Visibility:
-Limited real-time risk detection and prioritization slow down threat response, reducing resilience in facing sophisticated cyber threats.
+=TEXTJOIN(", ", TRUE, FILTER(TEXTSPLIT(A2, ", "), ISNUMBER(SEARCH("Cyber", TEXTSPLIT(A2, ", ")))))

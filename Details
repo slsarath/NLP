@@ -1,1 +1,13 @@
-=TEXTJOIN(", ", TRUE, FILTER(TEXTSPLIT(A2, ", "), ISNUMBER(SEARCH("Cyber", TEXTSPLIT(A2, ", ")))))
+Before diving into the problem statement, let me provide a brief background on how I arrived at this use case.
+
+As part of our analysis of the issue list extracted from the ORAC, covering data from the last two years, we filtered out the issues related to cyber standards. Upon reviewing the data, we identified a total of 250 issues related to cyber standards, which have resulted in a financial impact of approximately 1.45 billion GBP during this period.”
+
+Problem Statement:
+“This insight led us to identify a significant challenge within the Control Assurance team. Currently, our processes are mostly manual or semi-automated, which makes it difficult to proactively identify and mitigate cyber-related risks.
+
+Our current approach involves filtering issues manually based on cyber-related standards, but this process is time-consuming, prone to human error, and lacks real-time responsiveness.”
+
+Use Case:
+“To address these challenges, we envision integrating AI-driven solutions into our control assurance processes. By automating the identification of cyber-related risks, we can significantly enhance the efficiency and accuracy of our operations. AI could proactively flag issues based on cyber standards, enabling us to mitigate potential risks before they escalate.
+
+The goal is to transition from a reactive approach to a proactive, data-driven strategy that can continuously monitor and analyze risk events tied to cyber standards, leading to improved decision-making and a more robust cybersecurity assurance framework.

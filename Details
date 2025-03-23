@@ -1,13 +1,33 @@
-Before diving into the problem statement, let me provide a brief background on how I arrived at this use case.
+Here’s your revised 90-second winning script, clearly structured, engaging, and including the explicit transition statement at the end for handing over to Akshay:
 
-As part of our analysis of the issue list extracted from the ORAC, covering data from the last two years, we filtered out the issues related to cyber standards. Upon reviewing the data, we identified a total of 250 issues related to cyber standards, which have resulted in a financial impact of approximately 1.45 billion GBP during this period.”
+⸻
 
-Problem Statement:
-“This insight led us to identify a significant challenge within the Control Assurance team. Currently, our processes are mostly manual or semi-automated, which makes it difficult to proactively identify and mitigate cyber-related risks.
+[Start with energy and urgency (0–20 secs)]
+“Did you know that cybersecurity breaches cost financial institutions globally over 5 trillion pounds annually? Recent breaches, such as the MOVEit cyberattack, significantly impacted banks—leading to massive financial losses and intense regulatory scrutiny. Clearly, proactive risk management has never been more critical.”
 
-Our current approach involves filtering issues manually based on cyber-related standards, but this process is time-consuming, prone to human error, and lacks real-time responsiveness.”
+⸻
 
-Use Case:
-“To address these challenges, we envision integrating AI-driven solutions into our control assurance processes. By automating the identification of cyber-related risks, we can significantly enhance the efficiency and accuracy of our operations. AI could proactively flag issues based on cyber standards, enabling us to mitigate potential risks before they escalate.
+[Explain the problem clearly and personally (20–50 secs)]
+“When we analyzed our internal data from the past two years, we uncovered a striking insight: we’ve had approximately 250 cybersecurity-related issues, resulting in financial impacts of nearly 1.45 billion GBP. On digging deeper, we found the root cause: our current cybersecurity control assurance processes heavily rely on manual or semi-automated checks. This periodic approach is resource-intensive, error-prone, and most importantly, lacks real-time detection—leaving Barclays vulnerable to threats.”
 
-The goal is to transition from a reactive approach to a proactive, data-driven strategy that can continuously monitor and analyze risk events tied to cyber standards, leading to improved decision-making and a more robust cybersecurity assurance framework.
+⸻
+
+[Clearly state your objective (50–70 secs)]
+“Our objective is clear: transform cybersecurity control assurance at Barclays from reactive and manual, to proactive and intelligence-driven, powered by Generative AI.”
+
+⸻
+
+[Transition to Akshay (explicit handover)]
+“To take you through how Generative AI can revolutionize our approach and the tangible benefits it will bring to Barclays, I’ll now hand it over to Akshay.”
+
+⸻
+
+Delivery Tone and Tips:
+	•	Maintain an engaging, conversational pace.
+	•	Pause briefly after each critical statistic for emphasis.
+	•	Clearly signal confidence, urgency, and passion for innovation.
+	•	Deliver the handover clearly, emphasizing Akshay’s role to smoothly transition the presentation.
+
+⸻
+
+I trust this clearly addresses your requirement. Let me know if you need any more adjustments!

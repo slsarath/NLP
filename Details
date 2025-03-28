@@ -1,1 +1,36 @@
-As a data scientist focused on risk and control assurance, I am always looking for new challenges and ways to expand my skill set. I believe a copilot license would not only provide a unique perspective on decision-making and precision but also offer me a practical, real-world application of data analytics and risk management in the aviation industry. Additionally, I am eager to combine my technical background with the experience of navigating complex environments, and I see this license as an opportunity for personal growth and an extension of my analytical skills in high-stakes settings.
+import pandas as pd
+import re
+
+# Sample DataFrame
+data = {'text': ['This is an internal transfer case', 
+                 'User was involved in a first party action', 
+                 'An internally transferred item was reported', 
+                 'No relevant phrase here', 
+                 'There was a first-party transaction today', 
+                 'Internal transfer completed successfully']}
+df = pd.DataFrame(data)
+
+# Extended list of phrases with possible variations
+phrase_variations = {
+    'first party': ['first party', 'first-party', '1st party', 'first party transaction'],
+    'internal transfer': ['internal transfer', 'internally transferred', 'internal transfer completed', 'internal shift']
+}
+
+# Function to clean and extract phrases
+def extract_phrases(text, phrase_variations):
+    text = text.lower()  # Convert to lowercase for case-insensitive matching
+    
+    # Normalize variations into standardized phrases
+    for phrase, variations in phrase_variations.items():
+        for variation in variations:
+            text = re.sub(r'\b' + re.escape(variation) + r'\b', phrase, text)
+    
+    # Check if any of the phrases exist in the cleaned text
+    extracted = [phrase for phrase in phrase_variations if phrase in text]
+    
+    return ', '.join(extracted) if extracted else None
+
+# Apply the function to the DataFrame
+df['extracted_phrases'] = df['text'].apply(lambda x: extract_phrases(x, phrase_variations))
+
+import ace_tools as tools; tools.display_dataframe_to_user(name="Extracted Phrases DataFrame", dataframe=df)

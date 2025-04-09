@@ -1,5 +1,12 @@
-Thank you for your response and for taking the time to review my profile.
+import pandas as pd
 
-While I am currently focused on pursuing Vice President-level opportunities, I truly appreciate your feedback. I will continue to upskill and further strengthen my profile to align with future opportunities at that level.
+# Sample dataframe
+df = pd.DataFrame({'date': ['31/12/2024', '15/01/2025', '10/03/2024']})
 
-Looking forward to staying in touch, and thank you once again for your time and consideration.
+# Convert to datetime (assuming format is day/month/year)
+df['date'] = pd.to_datetime(df['date'], format='%d/%m/%Y')
+
+# Create new column with 'Dec-2024' format
+df['month_year'] = df['date'].dt.strftime('%b-%Y')
+
+print(df)

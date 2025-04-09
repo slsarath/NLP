@@ -1,12 +1,35 @@
+import openpyxl
 import pandas as pd
+from io import BytesIO
 
-# Sample dataframe
-df = pd.DataFrame({'date': ['31/12/2024', '15/01/2025', '10/03/2024']})
+# Load workbook
+wb = openpyxl.load_workbook('your_file.xlsx', data_only=False)
+ws = wb.active
 
-# Convert to datetime (assuming format is day/month/year)
-df['date'] = pd.to_datetime(df['date'], format='%d/%m/%Y')
+# Step 1: Unmerge and fill merged cells
+for merged_range in list(ws.merged_cells.ranges):
+    top_left_cell = ws[merged_range.coord.split(':')[0]]
+    value = top_left_cell.value
+    ws.unmerge_cells(str(merged_range))
+    for row in ws[merged_range.coord]:
+        for cell in row:
+            cell.value = value
+            cell.data_type = 's'  # Force to string to prevent formula carryover
 
-# Create new column with 'Dec-2024' format
-df['month_year'] = df['date'].dt.strftime('%b-%Y')
+# Step 2: Strip ALL formulas from the sheet
+for row in ws.iter_rows():
+    for cell in row:
+        if cell.data_type == 'f' or isinstance(cell.value, str) and cell.value.startswith('='):
+            cell.value = None  # or set to cached value if you have it
+            cell.data_type = 's'
 
-print(df)
+# Step 3: Save to memory
+output = BytesIO()
+wb.save(output)
+output.seek(0)
+
+# Step 4: Load into pandas
+df = pd.read_excel(output)
+
+# Step 5: Extract month and year
+df['month_year'] = pd.to_datetime(df['YourDateColumn'], dayfirst=True).dt.strftime('%b-%Y')

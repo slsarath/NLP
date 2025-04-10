@@ -1,35 +1,4 @@
-import openpyxl
-import pandas as pd
-from io import BytesIO
-
-# Load workbook
-wb = openpyxl.load_workbook('your_file.xlsx', data_only=False)
-ws = wb.active
-
-# Step 1: Unmerge and fill merged cells
-for merged_range in list(ws.merged_cells.ranges):
-    top_left_cell = ws[merged_range.coord.split(':')[0]]
-    value = top_left_cell.value
-    ws.unmerge_cells(str(merged_range))
-    for row in ws[merged_range.coord]:
-        for cell in row:
-            cell.value = value
-            cell.data_type = 's'  # Force to string to prevent formula carryover
-
-# Step 2: Strip ALL formulas from the sheet
-for row in ws.iter_rows():
-    for cell in row:
-        if cell.data_type == 'f' or isinstance(cell.value, str) and cell.value.startswith('='):
-            cell.value = None  # or set to cached value if you have it
-            cell.data_type = 's'
-
-# Step 3: Save to memory
-output = BytesIO()
-wb.save(output)
-output.seek(0)
-
-# Step 4: Load into pandas
-df = pd.read_excel(output)
-
-# Step 5: Extract month and year
-df['month_year'] = pd.to_datetime(df['YourDateColumn'], dayfirst=True).dt.strftime('%b-%Y')
+=IF(AND(D3=0, F3=0), "Pass", 
+   IF(AND(D3>0, F3=0), "Fail – Timeliness", 
+   IF(AND(D3=0, F3>0), "Fail – Commentary", 
+   "Fail – Both")))

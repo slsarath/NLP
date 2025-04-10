@@ -35,4 +35,16 @@ Please review the attached file and let me know if you have any questions or wou
 
 
 
+Category
+Criteria
+Pass
+0 overdue, 0 insufficient commentary
+Fail – Timeliness
+Overdue > 0, commentary = 0
+Fail – Commentary
+Overdue = 0, insufficient commentary > 0
+Fail – Both
+Overdue > 0 AND insufficient commentary > 0
+
+
 

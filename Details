@@ -1,5 +1,32 @@
-Just to keep you informed — based on our current team capacity, my manager has assigned Shyam to take ownership of this project. As a result, I won’t be joining the upcoming meeting.
+1. Hidden Formulas or Corrupted Cells
 
-Shyam is across the details and will support the project going forward. Please feel free to reach out to him for any updates or discussions.
+Even if you see no formula, some cells might have:
+	•	Array formulas
+	•	Invisible references
+	•	Corrupted metadata (especially after programmatic edits like openpyxl or pandas.to_excel())
 
-Thanks for your understanding!
+Fix:
+	•	Select all cells (Ctrl + A), then press Ctrl + ` (the backtick key) to show formulas.
+	•	Use Go To Special > Formulas to check if any formulas exist.
+	•	Copy the entire sheet, then paste values-only into a new workbook.
+
+⸻
+
+2. Excessive Rows/Columns
+
+Sometimes Excel thinks you’re using thousands of blank rows or columns due to past formatting or data.
+
+Fix:
+	•	Press Ctrl + End — if it goes far beyond your data, that’s the problem.
+	•	Delete all unused rows/columns beyond your actual data.
+	•	Save and reopen.
+
+⸻
+
+3. File Created via Script (e.g. pandas.to_excel)
+
+When writing from Python, Excel sometimes flags corrupted formatting, merged cell remnants, or inconsistent cell types.
+
+Fix:
+	•	Open the file, select all cells, copy and paste into a new workbook as values.
+	•	Re-save and open again.

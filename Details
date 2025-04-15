@@ -1,32 +1,3 @@
-1. Hidden Formulas or Corrupted Cells
+While executing a SELECT query in Impala via our Python script, I encountered an authorization exception indicating that the current user does not have the privileges required to run the query. This error suggests that the permissions assigned to my account (or the account in use) do not include SELECT operations, which may be due to our current security configurations or role assignments.
 
-Even if you see no formula, some cells might have:
-	•	Array formulas
-	•	Invisible references
-	•	Corrupted metadata (especially after programmatic edits like openpyxl or pandas.to_excel())
-
-Fix:
-	•	Select all cells (Ctrl + A), then press Ctrl + ` (the backtick key) to show formulas.
-	•	Use Go To Special > Formulas to check if any formulas exist.
-	•	Copy the entire sheet, then paste values-only into a new workbook.
-
-⸻
-
-2. Excessive Rows/Columns
-
-Sometimes Excel thinks you’re using thousands of blank rows or columns due to past formatting or data.
-
-Fix:
-	•	Press Ctrl + End — if it goes far beyond your data, that’s the problem.
-	•	Delete all unused rows/columns beyond your actual data.
-	•	Save and reopen.
-
-⸻
-
-3. File Created via Script (e.g. pandas.to_excel)
-
-When writing from Python, Excel sometimes flags corrupted formatting, merged cell remnants, or inconsistent cell types.
-
-Fix:
-	•	Open the file, select all cells, copy and paste into a new workbook as values.
-	•	Re-save and open again.
+I am coordinating with our IT/security team to review and resolve the permission issue. I will keep you updated on the progress.

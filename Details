@@ -1,3 +1,14 @@
-While executing a SELECT query in Impala via our Python script, I encountered an authorization exception indicating that the current user does not have the privileges required to run the query. This error suggests that the permissions assigned to my account (or the account in use) do not include SELECT operations, which may be due to our current security configurations or role assignments.
+I am pleased to inform you that our team has been accepted into the upcoming hackathon. To proceed, I need to complete the team attestation form, and I require your confirmation regarding your availability for the event on 4th and 5th June.
 
-I am coordinating with our IT/security team to review and resolve the permission issue. I will keep you updated on the progress.
+Please discuss with your people leader and provide your confirmation by Wednesday, end of business (COB). Kindly note that once the attestation is submitted, we will not be able to make any changes to the team composition. This is the only opportunity for team member adjustments.
+
+Looking forward to your confirmation.
+
+
+I hope you are doing well. I am excited to inform you that our team’s idea has been selected for the upcoming hackathon, which will take place on June 1st and 2nd.
+
+As part of the team, I am requesting your approval for the participation of myself, Ram, and Shyam in this event. Please confirm your approval for our attendance at the hackathon on those dates.
+
+I believe this will be a valuable opportunity for us to showcase our skills, collaborate, and bring further innovation to our team’s objectives. Your approval will be greatly appreciated.
+
+Thank you in advance, and I look forward to your response.

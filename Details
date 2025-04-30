@@ -1,58 +1,7 @@
-Absolutely! Here are scenario-based Python data analysis questions tailored for a mid-level position, with a mix of Pandas, data cleaning, and real-world analytics logic:
+Just to clarify the distinction between Design Effectiveness Assessment (DEA) and Control Design Effectiveness (CDE), especially in the assurance context:
+	•	DEA is done as part of the control testing process. It helps us confirm whether a control is well-designed to perform its intended function before we begin testing its operation. For example, we check if the control has the right logic, documentation, and ownership in place.
+	•	CDE, on the other hand, is a broader, forward-looking assessment. It’s used during risk assessments or PRO mapping to check if the controls mapped to a specific risk are adequate and appropriate. The aim is to see whether the overall control design is strong enough to mitigate the identified risk.
 
-⸻
-
-1. Scenario: Missing Data in Financial Records
-
-Question:
-You receive a dataset of daily financial transactions. Several rows have missing transaction_amount values. How would you handle this before analysis?
-
-What it’s testing: Handling missing values, impact assessment
-Expected Response:
-	•	Use .isnull() and .sum() to quantify missing data
-	•	Drop or impute values depending on business logic
-	•	Example:
-
-2. Scenario: Analyzing Customer Refund Trends
-
-Question:
-You have a dataset with columns customer_id, refund_amount, and refund_date. How would you identify customers who have received refunds more than 3 times in the past 30 days?
-
-What it’s testing: Date filtering, groupby, conditional logic
-Expected Response:
-
-import pandas as pd
-from datetime import datetime, timedelta
-
-# Filter for last 30 days
-cutoff_date = pd.Timestamp.now() - pd.Timedelta(days=30)
-recent_refunds = df[df['refund_date'] >= cutoff_date]
-
-# Group and filter
-frequent_refunds = recent_refunds.groupby('customer_id').filter(lambda x: len(x) > 3)
-
-3. Scenario: Duplicate Records in Source Data
-
-Question:
-You receive transaction data from two vendors, and there may be duplicate rows. How would you identify and remove them while preserving the most recent transaction?
-
-What it’s testing: Deduplication, date-based filtering
-
-df.sort_values(by='transaction_date', ascending=False, inplace=True)
-df_deduped = df.drop_duplicates(subset='transaction_id', keep='first')
-
-
-5. Scenario: Outlier Detection in Payment Amounts
-
-Question:
-Your dataset contains a payment_amount column, and you’re asked to flag potential outliers. How would you do it?
-
-What it’s testing: Statistical awareness, thresholding
-
-q1 = df['payment_amount'].quantile(0.25)
-q3 = df['payment_amount'].quantile(0.75)
-iqr = q3 - q1
-lower_bound = q1 - 1.5 * iqr
-upper_bound = q3 + 1.5 * iqr
-
-df['is_outlier'] = df['payment_amount'].apply(lambda x: x < lower_bound or x > upper_bound)
+In short:
+	•	DEA = Is this control well-designed for testing?
+	•	CDE = Are the right controls in place for this risk?

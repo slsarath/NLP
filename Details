@@ -5,3 +5,28 @@ Just to clarify the distinction between Design Effectiveness Assessment (DEA) an
 In short:
 	•	DEA = Is this control well-designed for testing?
 	•	CDE = Are the right controls in place for this risk?
+
+Aspect
+DEA (Design Effectiveness Assessment)
+CDE (Control Design Effectiveness)
+When used
+During control testing cycle
+During control risk mapping / RCSA
+Perspective
+Control-level assessment for test readiness
+Risk-to-control coverage assessment
+Nature
+Retrospective (part of review)
+Forward-looking (proactive control evaluation)
+Granularity
+Focuses on individual control
+Looks at control framework against identified risks
+Outcome used in
+Operational testing scope, audit planning
+Risk mitigation evaluation, PRO validation, RCSA outcomes
+
+
+
+
+
+

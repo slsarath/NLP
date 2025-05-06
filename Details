@@ -1,21 +1,4 @@
-import pandas as pd
-
-# Sample structure of your data
-df = pd.DataFrame({
-    'COI_ID': ['COI-112', 'COI-112', 'COI-112', 'COI-112', 'COI-96', 'COI-96', 'COI-96'],
-    'Camp_Number': ['CAMP-246', 'CAMP-247', 'CAMP-247', 'CAMP-247', 'CAMP-196', 'CAMP-197', 'CAMP-197'],
-    'Sub_Business': ['SB1', 'SB1', 'SB2', 'SB3', 'SB1', 'SB1', 'SB2'],
-    'Applicability_Status': ['Yes', 'No', 'Yes', 'No', 'Yes', 'No', 'No']
-})
-
-# Step 1: Extract numeric value from Camp_Number
-df['Camp_Num_Val'] = df['Camp_Number'].str.extract(r'(\d+)').astype(int)
-
-# Step 2: For each COI_ID + Sub_Business, keep only the latest camp entry
-latest_per_subbiz = df.sort_values('Camp_Num_Val').groupby(['COI_ID', 'Sub_Business'], as_index=False).last()
-
-# Step 3: If any of the latest sub-businesses for a COI_ID is "Yes", include the COI
-final_applicable_cois = latest_per_subbiz[latest_per_subbiz['Applicability_Status'].str.upper() == 'YES']
-result = final_applicable_cois['COI_ID'].unique().tolist()
-
-print("Final applicable COIs based on latest sub-business statuses:", result)
+1.	COI can be linked to multiple sub-businesses under one business.
+	2.	For each COI_ID + Sub_Business, pick the latest campaign.
+	3.	If any sub-business has “Yes” in its latest campaign, that COI_ID is considered applicable and should be included in the output.
+	4.	If all sub-businesses under a COI_ID have “No”, it is excluded.

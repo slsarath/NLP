@@ -1,24 +1,19 @@
 import pandas as pd
 
-# Sample DataFrame structure
-# Replace this with your actual data load
+# Sample dataframe
 df = pd.DataFrame({
-    'COI_ID': [101, 101, 101, 102, 102, 103],
-    'Camp_Number': [147, 147, 148, 147, 148, 147],
-    'Sub_Business': ['A1', 'A2', 'A1', 'A1', 'A1', 'A2'],
-    'Business': ['B1', 'B1', 'B1', 'B2', 'B2', 'B1'],
-    'Applicability_Status': ['Yes', 'Yes', 'No', 'Yes', 'No', 'Yes']
+    'COI_ID': [12, 12, 13, 13, 14],
+    'Camp_Number': [186, 187, 186, 187, 187],
+    'Applicability_Status': ['Yes', 'No', 'Yes', 'Yes', 'Yes']
 })
 
-# Filter only rows with applicability 'Yes'
-applicable_df = df[df['Applicability_Status'].str.upper() == 'YES']
+# Step 1: For each COI_ID, get the row with the latest (max) Camp_Number
+latest_status = df.sort_values('Camp_Number').groupby('COI_ID').tail(1)
 
-# Get distinct COI_IDs applicable to each business
-result = applicable_df.groupby('Business')['COI_ID'].unique().reset_index()
+# Step 2: Filter where the latest applicability is 'Yes'
+applicable_cois = latest_status[latest_status['Applicability_Status'].str.upper() == 'YES']
 
-# Optional: convert list to a comma-separated string for each business
-result['COI_IDs'] = result['COI_ID'].apply(lambda x: ', '.join(map(str, x)))
-result = result[['Business', 'COI_IDs']]
+# Step 3: Get list of applicable COI_IDs
+result = applicable_cois['COI_ID'].unique().tolist()
 
-# Display result
-print(result)
+print("Applicable COI IDs based on latest campaign:", result)

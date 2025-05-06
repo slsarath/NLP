@@ -1,22 +1,10 @@
-import pandas as pd
-
-# Sample data (replace this with your full dataset)
-df = pd.DataFrame({
-    'COI_ID': ['COI-123', 'COI-123', 'COI-124', 'COI-124', 'COI-125'],
-    'Camp_Number': ['CAMP-246', 'CAMP-247', 'CAMP-246', 'CAMP-247', 'CAMP-247'],
-    'Applicability_Status': ['Yes', 'No', 'Yes', 'Yes', 'Yes']
-})
-
-# Step 1: Extract numeric part of Camp_Number for sorting
-df['Camp_Num_Val'] = df['Camp_Number'].str.extract(r'(\d+)').astype(int)
-
-# Step 2: Keep only the latest record for each COI_ID
-latest_status = df.sort_values('Camp_Num_Val').groupby('COI_ID', as_index=False).last()
-
-# Step 3: Filter where latest applicability is 'Yes'
-applicable_cois = latest_status[latest_status['Applicability_Status'].str.upper() == 'YES']
-
-# Step 4: Get list of applicable COI_IDs
-result = applicable_cois['COI_ID'].unique().tolist()
-
-print("Applicable COIs based on each COI's latest campaign:", result)
+1.	Extract Numeric Value from Camp_Number:
+Convert CAMP-XXX to numeric (e.g., CAMP-246 → 246) so we can identify the latest campaign.
+	2.	Sort the Data:
+For each COI_ID, sort rows by extracted Camp_Number in ascending order.
+	3.	Pick the Latest Campaign for Each COI:
+For each COI_ID, keep only the last record (i.e., the row with the highest Camp_Number).
+	4.	Filter Based on Applicability:
+From the above latest records, filter only those where Applicability_Status = "Yes".
+	5.	Return Final List:
+Output the distinct COI_IDs that meet the criteria.

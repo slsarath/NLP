@@ -1,32 +1,24 @@
-Just to clarify the distinction between Design Effectiveness Assessment (DEA) and Control Design Effectiveness (CDE), especially in the assurance context:
-	•	DEA is done as part of the control testing process. It helps us confirm whether a control is well-designed to perform its intended function before we begin testing its operation. For example, we check if the control has the right logic, documentation, and ownership in place.
-	•	CDE, on the other hand, is a broader, forward-looking assessment. It’s used during risk assessments or PRO mapping to check if the controls mapped to a specific risk are adequate and appropriate. The aim is to see whether the overall control design is strong enough to mitigate the identified risk.
+import pandas as pd
 
-In short:
-	•	DEA = Is this control well-designed for testing?
-	•	CDE = Are the right controls in place for this risk?
+# Sample DataFrame structure
+# Replace this with your actual data load
+df = pd.DataFrame({
+    'COI_ID': [101, 101, 101, 102, 102, 103],
+    'Camp_Number': [147, 147, 148, 147, 148, 147],
+    'Sub_Business': ['A1', 'A2', 'A1', 'A1', 'A1', 'A2'],
+    'Business': ['B1', 'B1', 'B1', 'B2', 'B2', 'B1'],
+    'Applicability_Status': ['Yes', 'Yes', 'No', 'Yes', 'No', 'Yes']
+})
 
-Aspect
-DEA (Design Effectiveness Assessment)
-CDE (Control Design Effectiveness)
-When used
-During control testing cycle
-During control risk mapping / RCSA
-Perspective
-Control-level assessment for test readiness
-Risk-to-control coverage assessment
-Nature
-Retrospective (part of review)
-Forward-looking (proactive control evaluation)
-Granularity
-Focuses on individual control
-Looks at control framework against identified risks
-Outcome used in
-Operational testing scope, audit planning
-Risk mitigation evaluation, PRO validation, RCSA outcomes
+# Filter only rows with applicability 'Yes'
+applicable_df = df[df['Applicability_Status'].str.upper() == 'YES']
 
+# Get distinct COI_IDs applicable to each business
+result = applicable_df.groupby('Business')['COI_ID'].unique().reset_index()
 
+# Optional: convert list to a comma-separated string for each business
+result['COI_IDs'] = result['COI_ID'].apply(lambda x: ', '.join(map(str, x)))
+result = result[['Business', 'COI_IDs']]
 
-
-
-
+# Display result
+print(result)

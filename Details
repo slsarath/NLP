@@ -1,19 +1,22 @@
 import pandas as pd
 
-# Sample dataframe
+# Sample data
 df = pd.DataFrame({
-    'COI_ID': [12, 12, 13, 13, 14],
-    'Camp_Number': [186, 187, 186, 187, 187],
+    'COI_ID': ['COI-123', 'COI-123', 'COI-124', 'COI-124', 'COI-125'],
+    'Camp_Number': ['CAMP-246', 'CAMP-247', 'CAMP-246', 'CAMP-247', 'CAMP-247'],
     'Applicability_Status': ['Yes', 'No', 'Yes', 'Yes', 'Yes']
 })
 
-# Step 1: For each COI_ID, get the row with the latest (max) Camp_Number
-latest_status = df.sort_values('Camp_Number').groupby('COI_ID').tail(1)
+# Step 1: Extract numeric part of Camp_Number
+df['Camp_Num_Val'] = df['Camp_Number'].str.extract(r'(\d+)').astype(int)
 
-# Step 2: Filter where the latest applicability is 'Yes'
+# Step 2: Get latest entry for each COI_ID
+latest_status = df.sort_values('Camp_Num_Val').groupby('COI_ID').tail(1)
+
+# Step 3: Filter only where latest status is 'Yes'
 applicable_cois = latest_status[latest_status['Applicability_Status'].str.upper() == 'YES']
 
-# Step 3: Get list of applicable COI_IDs
+# Step 4: Get the list of applicable COI_IDs
 result = applicable_cois['COI_ID'].unique().tolist()
 
 print("Applicable COI IDs based on latest campaign:", result)

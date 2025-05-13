@@ -1,4 +1,15 @@
-1.	COI can be linked to multiple sub-businesses under one business.
-	2.	For each COI_ID + Sub_Business, pick the latest campaign.
-	3.	If any sub-business has “Yes” in its latest campaign, that COI_ID is considered applicable and should be included in the output.
-	4.	If all sub-businesses under a COI_ID have “No”, it is excluded.
+Hi Team,
+
+I hope you’re receiving these emails.
+
+We’re currently exploring opportunities to build impactful use cases around the Risk Events dataset, and I’d like to encourage each of you to start thinking in that direction—specifically, how we can leverage Generative AI to enable proactive risk management.
+
+For example, one potential idea is to develop a Q&A bot for MI evaluation, enabling management to perform continuous monitoring and adopt a risk-based approach. Such a solution could support queries like:
+	1.	How many risk events occurred across technology horizontals?
+	2.	What platforms were involved in those events?
+	3.	What does the thematic distribution of root causes look like?
+	4.	Which controls are most frequently failing?
+
+We aim to build an end-to-end solution that adds tangible value by enabling smarter insights and decision-making through automation.
+
+Please take some time to reflect on this and feel free to share any ideas or directions you think would be worth exploring. Looking forward to some great inputs from the team.

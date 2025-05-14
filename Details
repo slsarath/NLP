@@ -31,3 +31,16 @@ Here’s a script you can use to walk your stakeholder through the Tableau dashb
 “This dashboard not only gives us a month-wise trend of issue volume and quality, but also allows us to drill down into individual records and see where improvement is needed. It helps both in assurance planning and proactive remediation discussions with issue owners.”
 
 Let me know if you’d like a version tailored for a senior executive or technical team.
+
+
+
+
+So regarding the view you requested – I wanted to clarify that the layout you’re looking for can’t be accommodated in the existing pivot directly without disturbing the current setup. But the good news is, we don’t need to create a separate pivot altogether. I’ll quickly walk you through how to adjust it in just a few clicks.”
+	1.	“First, go to the Pivot Table and drag the ‘Banker’ field into the Rows section.”
+	•	This will give you a row-wise breakdown by Banker.
+	2.	“Next, drag the ‘Failed Count’ or whatever field represents the failed numbers into the Values section.”
+	•	This will populate the count of failures against each banker.
+	3.	“And finally, if you want to focus on a particular Business area, just drag the ‘Business’ field into the Filters section and select the relevant one.”
+
+“That should give you the view you’re looking for, and you can save this as a custom view going forward. Let me know if you’d like me to stay while you try it out.”
+

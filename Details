@@ -1,15 +1,33 @@
-Hi Team,
+Here’s a script you can use to walk your stakeholder through the Tableau dashboard shown in the image:
 
-I hope you’re receiving these emails.
+⸻
 
-We’re currently exploring opportunities to build impactful use cases around the Risk Events dataset, and I’d like to encourage each of you to start thinking in that direction—specifically, how we can leverage Generative AI to enable proactive risk management.
+“Let me walk you through the dashboard we’ve created for Issue Risk Assessment.”
+	1.	Top Section – Issue Narrative Analysis (Bar Chart by Month)
+	•	This section visualizes the quality assessment of issue narratives raised from July to December 2024.
+	•	Each vertical bar represents the total number of issues identified in that month, with the percentage breakdown of quality:
+	•	Green shows “Quality Likely Good”
+	•	Yellow/Orange indicates “Quality Needs Improvement”
+	•	Red highlights “Quality Likely Poor”
+	•	For instance, in August 2024, about 14.95% of issues were good quality, but a significant 53.27% were poor, showing room for improvement in how narratives are drafted.
+	2.	Bubble Labels (on top of bars)
+	•	These represent the number of issues raised that month. So, we can quickly compare month-on-month volume and quality trends.
 
-For example, one potential idea is to develop a Q&A bot for MI evaluation, enabling management to perform continuous monitoring and adopt a risk-based approach. Such a solution could support queries like:
-	1.	How many risk events occurred across technology horizontals?
-	2.	What platforms were involved in those events?
-	3.	What does the thematic distribution of root causes look like?
-	4.	Which controls are most frequently failing?
+⸻
 
-We aim to build an end-to-end solution that adds tangible value by enabling smarter insights and decision-making through automation.
+	3.	Middle Section – Issue Details Table
+	•	This table provides granular-level details for each issue:
+	•	Issue ID, Status, Rating, First Identified Date, Due Date, and whether PII is present.
+	•	This helps to track status and identify patterns, for instance, recurring issues with missing PII or long resolution timelines.
 
-Please take some time to reflect on this and feel free to share any ideas or directions you think would be worth exploring. Looking forward to some great inputs from the team.
+⸻
+
+	4.	Bottom Tabs – Deeper Insights
+	•	Linked Controls Distribution: This will show how many issues are mapped to controls and their effectiveness.
+	•	Control Narrative Quality Assessment: Complements the issue quality view by analyzing the quality of control documentation supporting the issues.
+
+⸻
+
+“This dashboard not only gives us a month-wise trend of issue volume and quality, but also allows us to drill down into individual records and see where improvement is needed. It helps both in assurance planning and proactive remediation discussions with issue owners.”
+
+Let me know if you’d like a version tailored for a senior executive or technical team.

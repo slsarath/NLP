@@ -1,28 +1,39 @@
-Sure! Here’s a revised version of your email that sounds natural and professional, without referencing “as requested”:
+import pandas as pd
+from io import StringIO
 
-⸻
+# Sample dataset creation simulating your ID, Date, Status structure
+data = StringIO("""
+ID,Date,Status
+A101,2024-04-01,Open
+A101,2024-04-05,Closed
+A101,2024-04-10,Closed
+A101,2024-04-15,Open
+A102,2024-04-03,Open
+A102,2024-04-25,Closed
+A103,2024-04-02,Open
+A103,2024-04-20,Open
+A103,2024-04-25,Closed
+""")
 
-Subject: Request for External Accreditation Support – Microsoft Azure Certification
+# Read the dataset
+df = pd.read_csv(data, parse_dates=["Date"])
 
-Hi [Manager’s Name],
+# Sort by ID and Date
+df.sort_values(by=["ID", "Date"], inplace=True)
 
-As part of the upcoming hackathon initiative, I’ve completed the Microsoft Azure Digital Training by finishing 7 learning modules along with the final knowledge check test.
+# Create Month column
+df["Month"] = df["Date"].dt.to_period("M")
 
-There’s an additional opportunity to apply for external accreditation through a formal certification, for which the company provides vouchers. I understand this is currently limited to Group Technology and requires People Leader sponsorship — I just wanted to check if there’s any chance we can explore this for our team as well.
+# Shift status by ID to compare with previous
+df["Prev_Status"] = df.groupby("ID")["Status"].shift(1)
 
-We briefly spoke about this, and I’ve given some thought to how it aligns with my role and long-term goals:
+# Flag where status has changed
+df["Status_Changed"] = (df["Status"] != df["Prev_Status"]) & (df["Prev_Status"].notna())
+df["Status_Changed"] = df["Status_Changed"].astype(int)
 
-1. Long-term benefit:
-This certification would strengthen my cloud expertise and deepen my understanding of Azure services, which are becoming increasingly critical for building scalable data and AI solutions. It also supports my continued learning journey and prepares me for emerging opportunities where cloud-native approaches are key.
+# Create a pivot table: Count of status changes by ID and Month
+pivot_table = df.pivot_table(index=["Month", "ID"], values="Status_Changed", aggfunc="sum").reset_index()
 
-2. Relevance to current role:
-A significant part of my work involves building and automating ML/NLP solutions to enhance risk and assurance analytics. As more of these solutions move to cloud infrastructure, proficiency in Azure would help with faster deployment, better integration, and operational efficiency. It would also help futureproof the solutions we develop by aligning them with the firm’s cloud strategy.
+import ace_tools as tools; tools.display_dataframe_to_user(name="Status Change Pivot Table", dataframe=pivot_table)
 
-Let me know if this could be considered, or if there’s anything else I should look into.
-
-Best regards,
-Sarath SL
-
-⸻
-
-Would you like a version with a slightly more assertive tone or shorter summary bullet points?
+pivot_table.head()

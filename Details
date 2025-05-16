@@ -1,23 +1,9 @@
-import re
-import nltk
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+Further to our discussion on keeping the stop words while calculating the word count, I wanted to quickly explain the changes we’ve made.
 
-# Make sure required NLTK packages are downloaded
-nltk.download('punkt')
-nltk.download('wordnet')
+Earlier, while preparing the text for analysis, we were removing certain words like “is”, “the”, “and” (commonly known as stop words), along with punctuation and symbols. After that, we were standardizing the words (like changing “running” to “run”) before counting them — this often resulted in a lower word count.
 
-lemmatizer = WordNetLemmatizer()
+Now, as per your request, we’ve updated the logic to keep all the words, including the commonly used ones. We still clean the text by removing special characters and then simplify the words slightly, but we no longer remove any words before counting.
 
-def preprocess_and_count(text):
-    # Step 1: Remove special characters and underscores
-    cleaned_text = re.sub(r"(\W+)|(_)", " ", text)
-    
-    # Step 2: Tokenize and Lemmatize
-    tokens = word_tokenize(cleaned_text)
-    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in tokens]
-    
-    # Step 3: Word Count (after lemmatization)
-    word_count = len(lemmatized_tokens)
-    
-    return word_count
+The new column reflects this updated word count and gives a better picture of the original length of the text.
+
+Happy to walk through it if needed!

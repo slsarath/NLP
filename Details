@@ -1,39 +1,23 @@
-import pandas as pd
-from io import StringIO
+import re
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
 
-# Sample dataset creation simulating your ID, Date, Status structure
-data = StringIO("""
-ID,Date,Status
-A101,2024-04-01,Open
-A101,2024-04-05,Closed
-A101,2024-04-10,Closed
-A101,2024-04-15,Open
-A102,2024-04-03,Open
-A102,2024-04-25,Closed
-A103,2024-04-02,Open
-A103,2024-04-20,Open
-A103,2024-04-25,Closed
-""")
+# Make sure required NLTK packages are downloaded
+nltk.download('punkt')
+nltk.download('wordnet')
 
-# Read the dataset
-df = pd.read_csv(data, parse_dates=["Date"])
+lemmatizer = WordNetLemmatizer()
 
-# Sort by ID and Date
-df.sort_values(by=["ID", "Date"], inplace=True)
-
-# Create Month column
-df["Month"] = df["Date"].dt.to_period("M")
-
-# Shift status by ID to compare with previous
-df["Prev_Status"] = df.groupby("ID")["Status"].shift(1)
-
-# Flag where status has changed
-df["Status_Changed"] = (df["Status"] != df["Prev_Status"]) & (df["Prev_Status"].notna())
-df["Status_Changed"] = df["Status_Changed"].astype(int)
-
-# Create a pivot table: Count of status changes by ID and Month
-pivot_table = df.pivot_table(index=["Month", "ID"], values="Status_Changed", aggfunc="sum").reset_index()
-
-import ace_tools as tools; tools.display_dataframe_to_user(name="Status Change Pivot Table", dataframe=pivot_table)
-
-pivot_table.head()
+def preprocess_and_count(text):
+    # Step 1: Remove special characters and underscores
+    cleaned_text = re.sub(r"(\W+)|(_)", " ", text)
+    
+    # Step 2: Tokenize and Lemmatize
+    tokens = word_tokenize(cleaned_text)
+    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in tokens]
+    
+    # Step 3: Word Count (after lemmatization)
+    word_count = len(lemmatized_tokens)
+    
+    return word_count

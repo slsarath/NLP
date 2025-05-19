@@ -1,32 +1,37 @@
 import pandas as pd
 import numpy as np
 
-# Sample data based on your use case
-data = {
+# Sample DataFrame (replace this with your real one)
+df = pd.DataFrame({
     "ID": ["ID-101", "ID-101", "ID-101", "ID-101", "ID-101"],
     "Status": ["Open", "Open", "Open-Action Completed", "Open", "Closed"],
     "Change Date": ["24/07/2024", "25/07/2024", "13/08/2024", "23/10/2024", "15/12/2024"]
-}
+})
 
-# Create DataFrame
-df = pd.DataFrame(data)
-df["Change Date"] = pd.to_datetime(df["Change Date"], dayfirst=True)
+# Convert to datetime
+df["Change Date"] = pd.to_datetime(df["Change Date"], dayfirst=True, errors='coerce')
 
-# Sort data by ID and Change Date
+# Sort the data
 df = df.sort_values(by=["ID", "Change Date"]).reset_index(drop=True)
 
-# Add next status and date columns
+# Add next row values
 df["Next Status"] = df["Status"].shift(-1)
 df["Next Date"] = df["Change Date"].shift(-1)
 
-# Calculate working days only if status is changing
-df["Days in Status"] = df.apply(
-    lambda row: np.busday_count(row["Change Date"].date(), row["Next Date"].date())
-    if row["Status"] != row["Next Status"] and pd.notnull(row["Next Date"]) else 0,
-    axis=1
-)
+# Safe calculation: check for missing dates
+def calc_working_days(row):
+    if (
+        pd.notnull(row["Change Date"]) and 
+        pd.notnull(row["Next Date"]) and 
+        row["Status"] != row["Next Status"]
+    ):
+        return np.busday_count(row["Change Date"].date(), row["Next Date"].date())
+    else:
+        return 0
 
-# Drop helper columns
-df = df.drop(columns=["Next Status", "Next Date"])
+df["Days in Status"] = df.apply(calc_working_days, axis=1)
 
-import ace_tools as tools; tools.display_dataframe_to_user(name="Final Status Duration Tracker", dataframe=df)
+# Clean up
+df.drop(columns=["Next Status", "Next Date"], inplace=True)
+
+df

@@ -1,35 +1,16 @@
-import pandas as pd
-from io import StringIO
-import ace_tools as tools
+# Add helper columns again since they were dropped previously
+df["Next Status"] = df["Status"].shift(-1)
+df["Next Date"] = df["Change Date"].shift(-1)
 
-# Simulated data based on previous image
-data = """
-ID,Status,Change Date
-ID-101,Open,24/07/2024
-ID-101,Open,25/07/2024
-ID-101,Open-Action Completed,13/08/2024
-ID-101,Open,23/10/2024
-ID-101,Closed,15/12/2024
-"""
-
-# Create DataFrame
-df = pd.read_csv(StringIO(data), parse_dates=["Change Date"], dayfirst=True)
-
-# Sort data by ID and Change Date
-df = df.sort_values(by=["ID", "Change Date"]).reset_index(drop=True)
-
-# Recalculate with sorted data
-df["Previous Status"] = df["Status"].shift()
-df["Previous Date"] = df["Change Date"].shift()
-
-# Only calculate day difference when status changes
+# Recalculate using only business days between change dates, only if status changes
+import numpy as np
 df["Days in Status"] = df.apply(
-    lambda row: (row["Change Date"] - row["Previous Date"]).days
-    if row["Status"] != row["Previous Status"] and row.name > 0 else 0,
+    lambda row: np.busday_count(row["Change Date"].date(), row["Next Date"].date())
+    if row["Status"] != row["Next Status"] and pd.notnull(row["Next Date"]) else 0,
     axis=1
 )
 
-# Drop helper columns
-df = df.drop(columns=["Previous Status", "Previous Date"])
+# Drop helper columns to clean up
+df = df.drop(columns=["Next Status", "Next Date"])
 
-tools.display_dataframe_to_user(name="Sorted Status Duration Tracker", dataframe=df)
+import ace_tools as tools; tools.display_dataframe_to_user(name="Working Days Status Duration Tracker", dataframe=df)

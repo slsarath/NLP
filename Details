@@ -1,9 +1,14 @@
-Further to our discussion on keeping the stop words while calculating the word count, I wanted to quickly explain the changes we’ve made.
+# Shift the status to compare with previous row
+df["Previous Status"] = df["Status"].shift()
 
-Earlier, while preparing the text for analysis, we were removing certain words like “is”, “the”, “and” (commonly known as stop words), along with punctuation and symbols. After that, we were standardizing the words (like changing “running” to “run”) before counting them — this often resulted in a lower word count.
+# Only calculate day difference when the status changes
+df["Days in Status"] = df.apply(
+    lambda row: (row["Change Date"] - df.loc[row.name - 1, "Change Date"]).days
+    if row["Status"] != row["Previous Status"] and row.name > 0 else 0,
+    axis=1
+)
 
-Now, as per your request, we’ve updated the logic to keep all the words, including the commonly used ones. We still clean the text by removing special characters and then simplify the words slightly, but we no longer remove any words before counting.
+# Drop helper column
+df = df.drop(columns=["Previous Status"])
 
-The new column reflects this updated word count and gives a better picture of the original length of the text.
-
-Happy to walk through it if needed!
+tools.display_dataframe_to_user(name="Filtered Status Duration Tracker", dataframe=df)

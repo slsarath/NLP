@@ -1,37 +1,34 @@
-import pandas as pd
-import numpy as np
+We’re analyzing how long each ID remains in a specific status before it changes — and for better accuracy, we’re only counting working days (Monday to Friday). This gives us a realistic view of where delays or bottlenecks are occurring in the process.
 
-# Sample DataFrame (replace this with your real one)
-df = pd.DataFrame({
-    "ID": ["ID-101", "ID-101", "ID-101", "ID-101", "ID-101"],
-    "Status": ["Open", "Open", "Open-Action Completed", "Open", "Closed"],
-    "Change Date": ["24/07/2024", "25/07/2024", "13/08/2024", "23/10/2024", "15/12/2024"]
-})
+Here’s a quick breakdown of the logic used in the code:
+	1.	Data Preparation:
+	•	We start with three columns: ID, Status, and Change Date.
+	•	We first ensure that Change Date is properly converted to a date format and sort all records by ID and date.
+	2.	Identifying Status Transitions:
+	•	For each record, we compare the current Status to the next row’s Status using .shift(-1).
+	•	We also capture the Change Date of the next row.
+	•	If the status changes, that means the issue has moved to a new stage — so we want to calculate how long it was in the previous status.
+	3.	Calculating Working Days:
+	•	We use np.busday_count() to calculate the number of working days between the current row’s Change Date and the next one.
+	•	This value is assigned to a new column: Days in Status.
+	•	If the status remains the same in the next row, or the date is missing, we skip the calculation.
+	4.	Clean-Up:
+	•	Finally, we drop the helper columns (Next Status, Next Date) to keep the output clean.
 
-# Convert to datetime
-df["Change Date"] = pd.to_datetime(df["Change Date"], dayfirst=True, errors='coerce')
+⸻
 
-# Sort the data
-df = df.sort_values(by=["ID", "Change Date"]).reset_index(drop=True)
+How This Feeds into the MI:
 
-# Add next row values
-df["Next Status"] = df["Status"].shift(-1)
-df["Next Date"] = df["Change Date"].shift(-1)
+Using this cleaned dataset, we then created a pivot table to provide MI that answers key questions like:
+	•	Which statuses are consuming the most working days?
+	•	Which IDs are stuck the longest in a particular status?
+	•	What’s the average time spent per status across all records?
 
-# Safe calculation: check for missing dates
-def calc_working_days(row):
-    if (
-        pd.notnull(row["Change Date"]) and 
-        pd.notnull(row["Next Date"]) and 
-        row["Status"] != row["Next Status"]
-    ):
-        return np.busday_count(row["Change Date"].date(), row["Next Date"].date())
-    else:
-        return 0
+We also explored visual summaries such as:
+	•	A heatmap showing aging across statuses
+	•	A summary of top 10 IDs stuck longest
+	•	Status performance trend over time (optional)
 
-df["Days in Status"] = df.apply(calc_working_days, axis=1)
+This allows us to highlight where operational delays are occurring and identify process improvement opportunities.
 
-# Clean up
-df.drop(columns=["Next Status", "Next Date"], inplace=True)
-
-df
+Let me know if you’d like to see this built into a dashboard or exported as an Excel template.

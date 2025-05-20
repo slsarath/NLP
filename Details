@@ -1,87 +1,106 @@
-We’re analyzing how long each ID remains in a specific status before it changes — and for better accuracy, we’re only counting working days (Monday to Friday). This gives us a realistic view of where delays or bottlenecks are occurring in the process.
-
-Here’s a quick breakdown of the logic used in the code:
-	1.	Data Preparation:
-	•	We start with three columns: ID, Status, and Change Date.
-	•	We first ensure that Change Date is properly converted to a date format and sort all records by ID and date.
-	2.	Identifying Status Transitions:
-	•	For each record, we compare the current Status to the next row’s Status using .shift(-1).
-	•	We also capture the Change Date of the next row.
-	•	If the status changes, that means the issue has moved to a new stage — so we want to calculate how long it was in the previous status.
-	3.	Calculating Working Days:
-	•	We use np.busday_count() to calculate the number of working days between the current row’s Change Date and the next one.
-	•	This value is assigned to a new column: Days in Status.
-	•	If the status remains the same in the next row, or the date is missing, we skip the calculation.
-	4.	Clean-Up:
-	•	Finally, we drop the helper columns (Next Status, Next Date) to keep the output clean.
+Here’s a quick overview of each platform and the kind of data they provide:
 
 ⸻
 
-How This Feeds into the MI:
-
-Using this cleaned dataset, we then created a pivot table to provide MI that answers key questions like:
-	•	Which statuses are consuming the most working days?
-	•	Which IDs are stuck the longest in a particular status?
-	•	What’s the average time spent per status across all records?
-
-We also explored visual summaries such as:
-	•	A heatmap showing aging across statuses
-	•	A summary of top 10 IDs stuck longest
-	•	Status performance trend over time (optional)
-
-This allows us to highlight where operational delays are occurring and identify process improvement opportunities.
-
-Let me know if you’d like to see this built
- into a dashboard or exported as an 
-Excel template.
-
-
-Got it! Here are more fun, low-effort virtual games similar to Two Truths and a Lie and GeoGuess Who — perfect for global teams to bond without needing much setup:
+1. SEC EDGAR (https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data)
+	•	Provides corporate filings submitted by public companies in the U.S.
+	•	Includes 10-Ks, 10-Qs, 8-Ks, annual reports, insider trading records, and more.
+	•	Useful for analyzing financial performance, compliance disclosures, and market risks.
 
 ⸻
 
-1. Who Said It?
-
-How it works:
-Everyone submits a little-known or quirky fact about themselves beforehand.
-The host reads each one out, and the team guesses who said it.
-Why it works: Easy, surprising, and great for learning fun things about teammates.
+2. Federal Register (https://www.federalregister.gov/reader-aids/developer-resources/rest-api)
+	•	Official daily publication for rules, proposed rules, and notices from U.S. federal agencies.
+	•	Offers real-time updates on regulatory changes across sectors.
+	•	Crucial for compliance monitoring and anticipating regulatory risks.
 
 ⸻
 
-2. Virtual Bingo – “Get to Know Your Team” Edition
-
-Each player gets a bingo card with prompts like:
-	•	“Has worked in 3+ countries”
-	•	“Can speak 2+ languages”
-	•	“Knows how to cook biryani”
-People go around (virtually) and find teammates who match. First to get 5 in a row wins.
+3. Data.gov (https://data.gov)
+	•	U.S. government’s open data platform offering datasets from various federal agencies.
+	•	Covers topics like finance, health, energy, agriculture, and public safety.
+	•	Enables broad insights into trends that may influence policy or operational risk.
 
 ⸻
 
-3. What’s in Your Name?
-
-Each person shares a story or meaning behind their first or last name.
-Others can guess the country or origin if not obvious.
-Why it works: Global teams usually love the cultural insights.
-
-⸻
-
-4. This or That
-
-The host gives a rapid series of choices:
-Tea or Coffee? Mountains or Beaches? Netflix or YouTube?
-Each person answers quickly — no repeats allowed.
-Great for laughs and discovering team quirks.
+4. Data.gov.uk (https://data.gov.uk/data/search)
+	•	UK government’s open data repository with datasets from central and local government bodies.
+	•	Includes information on trade, economics, demographics, and public services.
+	•	Supports risk analysis in UK financial, social, and policy landscapes.
 
 ⸻
 
-5. Guess the Emoji Bio
-
-Everyone sends a short emoji-only description of themselves to the host.
-The host reads them out, and the team guesses who it is.
-Example: ✈️☕💻 = someone who travels, loves coffee, and works in tech.
+5. Eurostat (https://wikis.ec.europa.eu/display/EUROSTATHELP/API+SDMX+2.I+-+data-query)
+	•	European Commission’s statistical office providing official EU-wide statistics.
+	•	Data spans economy, environment, energy, health, and digital society.
+	•	Ideal for tracking macroeconomic indicators that influence financial stability and market risk.
 
 ⸻
 
-Would you like a ready-to-use template or Zoom-friendly version of any of these?
+6. OECD (https://www.oecd.org/en/about.html)
+	•	Offers global economic data, policy analysis, and research across 38 member countries.
+	•	Key areas include taxation, financial markets, trade, ESG, and education.
+	•	Enables international comparative studies and long-term risk forecasting.
+
+⸻
+
+7. CGFI (https://www.cgfi.ac.uk/tools-and-datasets/)
+	•	Focused on greening finance through climate and sustainability-related datasets.
+	•	Includes ESG scores, environmental disclosures, and climate risk datasets.
+	•	Ideal for building climate risk models and sustainability impact analysis.
+
+⸻
+
+8. FCA (https://www.fca.org.uk/)
+	•	UK’s financial regulator; publishes rules, enforcement actions, and compliance guides.
+	•	Data includes regulated firm directories, financial promotions, market studies.
+	•	Useful for tracking compliance risk and regulatory actions in the UK financial system.
+
+⸻
+
+Let me know if you’d like help selecting the best ones to combine for a use case.
+
+
+
+Got it! Based on your aim to build a generative AI solution for risk mitigation in banking using the approved public datasets, here’s a strong use case:
+
+⸻
+
+Use Case Title:
+“Proactive Regulatory Risk Monitoring and Compliance Advisory using Generative AI”
+
+⸻
+
+Problem Statement:
+
+Banks often struggle to stay ahead of regulatory changes, especially when these changes come from multiple jurisdictions (US SEC, UK FCA, OECD, etc.). Manual tracking of these updates is time-consuming and error-prone, increasing the risk of non-compliance and penalties.
+
+⸻
+
+Proposed Solution:
+
+Build a generative AI-powered solution that automates the extraction, summarization, and risk-tagging of key regulatory updates across jurisdictions. The solution should:
+	1.	Aggregate data from:
+	•	SEC Filings (EDGAR) – for regulatory disclosures
+	•	Federal Register & FCA – for regulatory publications
+	•	OECD & Eurostat – for macroeconomic policy data
+	2.	Use LLM/NLP to:
+	•	Summarize long-form documents (filings, rules, policy updates)
+	•	Identify high-risk areas by comparing updates with existing compliance controls
+	•	Generate compliance advisories and impact summaries for internal teams
+	3.	Provide Output via:
+	•	A dashboard showing thematic risk areas and flagged alerts
+	•	A generative Q&A assistant that lets users ask:
+“What ESG-related regulatory changes occurred last month in UK?” or
+“How does the latest SEC filing from XYZ Corp affect data privacy compliance?”
+
+⸻
+
+Target Outcome:
+	•	Proactively identify emerging regulatory risks
+	•	Reduce compliance overhead and late responses
+	•	Enable risk-aware decision-making for control functions
+
+⸻
+
+Would you like me to create a sample architecture and flow for this use case?

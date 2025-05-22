@@ -1,45 +1,7 @@
-Here’s your polished script to explain the MI in a clear, stakeholder-friendly way with a light technical touch — ideal for walking them through the Excel pivot and logic during a meeting:
+As part of the Issue Status Aging Analysis, we extracted historical issue status changes from the CDS database to understand how each issue progresses through various statuses over time.
 
-⸻
+In the attached example, you can see the number of working days it takes for an issue to transition from one status to another. While there is no documented standard defining specific timelines for each status change, based on current understanding, critical and major issues are expected to reflect status changes within 30 calendar days, and limited issues within 90 calendar days.
 
-Script:
+Using this benchmark, we have developed the MI for July data.
 
-Hi [Stakeholder’s Name],
-
-I’ll take a couple of minutes to walk you through the analysis we’ve done to track how long each issue or ID is staying in a particular status — which helps us identify bottlenecks and delays in the process.
-
-We’ve built this using simple data: just an ID, its current status, and the date that status was assigned.
-
-Now, here’s how we approached it:
-	1.	We sorted the data by ID and date to ensure the status history is in the right order.
-	2.	Then we compared each row to the next one to check when a status changes.
-	•	If the status didn’t change, we ignore it.
-	•	But if it did change, we calculate how long the previous status was held.
-	3.	We only count working days (Monday to Friday), so weekends or holidays aren’t inflating the numbers.
-	•	We used a Python function that does exactly that using the np.busday_count() method.
-
-So the result tells us — for each meaningful status change — how many business days the issue was stuck there.
-
-⸻
-
-Now coming to the pivot tables and MI:
-
-We’ve used the cleaned data to build insights like:
-	•	How much time is spent in each status, on average
-	•	Which issues are stuck the longest and might need attention
-	•	Which statuses are consistently high-aging, giving us a direction for improvement
-
-We’ve also created visual summaries like:
-	•	A heatmap to highlight slow-moving statuses
-	•	A top 10 list of IDs stuck the longest
-	•	And optionally, status trends over time, if you’d like to see patterns month-on-month
-
-⸻
-
-Let me know if you’d like to slice the data further or have this set up as a reusable dashboard in Excel or Power BI.
-
-Happy to walk you through the pivots if you’d like a quick demo.
-
-⸻
-
-Would you like a shorter version for email follow-up or a slide for presenting this?
+We also attempted to retrieve data for other months; however, due to recent changes in the CDS database, the change date information is currently unavailable. Once this data becomes accessible, we will extend the MI to cover those months as well.

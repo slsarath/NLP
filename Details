@@ -1,7 +1,43 @@
-As part of the Issue Status Aging Analysis, we extracted historical issue status changes from the CDS database to understand how each issue progresses through various statuses over time.
+You can do this in Excel using a formula with TEXTJOIN, FILTER, and ISNUMBER+SEARCH.
 
-In the attached example, you can see the number of working days it takes for an issue to transition from one status to another. While there is no documented standard defining specific timelines for each status change, based on current understanding, critical and major issues are expected to reflect status changes within 30 calendar days, and limited issues within 90 calendar days.
+Here’s how:
 
-Using this benchmark, we have developed the MI for July data.
+⸻
 
-We also attempted to retrieve data for other months; however, due to recent changes in the CDS database, the change date information is currently unavailable. Once this data becomes accessible, we will extend the MI to cover those months as well.
+Assume:
+	•	Column A: Impacted (comma-separated values like “ABC, XYZ, PQR”)
+	•	Column B: Org (10 rows of values like “ABC”, “DEF”, etc.)
+	•	You want to create a column C: Match Found — which lists the matching orgs from column B in each row of column A.
+
+⸻
+
+Step 1: Name the Org List (Optional but easier)
+	1.	Select the 10 values in column B (let’s say B2:B11)
+	2.	Go to Formulas > Define Name
+	3.	Name it: OrgList
+
+⸻
+
+Step 2: Use this formula in C2:
+
+=TEXTJOIN(", ", TRUE, FILTER(OrgList, ISNUMBER(SEARCH(OrgList, A2))))
+
+
+⸻
+
+What this does:
+	•	SEARCH(OrgList, A2): looks for each org value inside the Impacted text.
+	•	ISNUMBER(...): returns TRUE if a match is found.
+	•	FILTER(...): filters only the matching orgs.
+	•	TEXTJOIN(...): combines all matches into a comma-separated string.
+
+⸻
+
+Result:
+
+If A2 = "ABC, XYZ, PQR" and OrgList has "ABC" and "PQR",
+then C2 will show: "ABC, PQR"
+
+⸻
+
+Let me know if you’re using Excel 2016 or older — we can adjust it to work without FILTER.

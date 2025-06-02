@@ -1,20 +1,164 @@
-First Line of Defense: Operational Management and Controls
-	•	Real-Time Transaction Anomaly Detection: Leverage the transaction_logs (fields like transaction ID, amount, account, timestamp) to build an anomaly detection system that flags unusual transactions in real time. This helps front-line teams catch fraudulent or out-of-policy transactions early by identifying outliers in amount or frequency. The outcome is a proactive alerting tool that strengthens daily operational controls by catching suspicious transactions as they occur.
-	•	Operational Incident Dashboard: Use incidents_logs (fields such as incident date, category, severity, and status) to create a live dashboard for operational managers. The dashboard would report incident frequencies, resolution times, and outstanding issues by category. This reporting solution gives the first line clear visibility into where controls are failing most often and tracks progress on incident resolution, enabling timely interventions and resource allocation.
-	•	Predictive Control Failure Model: Develop a predictive model using historical incidents_logs (e.g. incident type, root cause, control ID) combined with risk_management_data (fields like control effectiveness ratings or risk scores). This model would forecast where future incidents or control breakdowns are likely to occur (for example, predicting a high chance of a processing error in a certain department next quarter). The insight enables operational teams to preemptively reinforce or adjust controls in high-risk areas before an incident happens.
-	•	Operational Communication Monitoring: Analyze message_logs (fields such as sender, department, keywords in message content, timestamp) to detect signs of potential operational issues or policy violations. For instance, an NLP-based communication analysis could flag employee messages that discuss bypassing procedures or highlight frustration with a faulty process. This use case provides first-line managers with early warnings from communication patterns so they can address process gaps or compliance issues within their teams proactively.
-	•	Key Risk Indicator Trend Analysis: Integrate data from risk_management_data (fields like key risk indicator values and thresholds) with operational events from incidents_logs to analyze trends. For example, rising values in a KRI (such as number of system outages or transaction error rate) could be correlated with increasing minor incidents over time. This trend analysis helps the first line monitor emerging risk patterns and validate that their day-to-day controls are keeping risk levels within appetite, allowing for timely adjustments in operations or additional training where needed.
+Here are a set of well-framed SQL and Python interview questions along with answers, tailored for candidates with 4+ years of experience. The focus is more on SQL, including scenario-based questions:
 
-Second Line of Defense: Risk and Compliance Functions
-	•	Fraud and AML Anomaly Analytics: Utilize the transaction_logs (fields like account ID, transaction amount, origin/destination, transaction type) to perform advanced anomaly detection for compliance purposes. The second line can build models to identify patterns indicative of fraud or money laundering – for example, detecting an unusual burst of high-value transactions or patterns of structured transactions just below reporting thresholds. This use case delivers insights by flagging suspicious transaction clusters for investigation, strengthening anti-fraud and Anti-Money Laundering (AML) controls beyond the first line’s day-to-day checks.
-	•	Compliance Communication Surveillance: Leverage message_logs (fields such as sender/receiver, message content, keywords, and timestamp) for communication analysis targeting compliance breaches. The risk and compliance team can scan for red-flag keywords or sentiment (e.g. discussions of sharing confidential data, insider trading hints, or circumventing policies) across employee communications. This solution acts as an early warning system, alerting the second line to potential unethical or non-compliant behavior so they can intervene or investigate before it escalates into a serious incident.
-	•	Risk Appetite Dashboard and Reporting: Use risk_management_data (fields like risk category, inherent risk score, residual risk score, risk appetite threshold) in combination with summaries from incidents_logs to build a comprehensive risk dashboard. This dashboard would report current risk levels and recent incident counts against the organization’s risk appetite for each risk category. The second line can use it for regular reporting to executives and regulators, quickly highlighting areas where the risk exposure exceeds acceptable limits and thus where increased oversight or action is needed.
-	•	Predictive Risk Early Warning Model: Apply predictive modeling on risk_management_data (such as trends in key risk indicators and control effectiveness metrics) possibly enriched with triggers from incidents_logs or transaction_logs. This model might forecast a rise in risk (e.g., predicting a compliance risk spike in a business unit where minor incidents and transaction anomalies have been increasing). The outcome is an early warning tool for risk managers – if the model predicts a breach of risk thresholds or a likely compliance failure, the second line can take preemptive measures (like a focused review or tightening controls) to prevent or mitigate the issue.
-	•	Emerging Risk Pattern Analysis: Perform trend and pattern analysis across multiple data sets, for instance correlating incidents_logs with transaction_logs over time to uncover emerging risks. The risk function could identify patterns such as a specific product or region showing a growing number of incident reports alongside abnormal transaction trends (e.g. spikes in transaction volume coupled with more system outage incidents). By detecting these cross-dataset patterns, the second line gains insight into systemic issues or evolving risk areas, enabling them to update risk assessments or advise the first line to implement targeted controls in those areas.
+⸻
 
-Third Line of Defense: Internal Audit and Assurance
-	•	Data-Driven Audit Planning: Leverage incidents_logs and risk_management_data to prioritize audit activities using predictive insights. For example, internal audit can aggregate fields like incident frequency by business line, severity, and outstanding control issues (from incidents_logs), along with high residual risk scores or control deficiencies noted in risk_management_data. By modeling these factors, audit can predict which locations or processes are most likely to have control failures. This insight allows the third line to plan audits more effectively, focusing on areas with the greatest risk and past problems, thereby optimizing audit resources and assuring coverage of critical issues.
-	•	Forensic Transaction and Communication Review: Combine transaction_logs (to find unusual or high-risk transactions that may have slipped past first/second line) with message_logs (to review communications around those transactions or time periods). Internal audit can perform anomaly detection on transactions (e.g., identifying a series of write-offs or overrides just under approval limits) and then examine related communications for any signs of misconduct or collusion (for instance, staff messages coordinating those actions). This use case provides a deep, forensic level of assurance: auditors can uncover hidden issues or confirm whether suspicious transactions were appropriately handled, strengthening the overall control environment.
-	•	Control Effectiveness Dashboard: Build a reporting dashboard that cross-references risk_management_data (fields like control IDs, control test results or ratings, risk owners) with incidents_logs (incidents mapped to failed controls or control gaps). Internal audit can use this to visualize which controls see frequent incidents or failures and to track remediation status for key control issues. The outcome is a clear view of control effectiveness over time – for example, if a particular control has multiple incidents attributed to it, audit can flag it for a detailed review. This dashboard aids the third line in providing assurance to the board that known control weaknesses are being addressed and to verify that second line monitoring is effective.
-	•	Post-Incident Communication Analysis: For significant incidents recorded in incidents_logs (fields might include incident ID, date, impacted process), internal audit can perform a communication analysis using message_logs to ensure proper protocols were followed. Auditors would review messages from relevant staff around the incident timeframe to confirm, for example, that the incident was reported promptly and that no one attempted to hide or downplay the issue. This use case yields an assurance outcome: it helps verify compliance with incident management procedures and can uncover any unethical behavior in the handling of incidents, thereby reinforcing accountability in the organization.
-	•	Historical Risk Trend Verification: Analyze long-term trends by comparing risk_management_data (e.g. quarterly risk scores, audit findings, self-assessment results) with the actual events in incidents_logs and anomalies in transaction_logs. The internal audit function can identify discrepancies between reported risk reductions and real-world data – for instance, if management reports improving risk scores in a certain area while incident counts or loss amounts in transaction_logs were rising. This trend analysis allows the third line to verify the accuracy of risk reporting and the effectiveness of risk management over time. The insight gained is used to challenge management assertions and ensure that the first and second lines’ activities truly result in risk mitigation, thereby strengthening overall assurance.
+🔷 SQL Questions with Answers
+
+1. How would you find the second highest salary from a table named Employees?
+Answer:
+
+SELECT MAX(salary) 
+FROM Employees 
+WHERE salary < (SELECT MAX(salary) FROM Employees);
+
+
+⸻
+
+2. Scenario: You are working on a reporting dashboard. Users are complaining that duplicate entries are being displayed. How would you identify and remove duplicates from a table called Transactions?
+Answer:
+
+-- Identify duplicates
+SELECT transaction_id, COUNT(*) 
+FROM Transactions 
+GROUP BY transaction_id 
+HAVING COUNT(*) > 1;
+
+-- Remove duplicates (keeping the latest)
+WITH RankedCTE AS (
+  SELECT *, 
+         ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY created_date DESC) AS rn
+  FROM Transactions
+)
+DELETE FROM RankedCTE WHERE rn > 1;
+
+
+⸻
+
+3. What’s the difference between WHERE and HAVING clause?
+Answer:
+	•	WHERE is used to filter rows before grouping.
+	•	HAVING is used to filter groups after aggregation.
+
+⸻
+
+4. How can you optimize a slow-running SQL query?
+Answer:
+	•	Use proper indexes
+	•	Avoid SELECT *
+	•	Use EXISTS instead of IN where applicable
+	•	Avoid unnecessary joins
+	•	Review execution plan
+
+⸻
+
+5. Scenario: A table Orders has millions of records. You want to fetch only the top 5 most sold products. How would you do it?
+Answer:
+
+SELECT product_id, COUNT(*) AS total_sales 
+FROM Orders 
+GROUP BY product_id 
+ORDER BY total_sales DESC 
+LIMIT 5;
+
+
+⸻
+
+6. Explain the concept of window functions with an example.
+Answer:
+Window functions perform calculations across a set of table rows related to the current row. Example:
+
+SELECT employee_id, salary,
+       RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS dept_rank
+FROM Employees;
+
+
+⸻
+
+7. How would you perform a full outer join in databases that don’t support it?
+Answer:
+Use UNION of LEFT JOIN and RIGHT JOIN:
+
+SELECT * FROM A LEFT JOIN B ON A.id = B.id
+UNION
+SELECT * FROM A RIGHT JOIN B ON A.id = B.id;
+
+
+⸻
+
+8. Write a query to find departments where the average salary is greater than 60,000.
+Answer:
+
+SELECT department_id, AVG(salary) as avg_salary
+FROM Employees
+GROUP BY department_id
+HAVING AVG(salary) > 60000;
+
+
+⸻
+
+9. How would you update records in one table based on values from another table?
+Answer:
+
+UPDATE A
+SET A.column1 = B.column2
+FROM A
+JOIN B ON A.id = B.id;
+
+
+⸻
+
+10. Scenario: You need to detect gaps in a sequence of invoice numbers (1,2,3,5,6). How would you do it?
+Answer:
+
+SELECT a.invoice + 1 AS missing_invoice
+FROM invoices a
+LEFT JOIN invoices b ON a.invoice + 1 = b.invoice
+WHERE b.invoice IS NULL;
+
+
+⸻
+
+🔶 Python Questions with Answers
+
+1. What are list comprehensions? Provide an example.
+Answer:
+List comprehensions provide a concise way to create lists.
+Example:
+
+squares = [x*x for x in range(10)]
+
+
+⸻
+
+2. Scenario: You have a list of dictionaries containing employee details. How will you filter employees with salary > 50000?
+Answer:
+
+filtered = [emp for emp in employees if emp['salary'] > 50000]
+
+
+⸻
+
+3. What’s the difference between deepcopy() and copy() in Python?
+Answer:
+	•	copy() creates a shallow copy (changes in nested objects affect the copy).
+	•	deepcopy() creates a deep copy (completely independent clone).
+
+⸻
+
+4. How do you handle missing values in a DataFrame?
+Answer:
+Using pandas:
+
+df.fillna(value)      # Fill missing values  
+df.dropna()           # Drop rows with missing values  
+
+
+⸻
+
+5. Scenario: You need to merge two datasets but only keep matching records. What do you use?
+Answer:
+Use pd.merge(df1, df2, on='id', how='inner')
+
+⸻
+
+Would you like me to format this into a downloadable document or generate more questions for a specific topic?

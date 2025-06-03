@@ -1,210 +1,219 @@
-import pandas as pd
-import re
-import spacy
-from langdetect import detect
-import logging
-import os
-import win32com.client as win32
-from config.config import LEGAL_PHRASES
+Azure-Powered Operational Risk Management Prototype
 
-class DataProcessor:
-    def __init__(self):
-        self.nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
-        self.df = None
-        self.filtered_df = None
-        self.legal_phrases = LEGAL_PHRASES
+Problem Statement
 
-    def load_data(self, file_path):
-        logging.info(f"Loading data from {file_path}")
-        try:
-            normalized_path = os.path.normpath(file_path)
-            self.df = pd.read_excel(normalized_path)
-        except Exception as e:
-            logging.error(f"Error loading data: {e}")
-            raise
+Financial institutions face significant challenges in monitoring operational risks and compliance in real time. Important risk incidents often go unnoticed until they escalate into major issues, because organizations lack integrated, real-time visibility – resulting in a reactive approach that can lead to higher losses, regulatory fines, and reputational damage ￼. For example, the failure to surveil employee communications has led to over $2 billion in fines for major banks in 2022 ￼. The business needs a solution that centralizes operational incident tracking, predicts control failures before they happen, and automatically scans communications for red flags. This prototype addresses these needs by combining live operational dashboards, predictive analytics, and AI-driven compliance monitoring to help risk managers stay ahead of issues.
 
-    def filter_data(self, creation_date_from, creation_date_to):
-        logging.info(f"Filtering data based on creation dates from {creation_date_from} to {creation_date_to} and name")
-        self.filtered_df = self.df[
-            (self.df['Creation Date'] >= creation_date_from) & 
-            (self.df['Creation Date'] <= creation_date_to) & 
-            (~self.df['Name'].str.contains("Fraud Cat3"))
-        ]
+Solution Overview
 
-    @staticmethod
-    def preprocess_text(text):
-        text = str(text).lower()
-        text = re.sub(r'[\[\]\\/]', ' ', text)
-        text = re.sub(r'\-', '', text)
-        text = re.sub(r'\n', '. ', text)
-        text = re.sub(r'[\-\;%()|+&=*%!?:#$@\[\]/]', ' ', text)
-        return text
+We propose a comprehensive solution with five integrated use cases, leveraging structured datasets in Azure Databricks and AI services for both real-time monitoring and historical analysis:
+	1.	Operational Incident Dashboard: A live dashboard that ingests incidents_logs data to display current operational incidents and trends. It provides real-time visibility into incident counts, severity, and resolution status. Using streaming data ingestion, new incidents are populated instantly on a Power BI dashboard, categorized by type and business unit. Historical incident data can be filtered by date or category to identify patterns (e.g. spike in system outages or process failures), enabling operations teams to pinpoint problem areas quickly.
+	2.	Predictive Control Failure Model: A machine learning model that analyzes incidents_logs combined with risk_management_data to predict potential control failures or upcoming risk events. Using Azure Databricks, historical incident patterns and risk indicators are used to train an ML model that forecasts the likelihood and impact of future incidents ￼. For example, if certain risk metrics (from risk_management_data) correlate with past control failures, the model will learn these signals. The prototype outputs a “risk score” for various processes or controls, allowing the organization to proactively mitigate high-risk scenarios. This innovation helps anticipate and prevent incidents, moving from reactive to preventive risk management ￼.
+	3.	Operational Communication Monitoring: This component applies NLP analysis to message_logs (e.g. emails, chat transcripts) to gauge operational issues and team sentiment. Using Azure Cognitive Services for language analysis, the system scans internal communications for keywords or sentiments that may indicate emerging problems – for instance, repeated mentions of “system down” or negative sentiment about a new process. The Databricks integration with Cognitive Services allows us to flag messages that suggest operational pain points (e.g. frustrated customer communications or workaround discussions). Managers can receive alerts or view a dashboard of communication trends (such as rising complaint volume or critical keywords), helping the first line address issues before they manifest as incidents.
+	4.	Key Risk Indicator (KRI) Trend Analysis: This module marries risk_management_data (which contains key risk indicators and metrics) with incident data from incidents_logs to provide historical trend analysis. In Databricks, KRI metrics (e.g. system downtime hours, number of failed transactions, compliance breaches, etc.) are aggregated over time and correlated with operational incidents. Power BI visualizations then show KRI trends alongside incident frequency – serving as an early warning system. For example, an upward trend in a KRI like “processing errors rate” may precede an increase in incident reports, highlighting a need for intervention. Users can drill down into specific risk indicators and see how control improvements or process changes impact incident rates over months or quarters. This trend analysis supports the risk management team in tracking the effectiveness of controls and risk mitigation strategies over time.
+	5.	Compliance Communication Surveillance: A focused NLP-driven surveillance of message_logs to detect red-flag compliance issues. All employee communications (email, chat, etc.) are automatically screened using Azure Cognitive Services (Language API with custom terms and classifiers) for indications of policy violations or fraud (e.g. insider information sharing, collusion language, harassment, or other prohibited content). The system uses a refined lexicon and machine learning to identify evidence of misconduct in communications and surfaces those instances for compliance review ￼. Detected red-flag messages are logged with risk scores or categories (e.g. potential insider trading mention), and compliance officers access a dashboard of alerts. This ensures that problematic communications are caught proactively – reducing reliance on random checks and dramatically cutting down noise by prioritizing high-risk alerts ￼. Such surveillance strengthens the second line of defense by enforcing conduct compliance in real time.
 
-    def clean_data(self):
-        logging.info("Cleaning data")
-        self.filtered_df['Description'] = self.filtered_df['Description'].astype(str)
-        self.filtered_df['Risk Event Impact'] = self.filtered_df['Risk Event Impact'].astype(str)
-        self.filtered_df['Risk Event Root Cause'] = self.filtered_df['Risk Event Root Cause'].astype(str)
+High-Level Azure Architecture
 
-        self.filtered_df['Combined_RE_Narrative'] = self.filtered_df[
-            'Description'] + '. ' + self.filtered_df['Risk Event Impact'] + '. ' + self.filtered_df['Risk Event Root Cause']
-        
-        self.filtered_df['Cleaned_Desc'] = self.filtered_df['Description'].apply(self.preprocess_text)
-        self.filtered_df['Cleaned_Impact'] = self.filtered_df['Risk Event Impact'].apply(self.preprocess_text)
-        self.filtered_df['Cleaned_Combined_Narrative'] = self.filtered_df['Combined_RE_Narrative'].apply(self.preprocess_text)
+Our prototype is built with Azure-native services for data ingestion, processing, AI analysis, storage, and visualization, ensuring an end-to-end solution that is innovative, complete, and applicable to real-world financial operations. The high-level architecture is as follows:
+	•	Data Ingestion & Storage: Operational data flows into a centralized Azure Data Lake. For real-time feeds like incident logs and message streams, Azure Event Hubs captures the events and Azure Databricks’ Delta Live Tables ingest the streaming data ￼. Batch data such as periodic risk management spreadsheets are ingested via Azure Data Factory into the lake. All raw data is stored in Azure Data Lake Storage Gen2 (ADLS) as the Bronze layer (raw, unprocessed data) ￼. This scalable data lake houses the structured logs (incidents_logs, message_logs, risk_management_data) and any unstructured data, providing a single source for both streaming and historical data.
+	•	Processing & Analytics (Azure Databricks): Azure Databricks is the core processing engine for ETL, analytics, and machine learning ￼. The solution follows a medallion architecture on Delta Lake: raw Bronze data is cleaned, joined, and transformed into a Silver layer (e.g. enriching incident records with risk metadata), and then aggregated into a Gold layer for analytics (e.g. computing monthly KRI values, incident counts by category) ￼. Databricks’ structured streaming capability handles real-time data from Event Hubs, allowing the incident dashboard and communications monitoring to update continuously. At the same time, Databricks notebooks perform batch processing for heavy analytics (like daily model retraining or monthly risk reports). This unified lakehouse approach ensures that whether data is real-time or historical, it’s processed in one platform and can be used consistently for ML and BI.
+	•	Machine Learning & NLP Integration: The platform leverages Azure’s AI services to add intelligence. The Predictive Control Failure Model is developed in Databricks using Spark ML and/or Azure ML, with MLflow for experiment tracking. Historical incidents and risk factors are used to train the model which is then applied to incoming data to score the likelihood of control failures ￼. For NLP tasks, the solution calls Azure Cognitive Services (Language APIs) directly from Databricks. Azure Cognitive Services provides pre-built AI models for language understanding (text analytics, sentiment, key phrase extraction, and custom classification) accessible via REST APIs ￼. This means our team didn’t need to build NLP models from scratch – Databricks sends message text to Azure’s Language API and receives analysis results (e.g. a sentiment score or a classification like “Compliance Risk” or “Normal”). These NLP results are then stored back in the data lake (e.g. flagging each message with any risk tags). By combining Databricks with Cognitive Services, the prototype can perform advanced text analytics at scale within the data pipeline ￼. All sensitive data is kept secure in Azure, and cognitive API calls can be governed via Azure’s role-based access and monitoring.
+	•	Unified Storage (Delta Lake) and Outputs: Processed data, model outputs, and analysis results reside in Delta Lake tables on ADLS (the Silver/Gold layers). For example, a curated Incidents table in Silver contains enriched incident_log entries (with lookup fields from risk data), a Predictions table in Gold holds the control failure risk scores per control/process, a KRI Trends table stores historical KRI values alongside incident counts, and a Communications Alerts table stores messages flagged by the NLP analysis with their risk ratings. Delta Lake ensures ACID transactions and versioning, which is key for reliable analytics. Because Azure Databricks and Power BI can both read these Delta tables, we avoid data silos – the dashboards always query the latest Gold-level data. Additionally, the data lake can retain extensive history (for example, all past incidents and KRI metrics) to enable year-over-year trend analysis and compliance audits.
+	•	Visualization & Dashboards (Power BI): The insight layer is delivered via Microsoft Power BI, providing interactive dashboards for different user groups (operations managers, risk officers, compliance officers). Power BI seamlessly connects to Azure Databricks using the built-in Spark connector ￼, allowing direct querying of the Delta Lake tables. This enables near real-time updates on dashboards – for instance, as new incidents stream in, the incident count visuals update automatically. We have designed multiple Power BI reports: an Operational Risk Dashboard (showing live incident metrics, open incident list, and recent trends), a Predictive Risk Dashboard (highlighting top predicted control failures or risk hotspots, perhaps on a heat map or risk matrix), a KRI Trend Dashboard (with historical line charts and threshold indicators for each key risk indicator), and a Compliance Monitoring Dashboard (showing the volume of communications scanned, number of red flags, and case details for investigation). The use of Power BI ensures a user-friendly presentation layer, and it supports real-time tiles and alerts – for example, sending an automatic notification to compliance leads if a high-severity red-flag message is detected. The entire solution is built with Azure components working in concert – from data ingestion to AI to visualization – showcasing an innovative cloud-native architecture ￼ that is robust and scalable for real-world deployment.
 
-    def extract_legal_phrases(self, text):
-        extracted_phrases = [phrase for phrase in self.legal_phrases if phrase in text.lower()]
-        return extracted_phrases
+First and Second Line of Defense Enablement
 
-    def process_legal_phrases(self):
-        logging.info("Extracting legal phrases")
-        self.filtered_df['Legal_Phrases'] = self.filtered_df['Cleaned_Combined_Narrative'].apply(self.extract_legal_phrases)
+This prototype directly empowers both the first and second lines of defense in financial risk management. The first line of defense – i.e. operational staff and managers who “own” and manage risk day-to-day – gain timely, actionable insights. With real-time incident dashboards and alerts, the front-line teams can detect and respond to issues immediately, rather than after the fact. They also benefit from predictive warnings (e.g. a model alert about a likely control failure) which allows them to fix problems proactively. The second line of defense – the risk management and compliance functions that oversee and guide the first line – is equipped with continuous monitoring and deep analytics. Our integrated platform boosts first-line productivity and enables the second line to continuously monitor first-line activities via dashboards and analytics ￼. For instance, risk officers in the second line can track KRI trends and ensure that risk levels remain within appetite, while compliance officers receive automated communication surveillance reports to enforce regulatory policies. By bridging data across operational incidents, risk indicators, and communications, the solution facilitates a collaborative risk culture: the first line is supported with better tools to manage risks, and the second line has oversight visibility to refine controls and prevent issues before they escalate ￼. In summary, the prototype enhances both lines of defense – helping the business stay resilient, compliant, and ahead of operational risks.
 
-    def aggregate_check(self):
-        logging.info("Checking aggregate events")
-        aggregate_pattern = r'(\d+ accounts|\d+ transactions|multiple accounts|multiple transactions|Aggregated|Aggregate)'
-        self.filtered_df['Aggregate_phrases'] = self.filtered_df['Cleaned_Combined_Narrative'].apply(
-            lambda x: ','.join(re.findall(aggregate_pattern, x))
-        )
 
-    @staticmethod
-    def legal_function_check(check_column, legal_phrases):
-        if check_column == 'Yes':
-            return "Need to be validated"
-        elif check_column == 'No' and len(legal_phrases) != 0:
-            return "FAIL"
-        else:
-            return "PASS"
+Risk Management Solution Implementation Plan
 
-    def apply_legal_check(self):
-        logging.info("Applying legal function check")
-        self.filtered_df['Function_Check'] = self.filtered_df.apply(
-            lambda row: self.legal_function_check(row['Managed By Legal Function'], row['Legal_Phrases']), axis=1
-        )
+Architecture
 
-    @staticmethod
-    def aggregate_events_check(check_column, aggregate_phrase):
-        if check_column == 'Yes':
-            return "PASS"
-        elif check_column == 'No' and aggregate_phrase.strip() != '':
-            return "FAIL"
-        else:
-            return "PASS"
+The solution will be built on a modern Azure data architecture to cover all specified use cases (incidents dashboard, predictive modeling, communication monitoring, KRI trends, compliance NLP analysis). It will leverage a lakehouse approach using Azure Databricks and Azure Blob Storage for unified data storage and processing. The high-level components and workflow are:
+	1.	Data Storage (Azure Blob) – All raw datasets (e.g. incidents_logs, risk_management_data, message_logs) are stored in Blob Storage containers. This acts as the data lake (with Azure Data Lake Gen2 or Blob) holding structured and unstructured data, both batch and streaming ￼. Using a medallion architecture in Databricks, data will be organized in layers: Bronze (raw data), Silver (cleaned and integrated data), and Gold (aggregated, analytics-ready data) ￼.
+	2.	Compute & Processing (Azure Databricks) – Azure Databricks is the core computation engine ￼. It will ingest data from Blob (and optionally real-time sources) into Delta Lake tables. Databricks notebooks and jobs will perform ETL (extract, transform, load) to cleanse and integrate data (Bronze → Silver → Gold) and run Machine Learning tasks. The platform can ingest streaming data (e.g. new incident or message events) via Structured Streaming or Delta Live Tables, and batch data via scheduled jobs ￼. Data scientists can use this environment for preparation, exploration, and model training ￼. Azure Databricks will also integrate with Azure OpenAI by calling the OpenAI APIs from notebooks for NLP tasks. We will use Azure Databricks Secrets to store sensitive keys (like the OpenAI API key) securely, rather than hard-coding them ￼.
+	3.	Azure OpenAI Service (NLP Analytics) – Azure OpenAI provides advanced NLP capabilities (GPT models) that will be used for analyzing communication logs and detecting compliance red flags. The Databricks environment (or a separate Python service) will call Azure OpenAI’s endpoints to analyze text data. For example, message content can be sent to a GPT-3.5/4 model via the Azure OpenAI API for classification or sentiment analysis. Azure OpenAI adds AI-driven insights to the pipeline – for instance, identifying potentially risky communications or summarizing operational chatter. (Notably, Azure OpenAI has been used in industry to monitor data and identify operational disruptions before they occur ￼ and to analyze unstructured text for emerging risks ￼.) The integration will be done through Python SDK/REST calls, with proper security and compliance (ensuring prompts/results don’t violate data privacy policies).
+	4.	Analytics & Storage Layer – Processed results (like incident aggregates, KRI metrics, model predictions, flagged communications) will be stored in an accessible form. We can use Delta tables on Databricks for analytics, and also load finalized data into an Azure Database for PostgreSQL for serving to the dashboard or for any relational queries. Having a Gold layer table for each use case (e.g. a table of KRI trends, a table of predicted control failure scores, a table of flagged compliance messages) ensures the dashboard can quickly fetch the latest insights. Databricks’ MLflow will be used to version and register the predictive ML models, enabling batch or real-time scoring as needed ￼.
+	5.	Dashboard & Application (Streamlit) – A Streamlit web application will serve as the front-end for all dashboards (since Power BI is not used). This app will connect to the processed data (via Databricks SQL endpoints or via PostgreSQL) to visualize insights. It will include interactive dashboards for each use case: incidents overview, predictive model outcomes, communication monitoring, KRI trends, and compliance alerts. The Streamlit app will be containerized and deployed to Azure (e.g. via Azure App Service or Container Instances). This allows internal users to access the dashboards through a browser. Streamlit is chosen because it easily integrates with Python data pipelines and can be rapidly developed without extensive web programming ￼ ￼.
 
-    def apply_aggregate_check(self):
-        logging.info("Applying aggregate events check")
-        self.filtered_df['Aggregate_Check'] = self.filtered_df.apply(
-            lambda row: self.aggregate_events_check(row['Aggregate Event'], row['Aggregate_phrases']), axis=1
-        )
+All components are integrated: Blob storage is the source and sink for data; Databricks performs both batch processing (for periodic updates and model retraining) and real-time streaming (for near-instant incident/message updates where needed); Azure OpenAI enriches the data with NLP; and the Streamlit app provides visualization. The architecture ensures data flows through a single platform, maintaining consistency and enabling both historical and real-time analytics. Security is enforced via Azure AD roles and secrets management (e.g., using Key Vault or Databricks secret scopes for API keys and database credentials). Scaling can be handled at each layer: Blob storage for more data, Databricks clusters for compute scaling, and Azure OpenAI for higher throughput by scaling API instances.
 
-    @staticmethod
-    def anticipated_loss_check(check_column, aadl_column):
-        if check_column == 'Closed' and aadl_column == 0:
-            return "PASS"
-        elif check_column == 'Closed' and aadl_column != 0:
-            return "FAIL"
-        else:
-            return "PASS"
+Data Ingestion
 
-    def apply_loss_check(self):
-        logging.info("Applying anticipated loss check")
-        self.filtered_df['AADL_Check'] = self.filtered_df.apply(
-            lambda row: self.anticipated_loss_check(row['Workflow Status'], row['Anticipated Additional Direct (GBP)']), axis=1
-        )
+This phase covers acquiring the data from sources into the Azure environment, in both batch and streaming modes, and generating synthetic data if needed. The team will perform the following steps:
+	1.	Setup Blob Storage Containers: Create Blob Storage containers for each raw dataset (e.g. raw-incidents, raw-risks, raw-messages). If using Azure Data Lake Storage Gen2, enable a filesystem for the lake. These will hold the incoming data files. Azure Blob acts as the landing zone for all data, capable of storing structured CSV/Parquet as well as unstructured text logs ￼.
+	2.	Synthetic Data Generation (if required): If real datasets are incomplete or unavailable initially, generate synthetic data to simulate realistic scenarios. We will utilize Python libraries such as Plait.py, Pydbgen, Copulas, and Gretel Synthetics for this purpose. For example, Plait.py can produce fake records from configurable templates (useful for structured data like incident logs), and Pydbgen can quickly create random tables or Pandas dataframes with realistic fields (names, dates, etc.) ￼. Copulas (from the SDV library) can model the distributions of real data and sample new synthetic data points following the same statistical patterns ￼ – this is useful to create risk_management_data that preserves correlations. Gretel Synthetics can be used for generating synthetic text (e.g., pseudo message logs) if needed, using generative models. The data engineering member will create scripts/notebooks to generate these synthetic datasets and load them into Blob storage, so the rest of the pipeline can be developed and tested early on. (For instance, using Pydbgen to create a dummy incident log with columns like incident type, severity, timestamp, and description ￼.) All synthetic data will be clearly marked and used only for development/testing.
+	3.	Batch Ingestion Pipelines: Develop batch data ingestion workflows for historical and static data. For example, if incidents_logs and risk_management_data come as daily CSV exports or a one-time dump, we will use Azure Databricks or Azure Data Factory to load these into the Bronze layer. In Databricks, we can use a notebook to read CSV files from Blob (using Spark CSV reader or pandas for smaller data) and write to Delta Lake tables. We’ll automate this via Databricks Jobs or an Azure Data Factory pipeline scheduled to run at appropriate intervals (e.g., nightly load for new incidents). Step-by-step:
+	•	Mount or access the Blob storage from Databricks (using SAS token or service principal credentials).
+	•	Use Spark to read raw files into DataFrames and apply minimal parsing.
+	•	Write the raw DataFrame as a Delta table (Bronze) partitioned by date or another key.
+	•	Use logging to record ingestion success or errors.
+If using Azure Data Factory (ADF) for ingestion, set up an ADF pipeline to copy data from source (could be an on-prem database or API) into Blob on a schedule ￼, then trigger a Databricks notebook run to process it. All ingested data lands in Blob/Delta Bronze tables.
+	4.	Real-time/Streaming Ingestion (Incidents & Messages): For data that requires low-latency updates (e.g., new incident reports or incoming communication messages), implement a streaming pipeline. We can use Azure Event Hubs or Azure Service Bus as an ingestion point for real-time events. For instance, operational systems can push incident log entries to an Event Hub. Azure Databricks can be configured with Spark Structured Streaming to listen to the Event Hub stream in near real-time ￼. We will create a streaming job (using PySpark) that reads incoming JSON/XML events, transforms them to the incident schema, and appends to the Bronze Delta table continuously. This ensures the incident dashboard and KRI metrics can be updated with minimal lag. For the message logs (communications), if real-time surveillance is needed, we can similarly stream new messages (e.g., from an email system or chat) through Event Hub into a Bronze table for messages. If setting up Event Hubs is not feasible, an alternative is to have a Databricks notebook that periodically checks a source or a drop location for new log entries (e.g., using Auto Loader to detect new files in blob in micro-batches). The key is that the pipeline supports both batch (backfill and periodic loads) and streaming (incremental loads), aligning with a Lambda/Delta architecture.
+	5.	Data Quality and Bronze to Silver Processing: As data lands, immediately apply quality checks and cleaning in Databricks. For each dataset:
+	•	Incidents Logs: parse timestamps, normalize categories/severity levels, and remove or flag any corrupt records. Store cleaned data in a Silver table incidents_silver (still at the incident-level granularity).
+	•	Risk Management Data: ensure consistent formatting of risk indicators or control IDs so they can join with incidents (if needed). Load into risk_data_silver.
+	•	Message Logs: perform basic NLP preprocessing – strip unnecessary formatting, maybe redact PII if needed, and store in messages_silver table.
+	•	This transformation can be done via Databricks notebooks (potentially scheduled right after ingestion). The Silver layer provides a reliable source for analytics and modeling.
 
-    def remove_acronyms(self, text):
-        acronym_pattern = r'\b[A-Z]{2,5}\b'
-        cleaned_text = re.sub(acronym_pattern, '', text)
-        return cleaned_text
+Throughout ingestion, use Azure Monitor or Databricks logging to track pipeline health. Ensure idempotency for batch jobs (so re-running doesn’t duplicate data). By the end of this phase, all required data (real or synthetic) is available in Blob Storage/Delta tables, ready for analysis.
 
-    def is_english(self, text):
-        cleaned_text = self.remove_acronyms(text)
-        try:
-            language = detect(cleaned_text)
-            return 'Yes' if language == 'en' else 'No'
-        except Exception as e:
-            logging.error(f"Error detecting language: {e}")
-            return 'No'
+Processing & ML
 
-    def apply_language_check(self):
-        logging.info("Checking if RE_Narrative is in English")
-        self.filtered_df['Is_RE_Narrative_in_English'] = self.filtered_df['Combined_RE_Narrative'].apply(self.is_english)
+In this phase, the team will perform data analysis, feature engineering, and machine learning model development using Databricks (with Python, Spark, scikit-learn, etc.). The goal is to implement the Predictive Control Failure Model and the KRI Trend Analysis, and prepare data for the incident dashboard. Key steps include:
+	1.	Feature Engineering and Integration: Using the Silver tables, join and aggregate data as needed for each use case:
+	•	Predictive Control Failure (incidents_logs + risk_management_data): We will combine historical incident records with relevant risk data (e.g., control IDs, risk scores, past failures). For example, if risk_management_data contains a list of controls and their risk ratings or inspection results, we link incidents to the control or process that failed. Create a feature set that might include: control’s risk score, number of past incidents involving that control, time since last incident, incident severity trends, etc. This feature set will be the training data for the predictive model. Use Pandas or PySpark to compute these features and store the prepared dataset in a Gold table (e.g., control_failure_features_gold).
+	•	KRI Trend Analysis (risk_management_data + incidents_logs): Identify Key Risk Indicators in the risk data (e.g., risk level for various departments, counts of control failures, audit scores, etc.). Compute time-series trends such as monthly incident counts, average risk score per month, number of high-severity incidents over time, etc. The processing involves grouping data by time windows and possibly correlating different metrics. For example, we might calculate a rolling 3-month average of incidents and see how it correlates with a risk score threshold. Store the results in a Gold table kri_trends_gold containing time-indexed KRI metrics. These will feed the dashboard visualizations (trend lines, comparisons against thresholds).
+	2.	Machine Learning Model Development: Build the Predictive Control Failure Model using the feature set prepared:
+	•	Choose an appropriate modeling approach (e.g., classification if predicting the probability of a control failure incident in the next period, or regression if predicting number of incidents). Suppose we want to predict whether a given control will fail in the next month; this becomes a binary classification problem. We will label historical data where for each control and time period we know if a failure occurred.
+	•	Split the data into training and test sets. Use scikit-learn or Spark MLlib algorithms (e.g., logistic regression, random forest, XGBoost) to train the model. Given the data size, if it’s large, Spark MLlib can distribute the training; if moderate, scikit-learn in a single node on Databricks is fine.
+	•	Perform hyperparameter tuning (Databricks’ MLFlow or Hyperopt can help automate this). Track experiments using MLflow Tracking integrated in Databricks to log parameters, metrics, and model versions ￼.
+	•	Evaluate the model on test data (accuracy, precision/recall if classification) to ensure it meets requirements. If not satisfactory, iterate on feature engineering or try advanced algorithms.
+	•	Once a satisfactory model is obtained, register it in the MLflow Model Registry in Databricks. This will version the model and allow us to later deploy or use it easily in batch or realtime scoring ￼. We will tag a specific model version as “Production” for use.
+	3.	Model Inference Pipeline: Implement how the model will be used in production. There are two patterns:
+	•	Batch scoring: e.g., run the model once a day or week on the latest data to predict upcoming control failures. We can schedule a Databricks job that loads the latest features (for each control or unit) and uses the saved model to score them, producing a list of at-risk controls or predicted probabilities. The output (predictions) will be written to a table (e.g., control_failure_predictions_gold) which the dashboard can display (like “Top 10 controls with highest failure risk next month”). Batch scoring ensures predictions are refreshed regularly (and since control risk likely doesn’t need minute-by-minute updates, daily/weekly is fine).
+	•	Real-time scoring (streaming): if there is a use case to predict in real-time (for example, whenever a new incident comes in, update the risk of related controls immediately), we can use Structured Streaming. For instance, as new incident events stream in, update feature counts and run a lightweight model inference. However, real-time ML inference for this scenario may be complex and not strictly required unless the business needs instant alerts. We will design the system to allow near-real-time updates if needed (using the model in a Spark Structured Streaming map function or using Databricks Model Serving), but initially focus on batch predictions. The MLflow model registry allows serving the model via a REST API or integration into streaming jobs if needed ￼.
+	4.	Analytics for Dashboard (Incidents & KRI): In parallel to model building:
+	•	Prepare the aggregated data for the Operational Incident Dashboard. This includes computing current counts of incidents by category, by severity, MTTR (mean time to resolve) if applicable, etc. Use Spark SQL or DataFrame operations on the Silver incidents data to derive these metrics. For dynamic updates, consider using Delta Lake’s capabilities to maintain up-to-date aggregates. For example, a Gold table incident_metrics_gold could have the latest count of open incidents, incidents by type, etc., updated either by a batch job or continuously via a streaming aggregation query.
+	•	Finalize the KRI trend calculations from step 1: ensure the Gold table has all necessary fields (date, KRI name, value, threshold, etc.) for the dashboard to plot trends. Possibly compute a risk indicator score that combines multiple inputs (incidents and other risk data) for a holistic view. Data scientists will verify these trends make sense domain-wise.
+	5.	Verification and Testing: Before deployment, test the data processing and ML outputs:
+	•	Verify that joining incidents_logs with risk_management_data yields meaningful features (e.g., no unexpected data mismatches).
+	•	Simulate a few known scenarios (maybe using synthetic data we control) to see if the predictive model would have caught a failure event.
+	•	Ensure the KRI trend data reflects the underlying incident spikes or risk changes (for example, if we inject a spike of incidents in a month, the KRI for incident rate should spike accordingly).
+	•	All results (predictions, metrics) should be validated by the risk management team if possible, to ensure they align with expectations.
 
-    def save_output(self, output_path):
-        logging.info(f"Saving output to {output_path}")
-        try:
-            self.filtered_df.to_excel(output_path, index=False)
-            self.apply_color_coding(output_path)
-            self.create_pivot_tables(output_path)
-        except Exception as e:
-            logging.error(f"Error saving output: {e}")
-            raise
+By the end of this stage, we have: a trained predictive model for control failures, prepared datasets for incident dashboards and KRI trends, and the system is populating these Gold tables on an ongoing basis (batch schedule and/or streaming). We are also ready to incorporate the NLP outputs (next section) for the communications monitoring use cases.
 
-    def apply_color_coding(self, file_path):
-        logging.info(f"Applying color coding to {file_path}")
-        try:
-            excel = win32.Dispatch('Excel.Application')
-            excel.Visible = False
-            wb = excel.Workbooks.Open(file_path)
-            ws = wb.ActiveSheet
+NLP Integration
 
-            green_rgb = 0x00FF00  # Green color in RGB
-            amber_rgb = 0xFFC000  # Amber color in RGB
+This part of the project focuses on the Operational Communication Monitoring and Compliance Communication Surveillance use cases, leveraging Azure OpenAI for NLP analysis on message_logs. The goal is to analyze unstructured text communications (emails, chat transcripts, etc.) to detect operational issues or compliance red flags. The implementation will be as follows:
+	1.	Preparation of Message Data: The message_logs (after initial cleaning in the Silver layer) will contain fields like message ID, timestamp, sender, receiver (if applicable), and the text content. We may need to further preprocess the text for the OpenAI models – e.g., truncating very long messages (due to token limits), removing irrelevant sections (like email signatures), and perhaps translating non-English text if required (though OpenAI models can handle multilingual input to an extent).
+	2.	Azure OpenAI Setup: In the Azure OpenAI Service, deploy the necessary model endpoint. Likely, we will use gpt-3.5-turbo or gpt-4 for classification tasks. Fine-tuning could be considered if we have a labeled dataset of communications with categories, but given the generative power of GPT, a prompt-based approach may suffice. We ensure the Azure OpenAI resource is provisioned in the same Azure region for compliance and performance. Obtain the API key and endpoint URL – these will be stored securely (e.g., in Databricks secrets or Azure Key Vault) so that our code can call the API ￼.
+	3.	Operational Communication Monitoring (Use Case 3): For general operational monitoring, we want to flag communications that might indicate issues like system outages, customer complaints, or other operational incidents mentioned in messages. We will design prompts for the GPT model to perform sentiment analysis and key phrase extraction or classification:
+	•	For example, prompt the model with: “Analyze the following employee chat message and determine if it describes an operational incident or concern. Also rate the sentiment as positive, neutral, or negative.” Then provide the message text. The completion from GPT can be parsed to get answers (e.g., yes/no for incident mention, and sentiment).
+	•	Alternatively, we might prompt GPT to summarize the message and list any operational issues mentioned. We can maintain a set of keywords for operations (like “outage”, “error”, “failure”) and double-check the GPT output against that for reliability.
+	•	We could also use Azure OpenAI embeddings: convert messages to embeddings and cluster them to find emerging topics in communications, but that might be advanced. Initially, we focus on classification via prompts.
+	•	The Databricks notebook or a Python script will iterate over new messages (say, in a streaming fashion or batch each hour) and call the OpenAI API with the prompt for each message or batch of messages. The results (incident flag, sentiment score, etc.) are then stored. We will likely create a table message_analysis_gold with columns like message_id, sentiment, incident_flag (Y/N), summary, etc. This data can feed an “operational communications” dashboard showing, for instance, the volume of negative communications over time or listing messages that potentially describe incidents (which can be cross-linked to actual incident tickets if IDs are mentioned).
+	4.	Compliance Surveillance (Use Case 5): This involves NLP-based detection of red flags in communications from a compliance perspective. Red flags might include mentions of forbidden practices (e.g., insider information, harassment language, policy violations). Implementation:
+	•	Define a set of compliance categories or behaviors of interest (with help from compliance officers). For instance: Fraud, Harassment, Confidential Info Leak, Regulatory Violation, etc.
+	•	Craft an Azure OpenAI prompt that asks the model to classify a given message into one of these categories, or “No Issue” if none. E.g.: “Classify the following email into categories: {list categories}, or ‘No Red Flag’ if it has no compliance issues. Email: [message]”.
+	•	Alternatively, fine-tune a GPT model on labeled examples of communications if we have them. Fine-tuning could improve accuracy for domain-specific language (the Medium reference shows GPT fine-tuning can be used for classification tasks on Azure ￼). If time permits, we could prepare a training set of message_logs with labels and fine-tune a model. Otherwise, use few-shot prompting by including a few examples in the prompt.
+	•	Run the classification for each new message (or historical ones) and record the results in a compliance log table (e.g., compliance_flags_gold with message_id, category_detected, flag_severity). Leverage OpenAI’s content filtering as well to catch any disallowed content automatically ￼ ￼ (Azure OpenAI has built-in filters for harmful content which run alongside the model).
+	•	The output will allow us to generate alerts or reports. For instance, if a message is flagged as “Harassment”, we might log an alert for HR. The dashboard could show counts of red-flag messages by category, trends over time, or allow drilling into examples (with proper access control due to sensitivity).
+	5.	Integration and Performance: We need to integrate the NLP pipeline with the rest of the system:
+	•	The processing can be done in Databricks as part of a stream or separate job. For example, after a message is ingested to Bronze/Silver, a trigger (like a Databricks job or even an Event Grid function) could call the OpenAI analysis. We might set up an Azure Function that is triggered by new message insertion to call OpenAI and then writes back results to Blob/Database. However, for simplicity, using Databricks to orchestrate this (since it’s already reading the streams) is feasible: the Spark structured streaming map function can call an async function to OpenAI for each message. We must be careful with rate limits and throughput – possibly process messages in mini-batches rather than truly one-by-one if volume is high.
+	•	To handle volume, we might not send every single message to GPT. We could implement a preliminary filter (like keyword search for obvious red flags) to reduce API calls, then let GPT analyze the filtered subset. This optimizes cost and latency.
+	•	Security: All communication with Azure OpenAI is done over secure endpoints. Ensure no sensitive personal data is sent in prompts unless allowed by compliance (Azure OpenAI does not use customer data to train underlying models and has data privacy protections ￼, but we still adhere to company policy on data sharing).
+	•	Monitor the usage of the OpenAI service (token consumption, errors). Set up logging for prompt inputs and outputs (stored securely) for audit and improvement purposes.
+	6.	Output for Dashboard: The results from NLP analysis will feed the Streamlit dashboard:
+	•	For operational monitoring: metrics like “Number of negative-sentiment messages today” or a list of top topics in communications can be displayed. We could visualize a time series of sentiment (moving average of sentiment scores), and perhaps word clouds of frequently occurring issue terms from messages (which we can derive from GPT summaries or using a library like NLP to extract keywords).
+	•	For compliance: display counts of messages flagged in each category, and provide an interface (maybe a table) to review flagged messages (with appropriate filtering – possibly only compliance officers can see actual content). This serves as a compliance dashboard to quickly see if there’s a spike in, say, “Fraud” related chatter.
 
-            # Iterate through the rows and apply color coding
-            for row in range(2, ws.UsedRange.Rows.Count + 1):
-                for col in range(1, ws.UsedRange.Columns.Count + 1):
-                    cell = ws.Cells(row, col)
-                    if cell.Value == "PASS":
-                        cell.Interior.Color = green_rgb
-                    elif cell.Value == "FAIL":
-                        cell.Interior.Color = amber_rgb
+By using Azure OpenAI in this integrated way, the solution adds a powerful AI layer to risk management. Similar approaches have been used in industry – for example, Orca Security combined GPT-4 with their security platform to enable clients to respond faster to alerts using AI insights ￼. We are applying the same concept for internal risk and compliance alerts. This NLP integration will be developed and tested thoroughly (with synthetic message data to ensure it’s working before real data is used) and will run in parallel with the ML pipelines.
 
-            wb.Save()
-            wb.Close()
-            excel.Quit()
-        except Exception as e:
-            logging.error(f"Error applying color coding: {e}")
-            raise
+Dashboard Development
 
-    def create_pivot_tables(self, file_path):
-        logging.info(f"Creating pivot tables in {file_path}")
-        try:
-            excel = win32.Dispatch('Excel.Application')
-            excel.Visible = False
-            wb = excel.Workbooks.Open(file_path)
-            ws = wb.Sheets(1)
+With data pipelines and models producing insights, the next step is to create the front-end dashboard for users. We will develop a Streamlit web application (in Python) to present the results in an interactive and user-friendly way, covering all five use cases. The development process is outlined below:
+	1.	Designing the Dashboard UI/UX: Plan the layout and sections of the Streamlit app, corresponding to each use case:
+	•	An Operational Incident Dashboard page: displays real-time stats on incidents (e.g., total open incidents, incidents by category/severity, trend over last 24 hours or 7 days). This page might use charts (bar charts for categories, line chart for incident counts over time) and tables (a table of recent high-severity incidents). It will pull data from the incident_metrics_gold table or directly query the Delta table of incidents to get the latest (for real-time, we can query the delta table on refresh).
+	•	A Predictive Model Results page: shows outputs of the control failure prediction model. For example, a table listing controls ranked by failure risk, with predicted probability and contributing factors. Could also visualize the distribution of risk scores or number of predicted failures per department. This page will use data from the control_failure_predictions_gold table generated by the ML pipeline. We might include filters (e.g., filter by department or risk level) using Streamlit widgets.
+	•	An Operational Comms Monitoring page: provides insight from the message analysis. This might include a sentiment trend chart (overall sentiment of communications over time), a pie or bar chart of message categories (if we categorize message topics), and a table of messages flagged as mentioning operational issues (with columns like time, sender, summary of issue detected). Possibly, a keyword cloud or most common issue keywords extracted by the NLP could be shown for a snapshot of what people are talking about.
+	•	A KRI Trends page: visualizes key risk indicators over time. This will likely contain multiple line charts – e.g., one chart for “Incidents per month” vs “Risk score trend”, another for “Average risk rating of controls” vs “incident counts”, etc., depending on what KRI metrics we computed. We will use the kri_trends_gold dataset. Streamlit’s plotting libraries (Matplotlib, Plotly, or Altair) can be used to make these interactive (allowing zoom, hover tooltips).
+	•	A Compliance Surveillance page: lists the compliance red flag detections. Here, we show perhaps a bar chart of counts of flags by category (e.g., how many messages flagged for Fraud, Harassment, etc. in the last month). We also provide a data table of recent flagged messages with metadata (not showing full content unless allowed – maybe just a snippet or an ID). If needed, we can add a filter by date or category. For serious flags, we might show a KPI number like “5 Potential Compliance Alerts this week”. This page uses data from the compliance_flags_gold or message_analysis_gold tables.
+	2.	Data Fetching and Integration: For each page, implement the code to retrieve data from the backend:
+	•	We will use Python libraries to connect to the data source. If using Azure Databricks SQL: we can connect using a JDBC/ODBC connector or the Databricks SQL API. Alternatively, if we exported the Gold datasets to PostgreSQL, use psycopg2 or SQLAlchemy to query the Postgres database. The choice depends on what we set up in architecture. For a simpler architecture, we might avoid an extra database and instead use Databricks’ capability: for example, have an API endpoint or direct read access to Delta tables. Databricks can also create a SQL Warehouse endpoint that Streamlit can query with a proper driver ￼. However, using Postgres could simplify the app queries and decouple the dashboard from the heavy Spark cluster.
+	•	The app will have functions to load data (e.g., a function that queries the latest incident metrics and returns a pandas DataFrame). These could be cached in Streamlit with st.cache_data if the data doesn’t need to be real-time instant and to improve performance on repeated loads.
+	•	For real-time aspects (like incident updates), we might include an auto-refresh mechanism (Streamlit doesn’t natively auto-refresh, but we can simulate by rerunning periodically or providing a refresh button).
+	3.	Visualization Implementation: Use appropriate plotting libraries for each component:
+	•	Use Plotly or Altair for interactive charts (Plotly is good for dynamic, hover-enabled charts; Altair for simpler declarative charts). For example, incidents by severity could be a Plotly bar chart with clickable legend to toggle categories.
+	•	Use Streamlit’s built-in line chart or Altair for KRI trends lines.
+	•	For tables of data, use st.dataframe or possibly st.aggrid (an interactive table component) to allow sorting and filtering.
+	•	Use metrics components (st.metric) to show headline numbers (e.g., current open incidents, # of red flags).
+	•	Ensure each page is well-labeled and has context (titles, descriptions of what each chart means, perhaps tooltips).
+	4.	Interactivity and Filters: Add Streamlit widgets to make the dashboard usable:
+	•	Date range selectors to filter the data shown (e.g., view KRI trends for last 6 months vs 1 year).
+	•	Dropdowns or multiselects for categories (e.g., filter incident dashboard by incident type or location, or filter compliance messages by category).
+	•	Buttons where appropriate (e.g., a button to manually trigger refresh of data, or to export data to CSV for offline analysis).
+	•	These interactions will tie into the queries – for example, if a user selects a date range, the query to Postgres or Databricks will include a WHERE clause on date.
+	5.	Testing the Dashboard: Run the Streamlit app locally (or in a dev environment) with test data:
+	•	Use synthetic data in the backend to verify each chart renders correctly.
+	•	Simulate different scenarios (like an uptick in incidents or a compliance flag) and see that the UI updates as expected.
+	•	Test performance: ensure that querying the data and rendering is reasonably fast (if not, consider aggregating more or indexing in the database, etc.). For large data, we might rely on pre-aggregated gold data rather than raw queries to speed up the dashboard.
+	6.	Transition to Deployment: Containerize the Streamlit app. Write a Dockerfile that starts from a Python base image, installs the required libraries (Streamlit, plotly, pandas, SQL connectors, etc.), copies the Streamlit app code, and sets the entrypoint to streamlit run app.py. Test the container locally (e.g., docker run -p 8501:8501 ... to ensure it starts). This container will be used in final deployment. Note: We might integrate the Streamlit app with Azure Active Directory for authentication if needed (especially since it contains sensitive risk info). Azure App Service can enforce AAD login for the web app, or we can use Streamlit’s authentication add-ons if required.
 
-            # Define the source range and target range for the pivot table
-            source_range = f"{ws.Name}!A1:{get_column_letter(ws.UsedRange.Columns.Count)}{ws.UsedRange.Rows.Count}"
-            pivot_target_cell = "L1"
+By the end of development, we will have a fully functional Streamlit application that can be run locally or in a container, providing a one-stop dashboard for risk management insights. The app is designed to be modular (each section corresponds to one of the use cases) and will update as new data comes in (for streaming data, the app can be refreshed or designed to auto-refresh periodically). This meets the requirement of not using PowerBI but achieving interactive dashboards through custom development.
 
-            # Create PivotCache
-            pivot_cache = wb.PivotCaches().Create(
-                SourceType=win32.constants.xlDatabase,
-                SourceData=source_range,
-                Version=win32.constants.xlPivotTableVersion14
-            )
+Team Roles
 
-            # Create PivotTable
-            pivot_table = pivot_cache.CreatePivotTable(
-                TableDestination=f"{ws.Name}!{pivot_target_cell}",
-                TableName="PivotTable1",
-                DefaultVersion=win32.constants.xlPivotTableVersion14
-            )
+The project will be executed by a 4-member team. We will divide responsibilities to leverage each member’s expertise, while ensuring collaboration at integration points. Below are the roles and their key tasks:
+	•	Data Engineer (Backend & Infrastructure): This member is responsible for setting up the Azure environment and data pipelines. Their tasks include provisioning Azure resources (Databricks workspace, Blob Storage containers, Event Hubs if needed, Azure OpenAI resource, etc.), configuring networking and access (VNETs, firewall rules for the storage and databricks as needed), and implementing the data ingestion pipelines. They will develop the Bronze/Silver layer ETL processes in Databricks, handle streaming ingestion (setting up Event Hub and Structured Streaming jobs), and ensure data is flowing correctly into the lakehouse. They also manage data quality checks and create the base tables that others will use. Additionally, this role covers DevOps aspects like managing Azure CLI scripts or Terraform for infrastructure, and setting up CI/CD for Databricks notebooks (using tools like Azure DevOps or GitHub Actions for deployment). The Data Engineer ensures the platform is stable, secure, and scalable.
+	•	ML Engineer / Data Scientist: This member focuses on the machine learning components and analytics. They will conduct exploratory data analysis on incidents and risk data, design the features for the Predictive Control Failure model, and build/train the ML model in Databricks. They experiment with algorithms, tune hyperparameters, and use MLflow for tracking ￼. Once the model is ready, they work on integrating it into the pipeline (creating the batch scoring job, or setting up model serving if needed). They also take charge of the KRI trend analysis – identifying which KRIs to track, performing the necessary aggregations, and validating that the trends make sense. This role involves statistical analysis and domain knowledge to ensure the model and metrics truly reflect risk insights. The ML Engineer will coordinate with the Data Engineer on data requirements and with the Dashboard developer to ensure the outputs are usable and understandable for visualization.
+	•	NLP Engineer / AI Specialist: This team member will own the Azure OpenAI integration and NLP tasks on message logs. They will design the approach for analyzing communications – including prompt engineering for GPT models, or preparing data for fine-tuning if that route is chosen. They will write the code to call Azure OpenAI Service (using the Python SDK or REST calls) from Databricks or a Python service, and handle the parsing of model outputs. A key responsibility is to develop the logic for classifying compliance red flags and operational issues from text. They’ll likely prototype different prompts and test them on sample messages, refining the prompt or few-shot examples to improve accuracy. If necessary, they may create a small labeled dataset and fine-tune a model (and manage that fine-tuning process on Azure OpenAI). This member also deals with optimizing API usage (handling rate limits, batching requests) and implementing any fallback logic (for example, if the OpenAI API is down or returns uncertain results). They will produce the Gold tables for message analysis that feed the dashboard. Throughout, the NLP Engineer will work closely with the compliance and risk stakeholders to understand what constitutes a “red flag” or important operational message, ensuring the AI model’s outputs align with those definitions.
+	•	Front-End Developer (Streamlit/React Developer): This member is responsible for building the dashboard application and ensuring a smooth user experience. Given we plan to use Streamlit, this person needs to be proficient in Python and front-end design. They will take the lead in coding the Streamlit app, implementing all the pages, charts, and interactivity as described earlier. They collaborate with the ML and NLP engineers to understand the data schemas and meanings, so they can present the information correctly. For instance, they need to know what fields are in the control_failure_predictions table to display them properly. They also handle the deployment of the Streamlit app – writing the Dockerfile, setting up the Azure Container Registry, and deploying to Azure App Service (or the chosen hosting platform). This role may also cover general application backend tasks, such as implementing a simple API if the Streamlit app needs to fetch data via an API call, or setting up authentication (they might need to interface with Azure AD if required). Essentially, the Front-End Developer ensures the insights generated by the rest of the team are accessible and visually clear to end-users. They will also incorporate feedback from users to refine the dashboards.
 
-            # Set PivotTable style
-            pivot_table.TableStyle2 = "PivotStyleMedium9"
+Throughout the project, these 4 team members will work in an agile manner, with frequent sync-ups. Certain tasks involve collaboration – e.g., the ML Engineer and Data Engineer decide on how to structure the data for modeling; the NLP Engineer and Front-End Developer coordinate on how to display NLP results. Each member, however, has clear ownership of different solution components to ensure parallel progress.
 
-            # Add fields to the PivotTable (example)
-            pivot_table.PivotFields("Field1").Orientation = win32.constants.xlRowField
-            pivot_table.PivotFields("Field2").Orientation = win32.constants.xlColumnField
-            pivot_table.AddDataField(pivot_table.PivotFields("Field3"), "Sum of Field3", win32.constants.xlSum)
+Final Deployment
 
-            wb.Save()
-            wb.Close()
-            excel.Quit()
-        except Exception as e:
-            logging.error(f"Error creating pivot tables: {e}")
-            raise
+In the final stage, we will deploy the entire solution to Azure and ensure it operates in both real-time and batch capacities as required. The deployment plan is broken down into a series of steps from environment setup to go-live:
+
+1. Environment Setup (Infrastructure Provisioning): Using Azure CLI scripts or Terraform templates (maintained by the Data Engineer):
+	•	Create a new Azure Resource Group to contain all resources (or use an existing one if appropriate).
+	•	Provision an Azure Databricks Workspace within the region closest to data sources/users. Configure the workspace (networking, access control). Within Databricks, create clusters (or use job clusters) with the necessary libraries (ensure libraries like pandas, scikit-learn, copulas, etc., are installed either via init scripts or %pip install in notebooks).
+	•	Create an Azure Storage Account (Blob Storage with Data Lake Gen2) for the data lake. Define containers: e.g., bronze, silver, gold or segregate by domain. Set up access for Databricks to this storage (either by mounting using account keys or using service principal with OAuth so that Databricks can directly access the storage).
+	•	Set up Azure OpenAI Service: Deploy the service and within it, deploy the model (e.g., GPT-3.5 Turbo) with the desired capacity (throughput limits). Note the endpoint URI and key. Configure any required permissions (if using a managed identity from Databricks to call it, etc.). Initially, use the OpenAI API key via secret.
+	•	(Optional) Set up Azure Event Hubs for streaming: one event hub for incidents, one for messages if streaming ingestion is needed. Configure Databricks to be able to read from these (this might involve setting up Azure Event Hubs connector and grabbing connection strings into Databricks secrets).
+	•	Provision an Azure Database for PostgreSQL (if we decided to use it as the serving layer for dashboards). Create the database, set up firewall rules to allow the App Service and Databricks to connect. Alternatively, if skipping Postgres, plan to use Databricks SQL Warehouses.
+	•	Provision Azure Container Registry (ACR) for container images. Also provision Azure App Service (Web App for Containers) or an Azure Container Instance/Kubernetes for hosting the Streamlit app. For simplicity, we can use an App Service with a Docker image. Create the App Service plan (choose an appropriate tier) and the Web App resource, configured to pull the image from ACR.
+	•	Set up Azure Key Vault for managing secrets (OpenAI API key, Postgres connection string, etc.) and give needed access to those (Databricks can use Key Vault-backed scopes, App Service can retrieve secrets via managed identity).
+
+2. Configuration of Databricks & Code Deployment:
+	•	In Azure Databricks, create secret scopes and store secrets: e.g., openai_api_key, database credentials, etc., so notebooks can access them ￼.
+	•	Import the project notebooks or code into Databricks. This includes: ingestion notebooks, processing/ML notebooks, NLP integration notebooks. If using a source control integration (Git), ensure the latest code is in the workspace. The code should be parameterized as needed (for instance, paths to data, model names, etc., might be configurable at run time).
+	•	Create Databricks Jobs for scheduled tasks:
+	•	A job for daily batch ETL (processing new data from Bronze to Silver/Gold).
+	•	A job for model retraining (if periodic retraining of the control failure model is desired, say monthly or on new data availability).
+	•	A job for batch scoring (daily scoring of control failure risk).
+	•	A job for NLP batch processing (if not streaming, e.g., every hour process new messages through OpenAI).
+Each job will point to the appropriate notebook with a task schedule (using Databricks Job scheduler or an external orchestrator like ADF/Logic Apps if preferred).
+	•	If streaming, start the Streaming Jobs on Databricks: e.g., a continuous cluster running the incident ingestion stream and message ingestion stream. These can be configured as “always on” jobs in Databricks so that they restart on failure. Verify that these streaming jobs can write to Delta tables continuously.
+
+3. Data Loading and Initialization:
+	•	Load initial datasets into Blob (if not already present). For synthetic data, run the generation scripts to populate the Bronze layer with an initial baseline.
+	•	Manually run the Bronze → Silver → Gold transformations for the first time to populate the cleaned tables and derived tables (incidents, risks, messages).
+	•	Run the ML training notebook to train the first version of the predictive model on the available data. Register the model in MLflow. This ensures the model artifact is stored (in Databricks managed MLflow storage).
+	•	Run the batch scoring notebook to produce initial predictions and fill the control_failure_predictions_gold table.
+	•	Run the NLP processing for all existing message logs to backfill the analysis results (so the dashboard starts with historical data, not just new data). This might be time-consuming depending on volume; we can do it in batches and perhaps use Azure OpenAI throughput scaling or do one category at a time.
+	•	Verify all Gold tables now have data. Optimize the Delta tables (e.g., Z-order by date for fast time-range queries, etc., if using Databricks) or create indexes on Postgres tables if applicable.
+
+4. Deploying the Streamlit Application:
+	•	Build the Docker image for the Streamlit app (ensuring the code is updated to point to the correct data sources, e.g., correct database host, or using environment variables for secrets). Test the image locally one more time with a connection to the cloud data (you might port-forward to the database or so).
+	•	Push the Docker image to Azure Container Registry. Tag it with a version (e.g., v1).
+	•	In Azure App Service (Web App for Containers), configure the deployment to use this ACR image (provide ACR credentials if needed, or enable managed identity for ACR pull). Set environment settings for the app: e.g., DB_CONNECTION_STRING for Postgres, DATABRICKS_SQL_ENDPOINT or token if direct, etc., and any needed secret keys (or link App Service to Key Vault to fetch them).
+	•	Start the Web App and monitor the logs to ensure the Streamlit app launches successfully. Azure App Service will expose it on a URL; open that URL to verify the UI loads. We should see the dashboard pages. It might initially be empty if no data; check that it can retrieve data (this tests the connectivity from App Service to the database or Databricks – may require enabling network access or setting up a private endpoint if everything is in a VNet).
+	•	Perform final testing in the deployed environment: simulate a new incident (if streaming, push an event to Event Hub; if batch, add a row and run the job) and ensure it appears on the dashboard. Similarly, test the NLP pipeline by inserting a sample message and checking the compliance page.
+
+5. Real-Time Enablement: Ensure that real-time components are properly running:
+	•	The Structured Streaming jobs in Databricks should be running continuously. Databricks provides a UI to monitor streaming; check there are no errors and the latency is within acceptable range.
+	•	The dashboard pages that rely on fresh data should reflect updates. (We might not have true push updates to Streamlit, but if a user refreshes or if we implement a refresh interval, they should get the latest data).
+	•	If some parts are batch (like compliance flags updated hourly), that’s communicated to users (e.g., show “Last updated: 10:00 AM” on the dashboard).
+
+6. Monitoring and Maintenance: Once deployed, set up monitoring to keep the system healthy:
+	•	Use Azure Monitor and Databricks monitoring for pipeline alerts. For example, enable logging of Databricks job failures to an email or Teams alert. Likewise, monitor the App Service for uptime and errors (Application Insights can be used to track exceptions or performance of the Streamlit app).
+	•	Monitor Azure OpenAI usage: set up alerts if approaching a quota limit or if the OpenAI service starts returning errors. Also log the outputs of the model for quality – the NLP engineer might periodically review the flagged messages to ensure the model is performing well, and retrain or adjust prompts as needed.
+	•	Plan a retraining schedule for the ML model (maybe retrain quarterly or when sufficient new data accumulates). The ML Engineer will handle this retraining and update the model in the registry, then the batch scoring job can use the new model version.
+	•	Ensure data retention policies are followed (e.g., maybe purge old message content after some time if not needed, depending on compliance).
+
+7. Documentation and Handoff: Document the entire system for future maintainers:
+	•	Architecture diagrams (showing Blob–Databricks–OpenAI–App Service interactions).
+	•	Runbooks for how to restart the streaming job or what to do if the OpenAI API fails.
+	•	Credentials and key management details (likely in Key Vault).
+	•	This documentation will be handed to the relevant operations team or kept in a repository.
+
+8. Go-Live: With everything tested and documented, we officially launch the solution. Users (risk managers, compliance officers, operations teams) are given the URL to the dashboard and any necessary access (if protected by AAD, add their accounts). We will closely monitor the first days of operation, ready to fix any issues.
+
+Finally, the solution achieves both real-time and batch analytics: real-time incident updates and message monitoring, batch predictive modeling and trend analysis. It utilizes Azure services in concert – Blob Storage and Delta Lake for a unified data lake, Azure Databricks for scalable data processing and ML (leveraging medallion architecture for reliability ￼), Azure OpenAI for cutting-edge NLP, and a custom Streamlit dashboard for visualization. By dividing work among specialists (data engineering, ML, NLP, frontend), the project can be implemented efficiently and aligns with best practices in cloud data solutions. With this deployment plan, the team can systematically build and roll out the risk management solution from scratch to production.
+
+Sources: The architecture and approach draw on proven Azure patterns (e.g., medallion architecture with Bronze/Silver/Gold layers ￼, streaming ingestion via Event Hubs ￼, and secure integration of external AI models ￼). Azure OpenAI’s use in risk management is inspired by Microsoft’s guidance on using AI to identify risks in real-time ￼ and industry examples of GPT-powered risk tools ￼. The synthetic data strategy leverages open-source libraries for realistic test data ￼ ￼. Finally, the Streamlit deployment follows a containerization model recommended for cloud hosting ￼, ensuring the dashboard is easily accessible to stakeholders.

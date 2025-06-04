@@ -1,26 +1,197 @@
-# Function to calculate quality score ensuring 0% for "None of the parameters present" and "Not enough information in comments"
-def calculate_quality_score(row):
-    """
-    Assigns a quality score based on the number of extracted commentary parameters.
-    Ensures 0% score for "None of the parameters present" and "Not enough information in comments".
-    """
-    if row["Commentary Quality"] in ["None of the parameters present", "Not enough information in comments"]:
-        return 0  # Assign a score of 0
+GitLab CI/CD Pipeline for Streamlit with Databricks SQL & Azure OpenAI
 
-    count = 0
-    if "SOF" in row["Commentary Quality"]:
-        count += 1
-    if "POF" in row["Commentary Quality"]:
-        count += 1
-    if "WF" in row["Commentary Quality"]:
-        count += 1
-    if "Rationale" in row["Commentary Quality"]:
-        count += 1
+Below is a complete example of structuring and deploying a Streamlit app (connecting to a Databricks SQL warehouse and calling Azure OpenAI/GPT-4o) via GitLab CI/CD to Azure App Service. It includes the project layout, all necessary files (app.py, requirements.txt, optional Dockerfile, .gitlab-ci.yml), Git/GitLab setup commands, Azure App Service configuration, and instructions for managing secrets as CI variables.
 
-    return (count / 4) * 100  # Since there are 4 parameters
+Project Structure
 
-# Recalculate the quality score with the updated logic
-df["Quality Score (%)"] = df.apply(calculate_quality_score, axis=1)
+Organize the repository as follows:
 
-# Display the updated DataFrame with the corrected quality scores
-tools.display_dataframe_to_user(name="Updated Quality Score Assessment", dataframe=df)
+my-streamlit-app/
+├── app.py             # Main Streamlit app code
+├── requirements.txt   # Python dependencies
+├── run.sh             # Startup script for Azure (runs Streamlit on port 8000)
+├── Dockerfile         # (Optional) Dockerfile for container-based deployment
+└── .gitlab-ci.yml     # GitLab CI/CD pipeline configuration
+
+	•	app.py contains the Streamlit code that connects to Databricks and Azure OpenAI (see below).
+	•	requirements.txt lists streamlit, databricks-sql-connector, openai (for Azure OpenAI), and any other Python libraries. App Service requires requirements.txt in the project root; it will automatically run pip install -r requirements.txt on deployment ￼.
+	•	run.sh (for non-container deploy) might contain:
+
+#!/bin/bash
+python -m streamlit run app.py --server.port 8000 --server.address 0.0.0.0
+
+This ensures Streamlit listens on port 8000 (Azure App Service exposes port 8000 by default) ￼.
+
+	•	Dockerfile (optional) can be used if deploying as a custom container (example below).
+
+Streamlit App Code (app.py)
+
+The app.py should import the Databricks SQL connector and OpenAI client, read credentials from environment variables, and perform queries/completions. For example:
+
+import os
+import streamlit as st
+from databricks import sql
+from openai import AzureOpenAI, OpenAI
+
+# Databricks connection using personal access token
+dbc_hostname = os.getenv("DATABRICKS_SERVER_HOSTNAME")
+dbc_http_path = os.getenv("DATABRICKS_HTTP_PATH")
+dbc_token = os.getenv("DATABRICKS_TOKEN")
+if not all([dbc_hostname, dbc_http_path, dbc_token]):
+    st.error("Databricks credentials not found in environment variables.")
+else:
+    with sql.connect(
+        server_hostname=dbc_hostname,
+        http_path=dbc_http_path,
+        access_token=dbc_token
+    ) as conn:
+        # Example query
+        rows = conn.execute("SELECT * FROM my_table LIMIT 10")
+        df = rows.fetch_pandas_all()
+        st.write(df)
+
+# Azure OpenAI (GPT-4o) call
+openai_key = os.getenv("AZURE_OPENAI_API_KEY")
+openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+if openai_key and openai_endpoint:
+    client = AzureOpenAI(
+        api_key=openai_key,
+        api_version="2024-07-01-preview",
+        azure_endpoint=openai_endpoint
+    )
+    prompt = st.text_input("Enter prompt for GPT-4o")
+    if prompt:
+        response = client.create_completion(prompt=prompt, engine="gpt-4o")
+        st.write(response.choices[0].text)
+else:
+    st.warning("Azure OpenAI credentials not set.")
+
+This code:
+	•	Uses the Databricks SQL Connector (from databricks import sql) and reads DATABRICKS_SERVER_HOSTNAME, DATABRICKS_HTTP_PATH, DATABRICKS_TOKEN from the environment ￼ ￼.
+	•	Uses the Azure OpenAI client (from openai import AzureOpenAI) with AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT from the environment ￼.
+	•	Note: the above is a template; adjust table names and prompt handling as needed.
+
+Python dependencies: In requirements.txt, include at least:
+
+streamlit
+databricks-sql-connector
+openai
+
+You may also add pandas, etc., as required. (Databricks docs recommend installing the connector via pip install databricks-sql-connector ￼ ￼.)
+
+Optional Dockerfile
+
+If you prefer a container-based deployment, you can include a Dockerfile. For example:
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port", "8000", "--server.address", "0.0.0.0"]
+
+This Dockerfile sets up Python 3.11, installs dependencies, and runs Streamlit on port 8000. If not using a container, this file can be omitted.
+
+Git/GitLab Repository Setup
+
+Initialize a Git repository and push to GitLab:
+
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://gitlab.com/<your-namespace>/<your-repo>.git
+git push -u origin main
+
+In GitLab, create a new project (or use an existing one) and push the above files. Under the project’s Settings > CI/CD > Variables, add the following CI/CD variables (marked protected/masked if desired):
+	•	DATABRICKS_SERVER_HOSTNAME – Databricks SQL warehouse hostname (e.g. adb-1234567890123456.7.azuredatabricks.net).
+	•	DATABRICKS_HTTP_PATH – HTTP Path for the SQL warehouse (from Databricks SQL Connection details).
+	•	DATABRICKS_TOKEN – Your Databricks personal access token.
+	•	AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT – The key and endpoint URL for your Azure OpenAI resource (containing GPT-4o).
+	•	Azure service principal credentials: AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID (for Azure CLI login in CI).
+	•	Azure resource info: AZURE_WEBAPP_NAME, AZURE_RG_NAME (resource group), and optionally AZURE_SKU/AZURE_LOCATION for the App Service plan.
+
+Sensitive keys/tokens must be stored in CI/CD Variables in the GitLab UI – not in code ￼.
+
+.gitlab-ci.yml (CI/CD Pipeline)
+
+Create a .gitlab-ci.yml in the repo root. Below is an example with three stages: install/test, (optional) build, and deploy to Azure. We’ll use the Azure CLI Docker image for deployment.
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  AZURE_WEBAPP_NAME: "$AZURE_WEBAPP_NAME"
+  AZURE_RG_NAME: "$AZURE_RG_NAME"
+  AZURE_SKU: "B1"                      # App Service plan SKU (e.g. B1)
+  AZURE_RUNTIME: "PYTHON:3.11"        # App Service Python runtime
+  AZURE_LOCATION: "eastus"            # Azure region
+
+test:
+  stage: test
+  image: python:3.11
+  script:
+    - pip install -r requirements.txt
+    - # (optional) run lint/tests, e.g. pytest
+
+build:
+  stage: build
+  image: python:3.11
+  script:
+    - pip install -r requirements.txt
+    - # (Optional) build steps, e.g. Docker build if containerizing
+  artifacts:
+    paths:
+      - requirements.txt
+      - Dockerfile
+
+deploy:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli:2.45.0
+  only:
+    - main
+  script:
+    - az login --service-principal --username $AZURE_CLIENT_ID --password $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    # Create resource group if not exists (idempotent)
+    - az group create --name $AZURE_RG_NAME --location $AZURE_LOCATION
+    # Deploy app (az webapp up will create App Service and deploy code)
+    - az webapp up --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RG_NAME --sku $AZURE_SKU --runtime $AZURE_RUNTIME --location $AZURE_LOCATION --logs
+    # Configure App Settings (environment variables) for secrets
+    - az webapp config appsettings set -g $AZURE_RG_NAME -n $AZURE_WEBAPP_NAME --settings \
+        DATABRICKS_SERVER_HOSTNAME=$DATABRICKS_SERVER_HOSTNAME \
+        DATABRICKS_HTTP_PATH=$DATABRICKS_HTTP_PATH \
+        DATABRICKS_TOKEN=$DATABRICKS_TOKEN \
+        AZURE_OPENAI_API_KEY=$AZURE_OPENAI_API_KEY \
+        AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT
+    # (Optional) Restart app to pick up new settings
+    - az webapp restart --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RG_NAME
+
+Notes on the pipeline:
+	•	Test stage: Installs dependencies (and could run any tests or linting).
+	•	Build stage: This is optional; here you could build a Docker image if using container deployment. In this example, it simply installs dependencies.
+	•	Deploy stage: Uses azure-cli image. It logs in to Azure via a service principal (using CI variables) and uses az webapp up to create/deploy the app in one step (creating the App Service plan and Web App) ￼. This example sets the runtime to Python 3.11 (modify as needed).
+	•	After deployment, it sets App Settings (environment variables) on the Web App using az webapp config appsettings set ￼. This securely passes the Databricks and OpenAI credentials from the pipeline into the live app environment.
+
+By default, the deploy job runs only on pushes to main (via only: - main). After a successful pipeline, the Streamlit app will be running at https://<AZURE_WEBAPP_NAME>.azurewebsites.net.
+
+Azure Web App Configuration
+
+To prepare Azure for the app:
+	1.	Resource Group & App Service Plan: The pipeline’s az webapp up command will create a resource group (if needed) and an App Service plan using the specified SKU (e.g. B1) ￼. You can also create these manually via Azure Portal or Azure CLI beforehand.
+	2.	Runtime stack: Ensure the App Service is configured for Python. The example uses --runtime PYTHON:3.11 which sets up Python 3.11 on Linux. You can list available runtimes with az webapp list-runtimes --os linux ￼. Alternatively, after creation you can set it via az webapp config set --resource-group RG --name <App> --linux-fx-version "PYTHON|3.11" ￼.
+	3.	Startup command: If not using a Docker container, set the Startup Command in Azure to your run.sh script. For example, in the Azure Portal under App Service > Configuration > General Settings, set Startup Command to run.sh (or bash run.sh). This will run the Streamlit app on port 8000 as specified ￼.
+	4.	App Settings (Environment Variables): Verify in the Azure Portal under Configuration > Application Settings that the necessary variables (DATABRICKS_SERVER_HOSTNAME, etc.) are present (the CI pipeline command above adds them). These become environment variables in the app. In code, you retrieve them with os.getenv as shown in app.py. (You can always run az webapp config appsettings list -g RG -n App to see the current values.)
+	5.	Ports: Azure App Service on Linux only exposes ports 8000 and 443. Streamlit must run on port 8000 (as in run.sh) to be accessible ￼.
+
+CI/CD Environment Variables
+
+As noted, all sensitive values (tokens, passwords) are stored as GitLab CI/CD variables ￼. Specifically:
+	•	In GitLab (Project > Settings > CI/CD > Variables): set DATABRICKS_SERVER_HOSTNAME, DATABRICKS_HTTP_PATH, DATABRICKS_TOKEN, AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID, AZURE_WEBAPP_NAME, AZURE_RG_NAME, etc.
+	•	Mark secrets as Protected/Masked so they aren’t exposed in CI logs.
+	•	In Azure App Service (via CLI or Portal), no further secret setup is needed because we push them from the pipeline. (Alternatively, you could set them manually in App Settings, but using CI variables ensures consistency.)
+
+Each push to main triggers the pipeline (per only: main), which installs dependencies, then logs in to Azure and deploys the app. After completion, your Streamlit app will be live at the Azure Web App URL (e.g. https://<AZURE_WEBAPP_NAME>.azurewebsites.net).
+
+References: The Databricks SQL connector documentation specifies using environment variables for hostname, HTTP path, and token ￼ ￼. Azure OpenAI Python usage is shown in Microsoft docs for AzureOpenAI client ￼. GitLab CI variable best practices are described in GitLab docs ￼. Azure App Service Python deployment (including the az webapp up CLI shortcut and requirements.txt handling) is documented by Microsoft ￼ ￼.

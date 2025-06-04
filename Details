@@ -1,29 +1,112 @@
-Certainly! Based on your request for concise presentations (2–3 slides) on Generative AI use cases in risk management, here are some resources you can explore:
+It looks like the current environment doesn’t support Streamlit directly. But no worries — here’s what I’ll do:
+
+I’ll now give you a complete standalone Streamlit web app code that you can copy and run on your local machine with your two Excel files: risk_events.xlsx and control_library.xlsx.
+
+This app will include:
+	1.	📊 Trend visualization:
+	•	Number of risk events over time
+	•	Control effectiveness trend
+	•	Financial impact per department
+	2.	🤖 A hardcoded Q&A bot
+
+Give me a moment to generate the full app.py file for you.
+
+Here’s the complete Streamlit app code (app.py) that you can run locally with your two Excel files: risk_events.xlsx and control_library.xlsx.
 
 ⸻
 
-1. Generative AI Masterclass – Model Risk Management by H2O.ai
+✅ Instructions:
+	1.	Save this code as app.py in a folder with your two Excel files.
+	2.	Run:
 
-This presentation delves into responsible, explainable, and interpretable AI, focusing on Generative AI and Large Language Models (LLMs). It includes theoretical concepts and hands-on labs using Enterprise h2oGPT and H2O GenAI Applications, tailored for Model Risk Managers in financial institutions. ￼
+streamlit run app.py
 
-📥 Download the presentation here
 
-⸻
-
-2. Model Risk Management in AI, Machine Learning & Deep Learning
-
-Authored by Dr. Yogesh Malhotra, this presentation discusses the critical role of risk management controls in AI, ML, and DL. It emphasizes the importance of interpretability, governance, and the limitations of models, providing insights into managing risks associated with advanced AI systems. ￼
-
-📥 Access the presentation here
 
 ⸻
 
-3. Risks of Generative AI – PowerPoint and Google Slides Template
+📂 Folder structure:
 
-This template is designed to raise awareness about the risks associated with Generative AI, including misinformation, deepfakes, security threats, and more. It’s suitable for technology consultants aiming to educate businesses on the safe adoption and implementation of Generative AI. ￼
+/your_project_folder/
+├── app.py
+├── risk_events.xlsx
+└── control_library.xlsx
 
-📥 Download the template here
 
 ⸻
 
-These resources should provide valuable insights into the integration of Generative AI in risk management. If you need further assistance or more specific information, feel free to ask! ￼
+🧠 Full Code:
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# --- Page Setup ---
+st.set_page_config(page_title="Risk Intelligence Dashboard", layout="wide")
+st.title("📊 Risk Events & Control Intelligence")
+
+# --- Load Data ---
+@st.cache_data
+def load_data():
+    risk = pd.read_excel("risk_events.xlsx")
+    control = pd.read_excel("control_library.xlsx")
+    risk['Date'] = pd.to_datetime(risk['Date'])
+    control['Date'] = pd.to_datetime(control['Date'])
+    return risk, control
+
+risk_df, control_df = load_data()
+
+# --- Sidebar Navigation ---
+page = st.sidebar.radio("Navigate", ["Summary Dashboard", "Q&A Bot"])
+
+# --- Summary Dashboard ---
+if page == "Summary Dashboard":
+    st.subheader("1️⃣ Risk Events Over Time")
+    trend = risk_df.groupby(risk_df['Date'].dt.to_period('M')).size().reset_index(name='Events')
+    trend['Date'] = trend['Date'].dt.to_timestamp()
+    fig1 = px.line(trend, x="Date", y="Events", title="Risk Events Over Time")
+    st.plotly_chart(fig1, use_container_width=True)
+
+    st.subheader("2️⃣ Control Effectiveness Trend")
+    ctl_trend = control_df.groupby(control_df['Date'].dt.to_period('M'))['EffectivenessScore'].mean().reset_index()
+    ctl_trend['Date'] = ctl_trend['Date'].dt.to_timestamp()
+    fig2 = px.line(ctl_trend, x="Date", y="EffectivenessScore", title="Control Effectiveness Score Over Time")
+    st.plotly_chart(fig2, use_container_width=True)
+
+    st.subheader("3️⃣ Financial Impact by Department")
+    dept_impact = risk_df.groupby("Department")['Impact'].sum().reset_index().sort_values("Impact", ascending=False)
+    fig3 = px.bar(dept_impact, x="Department", y="Impact", title="Financial Impact by Department")
+    st.plotly_chart(fig3, use_container_width=True)
+
+# --- Hardcoded Q&A Bot ---
+elif page == "Q&A Bot":
+    st.subheader("🤖 Ask Our Risk Assistant")
+    question = st.text_input("Ask a question (try: 'Top 3 risky departments', 'What’s the average control score?')")
+
+    if question:
+        question = question.lower()
+        if "top 3 risky" in question:
+            top = risk_df.groupby("Department")['Impact'].sum().reset_index().sort_values("Impact", ascending=False).head(3)
+            st.write("🔎 Top 3 Risky Departments by Financial Impact:")
+            st.dataframe(top)
+        elif "average control" in question:
+            avg = control_df["EffectivenessScore"].mean()
+            st.write(f"📉 Average Control Effectiveness Score: **{avg:.2f}**")
+        elif "total events" in question:
+            st.write(f"📌 Total Risk Events: **{len(risk_df)}**")
+        elif "most recent event" in question:
+            recent = risk_df.sort_values("Date", ascending=False).iloc[0]
+            st.write("🕒 Most Recent Risk Event:")
+            st.write(recent)
+        else:
+            st.warning("Sorry, I don't understand that question. Try another one.")
+
+
+⸻
+
+Let me know if you’d like me to:
+	•	Add download buttons for filtered data
+	•	Include WordClouds or Sentiment Analysis
+	•	Turn this into a deployable web app via GitHub → Azure
+
+Ready when you are!

@@ -1,50 +1,129 @@
-import logging
-import os
-import sys
+Perfect! You’ve reached the GitLab CI/CD Catalog, which means you can now set up your deployment pipeline for the Streamlit + Databricks + Azure OpenAI app.
 
-LEVELS = {
-    'debug': logging.DEBUG,
-    'info': logging.INFO,
-    'warning': logging.WARNING,
-    'error': logging.ERROR,
-    'critical': logging.CRITICAL
-}
+Let’s walk you step by step from here — skip the catalog templates, and instead do this manually to fully control the pipeline for your custom setup.
 
-class LogData:
-    def __init__(self, FullPath=None, logname=None, level_name='info', show_msecs=False):
-        if FullPath:
-            self.fullpath = FullPath
-        else:
-            if getattr(sys, 'frozen', False):
-                self.fullpath = os.path.dirname(sys.executable) + '\\Logs\\'
-            else:
-                self.fullpath = os.path.dirname(os.path.abspath(__file__)) + '\\Logs\\'
-        
-        if not os.path.exists(self.fullpath):
-            os.makedirs(self.fullpath)
-        
-        self.logname = logname if logname else os.path.join(self.fullpath, 'LogFile.log')
-        self.level = LEVELS.get(level_name, logging.NOTSET)
-        self.CurrentUser = os.getlogin()
-        
-        if show_msecs:
-            self.format = '%(asctime)s,%(msecs)d,%(name)s,%(levelname)s,%(message)s'
-        else:
-            self.format = '%(asctime)s,%(name)s,%(levelname)s,%(message)s'
+⸻
 
-    def SetupTheLogger(self):
-        logging.basicConfig(
-            filename=self.logname,
-            filemode='a',
-            format=self.format,
-            datefmt='%Y-%m-%d %H:%M:%S',
-            level=self.level
-        )
-        return logging
+✅ Step-by-Step: Set Up Your GitLab CI/CD Pipeline
 
-    def ChangeTheLevel(self, the_level):
-        self.level = LEVELS.get(the_level, logging.NOTSET)
-        logging.getLogger().setLevel(self.level)
+⸻
 
-    def TheLog(self):
-        return logging
+🔹 Step 1: Create Required Project Files
+
+Create these files locally (in VS Code or terminal), and you’ll push them to your GitLab repo.
+
+1. app.py – your Streamlit app
+
+This is where your frontend and logic go. For now, start with a basic template (we can expand later):
+
+import streamlit as st
+
+st.title("Alt Elite - Risk Intelligence Assistant")
+
+st.write("This is a placeholder for your GPT-powered control assurance dashboard.")
+
+
+⸻
+
+2. requirements.txt – list your dependencies
+
+streamlit
+openai
+pandas
+sqlalchemy
+databricks-sql-connector
+
+
+⸻
+
+3. .gitlab-ci.yml – CI/CD Pipeline Config File
+
+This tells GitLab how to build and deploy your app.
+
+image: python:3.11
+
+variables:
+  PYTHONUNBUFFERED: 1
+
+stages:
+  - build
+  - deploy
+
+before_script:
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+
+build:
+  stage: build
+  script:
+    - echo "Build step - validating Streamlit app"
+
+deploy:
+  stage: deploy
+  script:
+    - pip install azure-cli
+    - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+    - az webapp up --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RG_NAME --sku F1 --location $AZURE_LOCATION
+  only:
+    - main
+
+🔐 Note: This script assumes your project secrets like AZURE_CLIENT_ID, AZURE_WEBAPP_NAME, etc., are added under GitLab → Settings → CI/CD → Variables.
+
+⸻
+
+4. README.md – describe your project for jury/others
+
+# Alt Elite - Risk Intelligence Assistant
+
+This project uses Azure Databricks and Azure OpenAI to build a smart control assurance platform.
+
+Features:
+- Predictive Control Failure Modeling
+- Compliance Communication Surveillance
+- GPT-Powered Dashboard
+
+
+⸻
+
+🔹 Step 2: Push Code to GitLab
+
+If you haven’t pushed anything yet:
+
+# From your local terminal
+git init
+git remote add origin https://gitlab.com/<your-username>/<your-project>.git
+git add .
+git commit -m "Initial commit with CI/CD setup"
+git push -u origin main
+
+
+⸻
+
+🔹 Step 3: Add CI/CD Variables in GitLab UI
+
+In GitLab:
+	•	Go to Settings → CI/CD → Variables
+	•	Add the following (as protected + masked):
+	•	AZURE_CLIENT_ID
+	•	AZURE_CLIENT_SECRET
+	•	AZURE_TENANT_ID
+	•	AZURE_WEBAPP_NAME
+	•	AZURE_RG_NAME
+	•	AZURE_LOCATION
+
+And later:
+	•	DATABRICKS_TOKEN
+	•	DATABRICKS_SERVER_HOSTNAME
+	•	DATABRICKS_HTTP_PATH
+	•	AZURE_OPENAI_API_KEY
+	•	AZURE_OPENAI_ENDPOINT
+
+⸻
+
+🔹 Step 4: Trigger the Pipeline
+	•	Once you push .gitlab-ci.yml, GitLab will auto-run the pipeline.
+	•	You can monitor it under CI/CD → Pipelines in the left menu.
+
+⸻
+
+Would you like me to generate a full GitLab project zip file that includes these files and a full app.py version?

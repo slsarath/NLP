@@ -1,164 +1,139 @@
-Here are a set of well-framed SQL and Python interview questions along with answers, tailored for candidates with 4+ years of experience. The focus is more on SQL, including scenario-based questions:
+Awesome! Here’s your ready-to-run app.py Streamlit web app that:
+
+✅ Connects to your Databricks SQL Warehouse
+✅ Uses your Databricks API Token securely
+✅ Queries a sample table (incident_logs)
+✅ Shows a summary dashboard
+✅ Integrates GPT-4o via Azure OpenAI API
+✅ Supports Q&A and Control Suggestion
 
 ⸻
 
-🔷 SQL Questions with Answers
+🧾 Step-by-Step Setup (Before Running)
 
-1. How would you find the second highest salary from a table named Employees?
-Answer:
+🔹 1. Install Required Packages
 
-SELECT MAX(salary) 
-FROM Employees 
-WHERE salary < (SELECT MAX(salary) FROM Employees);
+pip install streamlit databricks-sdk openai python-dotenv pandas
 
+🔹 2. Create .env File (Store Credentials Securely)
 
-⸻
+Create a file named .env in the same folder with the following content:
 
-2. Scenario: You are working on a reporting dashboard. Users are complaining that duplicate entries are being displayed. How would you identify and remove duplicates from a table called Transactions?
-Answer:
+# Databricks credentials
+DATABRICKS_HOST=https://adb-1234567890123456.8.azuredatabricks.net
+DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/<your-warehouse-id>
+DATABRICKS_TOKEN=dapiXXXXXXXXXXXXXXXXXXXXXXXX
 
--- Identify duplicates
-SELECT transaction_id, COUNT(*) 
-FROM Transactions 
-GROUP BY transaction_id 
-HAVING COUNT(*) > 1;
+# Azure OpenAI
+AZURE_OPENAI_ENDPOINT=https://<your-openai-endpoint>.openai.azure.com/
+AZURE_OPENAI_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
 
--- Remove duplicates (keeping the latest)
-WITH RankedCTE AS (
-  SELECT *, 
-         ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY created_date DESC) AS rn
-  FROM Transactions
-)
-DELETE FROM RankedCTE WHERE rn > 1;
-
+Replace placeholders (<...>) with your actual values.
 
 ⸻
 
-3. What’s the difference between WHERE and HAVING clause?
-Answer:
-	•	WHERE is used to filter rows before grouping.
-	•	HAVING is used to filter groups after aggregation.
+✅ Now: app.py – Full Streamlit Web App
 
-⸻
+import streamlit as st
+import pandas as pd
+from databricks import sql
+from dotenv import load_dotenv
+import os
+import openai
 
-4. How can you optimize a slow-running SQL query?
-Answer:
-	•	Use proper indexes
-	•	Avoid SELECT *
-	•	Use EXISTS instead of IN where applicable
-	•	Avoid unnecessary joins
-	•	Review execution plan
+# --- Load environment variables ---
+load_dotenv()
+db_host = os.getenv("DATABRICKS_HOST")
+http_path = os.getenv("DATABRICKS_HTTP_PATH")
+db_token = os.getenv("DATABRICKS_TOKEN")
 
-⸻
+openai.api_type = "azure"
+openai.api_base = os.getenv("AZURE_OPENAI_ENDPOINT")
+openai.api_key = os.getenv("AZURE_OPENAI_KEY")
+openai.api_version = "2023-07-01-preview"  # Update if needed
+openai_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 
-5. Scenario: A table Orders has millions of records. You want to fetch only the top 5 most sold products. How would you do it?
-Answer:
+# --- Page setup ---
+st.set_page_config(page_title="AI Risk Control Assistant", layout="wide")
+st.title("🔐 AI-Powered Risk & Control Assistant")
 
-SELECT product_id, COUNT(*) AS total_sales 
-FROM Orders 
-GROUP BY product_id 
-ORDER BY total_sales DESC 
-LIMIT 5;
+# --- Databricks Connection ---
+@st.cache_resource
+def get_data():
+    with sql.connect(server_hostname=db_host, http_path=http_path, access_token=db_token) as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM catalog.schema.incident_logs LIMIT 100")
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        df = pd.DataFrame(rows, columns=columns)
+        return df
 
+df = get_data()
+st.subheader("📊 Incident Summary")
+st.dataframe(df)
 
-⸻
+# --- Visual Summary ---
+st.bar_chart(df['incident_type'].value_counts())
+st.line_chart(df.groupby('detected_date').size())
 
-6. Explain the concept of window functions with an example.
-Answer:
-Window functions perform calculations across a set of table rows related to the current row. Example:
+# --- GPT-Powered Risk Q&A ---
+st.subheader("🤖 Ask a Question About Incidents")
 
-SELECT employee_id, salary,
-       RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS dept_rank
-FROM Employees;
+user_question = st.text_input("What would you like to know?", placeholder="e.g., Which department had most unresolved incidents?")
+if user_question:
+    response = openai.ChatCompletion.create(
+        engine=openai_deployment,
+        messages=[
+            {"role": "system", "content": "You are a risk control analyst. Answer based on incident logs."},
+            {"role": "user", "content": f"Question: {user_question}. Data:\n{df.head(10).to_json()}"},
+        ],
+        temperature=0.5,
+        max_tokens=500
+    )
+    st.markdown(f"**Answer:** {response['choices'][0]['message']['content']}")
 
+# --- GPT: Suggest Control Improvements ---
+st.subheader("🛠️ Suggest Improvements to Controls")
 
-⸻
+sample_incident = st.text_area("Paste an incident description:", placeholder="AML breach due to irregular fund flow...")
+if sample_incident:
+    suggestion = openai.ChatCompletion.create(
+        engine=openai_deployment,
+        messages=[
+            {"role": "system", "content": "You are a compliance advisor. Suggest control improvements for given risk incident."},
+            {"role": "user", "content": f"Incident: {sample_incident}"}
+        ],
+        temperature=0.4,
+        max_tokens=300
+    )
+    st.success(suggestion['choices'][0]['message']['content'])
 
-7. How would you perform a full outer join in databases that don’t support it?
-Answer:
-Use UNION of LEFT JOIN and RIGHT JOIN:
-
-SELECT * FROM A LEFT JOIN B ON A.id = B.id
-UNION
-SELECT * FROM A RIGHT JOIN B ON A.id = B.id;
-
-
-⸻
-
-8. Write a query to find departments where the average salary is greater than 60,000.
-Answer:
-
-SELECT department_id, AVG(salary) as avg_salary
-FROM Employees
-GROUP BY department_id
-HAVING AVG(salary) > 60000;
-
-
-⸻
-
-9. How would you update records in one table based on values from another table?
-Answer:
-
-UPDATE A
-SET A.column1 = B.column2
-FROM A
-JOIN B ON A.id = B.id;
-
-
-⸻
-
-10. Scenario: You need to detect gaps in a sequence of invoice numbers (1,2,3,5,6). How would you do it?
-Answer:
-
-SELECT a.invoice + 1 AS missing_invoice
-FROM invoices a
-LEFT JOIN invoices b ON a.invoice + 1 = b.invoice
-WHERE b.invoice IS NULL;
+# --- Footer ---
+st.caption("Built using Azure Databricks + Azure OpenAI + Streamlit")
 
 
 ⸻
 
-🔶 Python Questions with Answers
+✅ To Run the App:
 
-1. What are list comprehensions? Provide an example.
-Answer:
-List comprehensions provide a concise way to create lists.
-Example:
-
-squares = [x*x for x in range(10)]
+streamlit run app.py
 
 
 ⸻
 
-2. Scenario: You have a list of dictionaries containing employee details. How will you filter employees with salary > 50000?
-Answer:
-
-filtered = [emp for emp in employees if emp['salary'] > 50000]
-
-
-⸻
-
-3. What’s the difference between deepcopy() and copy() in Python?
-Answer:
-	•	copy() creates a shallow copy (changes in nested objects affect the copy).
-	•	deepcopy() creates a deep copy (completely independent clone).
+🧠 Future Extensions You Can Add
+	•	Word Cloud of frequent risk terms
+	•	Incident severity trend
+	•	Filter by department, reporter, or risk score
+	•	Upload button for new CSVs
+	•	Save GPT suggestions to a Delta table
 
 ⸻
 
-4. How do you handle missing values in a DataFrame?
-Answer:
-Using pandas:
+Would you like me to:
+	•	Add topic modeling with LDA?
+	•	Show root cause classification with GPT?
+	•	Or auto-flag controls using regex or embedding comparison?
 
-df.fillna(value)      # Fill missing values  
-df.dropna()           # Drop rows with missing values  
-
-
-⸻
-
-5. Scenario: You need to merge two datasets but only keep matching records. What do you use?
-Answer:
-Use pd.merge(df1, df2, on='id', how='inner')
-
-⸻
-
-Would you like me to format this into a downloadable document or generate more questions for a specific topic?
+Let me know how you want to extend this!

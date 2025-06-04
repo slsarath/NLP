@@ -1,139 +1,57 @@
-Awesome! Here’s your ready-to-run app.py Streamlit web app that:
+Thanks for sharing the screenshot — the error message is:
 
-✅ Connects to your Databricks SQL Warehouse
-✅ Uses your Databricks API Token securely
-✅ Queries a sample table (incident_logs)
-✅ Shows a summary dashboard
-✅ Integrates GPT-4o via Azure OpenAI API
-✅ Supports Q&A and Control Suggestion
+pyspark.errors.exceptions.captured.AnalysisException: [REQUIRES_SINGLE_PART_NAMESPACE] spark_catalog requires a single-part namespace, but got hackathon.ctrl_alt_elite_pune_risk_management
 
 ⸻
 
-🧾 Step-by-Step Setup (Before Running)
+🔍 What this means:
 
-🔹 1. Install Required Packages
+You’re trying to read a table using 3-part namespace (catalog.schema.table) like this:
 
-pip install streamlit databricks-sdk openai python-dotenv pandas
+spark.table("hackathon.ctrl_alt_elite_pune_risk_management.risk_event_logs")
 
-🔹 2. Create .env File (Store Credentials Securely)
-
-Create a file named .env in the same folder with the following content:
-
-# Databricks credentials
-DATABRICKS_HOST=https://adb-1234567890123456.8.azuredatabricks.net
-DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/<your-warehouse-id>
-DATABRICKS_TOKEN=dapiXXXXXXXXXXXXXXXXXXXXXXXX
-
-# Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://<your-openai-endpoint>.openai.azure.com/
-AZURE_OPENAI_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-
-Replace placeholders (<...>) with your actual values.
+But PySpark outside Databricks (in local Streamlit or Jupyter) only supports 1-part or 2-part names (like "schema.table" or just "table").
 
 ⸻
 
-✅ Now: app.py – Full Streamlit Web App
+✅ Solution:
 
-import streamlit as st
+To fix it, use a Databricks SQL connector instead of using spark.table() locally. Here’s what you should do:
+
+⸻
+
+✅ Step-by-Step Fix: Use databricks-sql-connector
+	1.	Install the connector:
+
+pip install databricks-sql-connector
+
+	2.	Update your code like this:
+
 import pandas as pd
 from databricks import sql
-from dotenv import load_dotenv
-import os
-import openai
 
-# --- Load environment variables ---
-load_dotenv()
-db_host = os.getenv("DATABRICKS_HOST")
-http_path = os.getenv("DATABRICKS_HTTP_PATH")
-db_token = os.getenv("DATABRICKS_TOKEN")
+# ✅ Replace with your actual credentials
+connection = sql.connect(
+    server_hostname="adb-<your-host>.azuredatabricks.net",
+    http_path="/sql/1.0/warehouses/<warehouse-id>",
+    access_token="your-databricks-personal-access-token"
+)
 
-openai.api_type = "azure"
-openai.api_base = os.getenv("AZURE_OPENAI_ENDPOINT")
-openai.api_key = os.getenv("AZURE_OPENAI_KEY")
-openai.api_version = "2023-07-01-preview"  # Update if needed
-openai_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+# ✅ Write query using 3-part name
+query = "SELECT * FROM hackathon.ctrl_alt_elite_pune_risk_management.risk_event_logs LIMIT 10"
 
-# --- Page setup ---
-st.set_page_config(page_title="AI Risk Control Assistant", layout="wide")
-st.title("🔐 AI-Powered Risk & Control Assistant")
+# ✅ Run query and load into Pandas
+df = pd.read_sql(query, connection)
 
-# --- Databricks Connection ---
-@st.cache_resource
-def get_data():
-    with sql.connect(server_hostname=db_host, http_path=http_path, access_token=db_token) as connection:
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM catalog.schema.incident_logs LIMIT 100")
-        rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        df = pd.DataFrame(rows, columns=columns)
-        return df
-
-df = get_data()
-st.subheader("📊 Incident Summary")
-st.dataframe(df)
-
-# --- Visual Summary ---
-st.bar_chart(df['incident_type'].value_counts())
-st.line_chart(df.groupby('detected_date').size())
-
-# --- GPT-Powered Risk Q&A ---
-st.subheader("🤖 Ask a Question About Incidents")
-
-user_question = st.text_input("What would you like to know?", placeholder="e.g., Which department had most unresolved incidents?")
-if user_question:
-    response = openai.ChatCompletion.create(
-        engine=openai_deployment,
-        messages=[
-            {"role": "system", "content": "You are a risk control analyst. Answer based on incident logs."},
-            {"role": "user", "content": f"Question: {user_question}. Data:\n{df.head(10).to_json()}"},
-        ],
-        temperature=0.5,
-        max_tokens=500
-    )
-    st.markdown(f"**Answer:** {response['choices'][0]['message']['content']}")
-
-# --- GPT: Suggest Control Improvements ---
-st.subheader("🛠️ Suggest Improvements to Controls")
-
-sample_incident = st.text_area("Paste an incident description:", placeholder="AML breach due to irregular fund flow...")
-if sample_incident:
-    suggestion = openai.ChatCompletion.create(
-        engine=openai_deployment,
-        messages=[
-            {"role": "system", "content": "You are a compliance advisor. Suggest control improvements for given risk incident."},
-            {"role": "user", "content": f"Incident: {sample_incident}"}
-        ],
-        temperature=0.4,
-        max_tokens=300
-    )
-    st.success(suggestion['choices'][0]['message']['content'])
-
-# --- Footer ---
-st.caption("Built using Azure Databricks + Azure OpenAI + Streamlit")
-
+⚠️ This avoids SparkSession and directly runs SQL from your Databricks tables.
 
 ⸻
 
-✅ To Run the App:
-
-streamlit run app.py
-
-
-⸻
-
-🧠 Future Extensions You Can Add
-	•	Word Cloud of frequent risk terms
-	•	Incident severity trend
-	•	Filter by department, reporter, or risk score
-	•	Upload button for new CSVs
-	•	Save GPT suggestions to a Delta table
+📌 Where to find values:
+	•	Host: From your Databricks workspace URL (adb-xxx.azuredatabricks.net)
+	•	HTTP Path: From Databricks SQL warehouse (in SQL > Connection Details)
+	•	Access Token: From Databricks → User Settings → Access Tokens
 
 ⸻
 
-Would you like me to:
-	•	Add topic modeling with LDA?
-	•	Show root cause classification with GPT?
-	•	Or auto-flag controls using regex or embedding comparison?
-
-Let me know how you want to extend this!
+Let me know once you’ve made this switch or if you’d like me to adjust your full code accordingly!

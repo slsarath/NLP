@@ -1,17 +1,40 @@
-import logging
-from PyQt5.QtWidgets import QApplication
-import sys
-from gui.main_window import MainWindow
-from common.logger import LogData
+Great question!
 
-def main():
-    # Setup the logger
-    logger = LogData().SetupTheLogger()
+Here’s where and how you can open a terminal, depending on your setup:
 
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
+⸻
 
-if __name__ == "__main__":
-    main()
+✅ Option 1: If You’re on Windows
+
+Use Git Bash or Windows Terminal (recommended)
+
+🔹 Git Bash (Easy if you installed Git for Windows):
+	1.	Right-click on your desktop or project folder
+	2.	Select “Git Bash Here”
+	3.	You now have a terminal window
+
+🔹 Windows Terminal or Command Prompt:
+	•	Press Win + S → search for “Terminal” or “Command Prompt”
+	•	You can also use Windows PowerShell
+
+⸻
+
+✅ Option 2: If You’re on macOS
+	1.	Press Cmd + Space and search for “Terminal”
+	2.	Open it — you can now enter all SSH/Git commands
+
+⸻
+
+✅ Option 3: If You’re on Linux
+	1.	Press Ctrl + Alt + T to open your terminal
+
+⸻
+
+✅ Option 4: Inside VS Code (Cross-platform, recommended)
+	1.	Open VS Code
+	2.	Go to View → Terminal (or press Ctrl + ``  ← backtick)
+	3.	A terminal opens at the bottom — now you can run all Git and SSH commands
+
+⸻
+
+Let me know which setup you’re using, and I’ll guide you through from there.

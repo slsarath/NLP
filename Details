@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 st.markdown("### ☁️ AI-Generated WordClouds of Top Incident Themes")
 
-# Step 1: Get top 3 departments by incident volume
+# Step 1: Get top 3 departments by volume
 top_departments = (
     incident_df['Department']
     .value_counts()
@@ -13,40 +13,44 @@ top_departments = (
     .tolist()
 )
 
-# Filter incident data for top 3 departments
 filtered_df = incident_df[incident_df['Department'].isin(top_departments)]
 
-# Step 2: Prompt OpenAI to get top 5 themes for each of top departments
-incident_summary_prompt = (
-    "You are a data analyst. I will provide incident data with columns: Department and Description. "
-    "For each department (only include departments that appear in the data), identify the top 5 most frequently "
-    "occurring incident themes based on the Description column. Return the result as a JSON dictionary in this format:\n\n"
-    "{\n"
-    "  'Department1': {'theme1': count, 'theme2': count, ...},\n"
-    "  'Department2': {...},\n"
-    "  ...\n"
-    "}\n\n"
-    "Here is the incident data:\n"
-)
-sample_data = filtered_df[['Department', 'Description']].to_csv(index=False)
-
-try:
-    response = client.chat.completions.create(
-        model=deployment_name,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
-            {"role": "user", "content": incident_summary_prompt + sample_data}
-        ],
-        temperature=0.3,
-        max_tokens=1000
+# Step 2: Only prompt OpenAI once and store in session state
+if "incident_theme_dict" not in st.session_state:
+    incident_summary_prompt = (
+        "You are a data analyst. I will provide incident data with columns: Department and Description. "
+        "For each department, identify the top 5 most frequently occurring incident themes based on the Description column. "
+        "Return the result as a JSON dictionary in this format:\n\n"
+        "{\n"
+        "  'Department1': {'theme1': count, 'theme2': count, ...},\n"
+        "  'Department2': {...},\n"
+        "  ...\n"
+        "}\n\n"
+        "Here is the incident data:\n"
     )
+    sample_data = filtered_df[['Department', 'Description']].to_csv(index=False)
 
-    # Step 3: Parse response
-    text_response = response.choices[0].message.content
-    cleaned_text = text_response.strip().replace("```json", "").replace("```", "")
-    theme_dict = json.loads(cleaned_text)
+    try:
+        response = client.chat.completions.create(
+            model=deployment_name,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
+                {"role": "user", "content": incident_summary_prompt + sample_data}
+            ],
+            temperature=0.3,
+            max_tokens=1000
+        )
 
-    # Step 4: Dropdown for top 3 departments
+        text_response = response.choices[0].message.content
+        cleaned_text = text_response.strip().replace("```json", "").replace("```", "")
+        st.session_state.incident_theme_dict = json.loads(cleaned_text)
+
+    except Exception as e:
+        st.error(f"Failed to get incident themes. Error: {e}")
+
+# Step 3: Dropdown and WordCloud (no API calls now)
+if "incident_theme_dict" in st.session_state:
+    theme_dict = st.session_state.incident_theme_dict
     selected_dept = st.selectbox("Select one of the top 3 departments:", list(theme_dict.keys()))
 
     if selected_dept and selected_dept in theme_dict:
@@ -56,6 +60,3 @@ try:
         ax.imshow(wordcloud, interpolation='bilinear')
         ax.axis("off")
         st.pyplot(fig)
-
-except Exception as e:
-    st.error(f"Failed to generate WordCloud. Error: {e}")

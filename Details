@@ -4,11 +4,23 @@ import matplotlib.pyplot as plt
 
 st.markdown("### ☁️ AI-Generated WordClouds of Top Incident Themes")
 
-# Step 1: Prompt OpenAI to get top incident themes per department
+# Step 1: Get top 3 departments by incident volume
+top_departments = (
+    incident_df['Department']
+    .value_counts()
+    .head(3)
+    .index
+    .tolist()
+)
+
+# Filter incident data for top 3 departments
+filtered_df = incident_df[incident_df['Department'].isin(top_departments)]
+
+# Step 2: Prompt OpenAI to get top 5 themes for each of top departments
 incident_summary_prompt = (
-    "You are a data analyst. I will provide incident data with columns: Incident ID, Incident Date, "
-    "Department, Description. For each department, identify the top 5 most frequently occurring incident themes "
-    "based on the Description column. Return the result as a JSON dictionary in this format:\n\n"
+    "You are a data analyst. I will provide incident data with columns: Department and Description. "
+    "For each department (only include departments that appear in the data), identify the top 5 most frequently "
+    "occurring incident themes based on the Description column. Return the result as a JSON dictionary in this format:\n\n"
     "{\n"
     "  'Department1': {'theme1': count, 'theme2': count, ...},\n"
     "  'Department2': {...},\n"
@@ -16,33 +28,30 @@ incident_summary_prompt = (
     "}\n\n"
     "Here is the incident data:\n"
 )
-sample_data = incident_df[['Department', 'Description']].to_csv(index=False)
+sample_data = filtered_df[['Department', 'Description']].to_csv(index=False)
 
-# Step 2: Get OpenAI response
-response = client.chat.completions.create(
-    model=deployment_name,
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
-        {"role": "user", "content": incident_summary_prompt + sample_data}
-    ],
-    temperature=0.3,
-    max_tokens=1000
-)
-
-# Step 3: Parse response
 try:
+    response = client.chat.completions.create(
+        model=deployment_name,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
+            {"role": "user", "content": incident_summary_prompt + sample_data}
+        ],
+        temperature=0.3,
+        max_tokens=1000
+    )
+
+    # Step 3: Parse response
     text_response = response.choices[0].message.content
     cleaned_text = text_response.strip().replace("```json", "").replace("```", "")
     theme_dict = json.loads(cleaned_text)
 
-    # Step 4: Department dropdown
-    departments = list(theme_dict.keys())
-    selected_dept = st.selectbox("Select a department to view incident themes:", departments)
+    # Step 4: Dropdown for top 3 departments
+    selected_dept = st.selectbox("Select one of the top 3 departments:", list(theme_dict.keys()))
 
-    if selected_dept:
-        theme_data = theme_dict[selected_dept]
+    if selected_dept and selected_dept in theme_dict:
         st.markdown(f"#### 🏢 Department: {selected_dept}")
-        wordcloud = WordCloud(width=600, height=300, background_color='white').generate_from_frequencies(theme_data)
+        wordcloud = WordCloud(width=600, height=300, background_color='white').generate_from_frequencies(theme_dict[selected_dept])
         fig, ax = plt.subplots(figsize=(8, 3))
         ax.imshow(wordcloud, interpolation='bilinear')
         ax.axis("off")

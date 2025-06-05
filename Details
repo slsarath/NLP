@@ -1,6 +1,74 @@
-•	AI-Powered Risk Intelligence:
-Azure OpenAI analyzes incidents, controls, and messages to detect weak signals and generate early warnings.
-	•	Predictive Control Monitoring:
-ML models flag high-risk controls proactively by learning from past incidents and effectiveness scores.
-	•	Compliance Conversation Surveillance:
-NLP scans message logs to surface hidden risks, policy breaches, and negative sentiment in real-time.
+import streamlit as st
+import pandas as pd
+from openai import AzureOpenAI
+from sentence_transformers import SentenceTransformer
+import faiss
+import os
+
+# === Azure OpenAI Config ===
+client = AzureOpenAI(
+    api_key="<your-api-key>",
+    api_version="2023-05-15",
+    azure_endpoint="https://<your-resource-name>.openai.azure.com/"
+)
+deployment_name = "<your-deployment-name>"  # e.g., "gpt-35-turbo"
+
+# === Load Excel Data ===
+@st.cache_data
+def load_data():
+    df_incident = pd.read_excel("incident_data.xlsx")
+    df_controls = pd.read_excel("controls_data.xlsx")
+    return df_incident, df_controls
+
+incident_df, controls_df = load_data()
+
+# === Create Combined Corpus ===
+def prepare_corpus(df, label):
+    return [f"{label} - {row['Department']}: {row['Description']}" for _, row in df.iterrows()]
+
+incident_texts = prepare_corpus(incident_df, "Incident")
+control_texts = prepare_corpus(controls_df, "Control")
+all_texts = incident_texts + control_texts
+
+# === Generate Embeddings ===
+@st.cache_resource
+def embed_texts(texts):
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    embeddings = model.encode(texts, show_progress_bar=True)
+    index = faiss.IndexFlatL2(embeddings.shape[1])
+    index.add(embeddings)
+    return model, index, embeddings
+
+embedding_model, faiss_index, embedded_texts = embed_texts(all_texts)
+
+# === Streamlit UI ===
+st.set_page_config(page_title="RAG with Azure OpenAI", layout="wide")
+st.title("📄 Ask Questions on Incidents and Controls (Excel + Azure OpenAI)")
+
+query = st.text_input("Ask a question based on incidents and controls:")
+
+if query:
+    with st.spinner("Searching knowledge base and generating response..."):
+        # Embed query
+        query_embedding = embedding_model.encode([query])
+        top_k = 3
+        distances, indices = faiss_index.search(query_embedding, top_k)
+        
+        # Get top matching chunks
+        context = "\n".join([all_texts[i] for i in indices[0]])
+
+        # Prompt OpenAI with context
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context."},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{query}"}
+        ]
+
+        response = client.chat.completions.create(
+            model=deployment_name,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=500
+        )
+
+        st.markdown("**Answer:**")
+        st.write(response.choices[0].message.content)

@@ -1,133 +1,47 @@
-import streamlit as st
-import pandas as pd
-from openai import AzureOpenAI
-from sentence_transformers import SentenceTransformer
-import faiss
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import json
 from wordcloud import WordCloud
-import plotly.express as px
+import matplotlib.pyplot as plt
 
-# === Azure OpenAI Setup ===
-client = AzureOpenAI(
-    api_key="<your-api-key>",
-    api_version="2023-05-15",
-    azure_endpoint="https://<your-resource-name>.openai.azure.com/"
+st.markdown("### ☁️ AI-Generated WordClouds: Top 5 Incident Themes per Department")
+
+# Prompt OpenAI to summarize incident themes
+incident_summary_prompt = (
+    "You are a data analyst. I will provide incident data with columns: Incident ID, Incident Date, "
+    "Department, Description. For each department, identify the top 5 most frequently occurring incident themes "
+    "based on the Description column. Return the result as a JSON dictionary in this format:\n\n"
+    "{\n"
+    "  'Department1': {'theme1': count, 'theme2': count, ...},\n"
+    "  'Department2': {...},\n"
+    "  ...\n"
+    "}\n\n"
+    "Here is the incident data:\n"
 )
-deployment_name = "<your-deployment-name>"
+sample_data = incident_df[['Department', 'Description']].head(100).to_csv(index=False)
 
-# === Load Your DataFrames Here ===
-incident_df = pd.read_csv("incident_data.csv")  # or load directly as df
-controls_df = pd.read_csv("controls_data.csv")
+response = client.chat.completions.create(
+    model=deployment_name,
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
+        {"role": "user", "content": incident_summary_prompt + sample_data}
+    ],
+    temperature=0.3,
+    max_tokens=800
+)
 
-# === Preprocessing ===
-incident_df['Incident Date'] = pd.to_datetime(incident_df['Incident Date'])
-incident_df['Quarter'] = incident_df['Incident Date'].dt.to_period('Q').astype(str)
+# Parse OpenAI's response
+try:
+    text_response = response.choices[0].message.content
+    cleaned_text = text_response.strip().replace("```json", "").replace("```", "")
+    theme_dict = json.loads(cleaned_text)
 
-# === Embedding for RAG ===
-def format_incident(row):
-    return (
-        f"Incident ID: {row['Incident ID']}, "
-        f"Date: {row['Incident Date']}, "
-        f"Department: {row['Department']}, "
-        f"Impact: ${row['Financial Impact']}M, "
-        f"Description: {row['Description']}"
-    )
+    # Generate WordCloud per department
+    for dept, theme_data in theme_dict.items():
+        st.markdown(f"#### 🏢 Department: {dept}")
+        wordcloud = WordCloud(width=600, height=300, background_color='white').generate_from_frequencies(theme_data)
+        fig, ax = plt.subplots(figsize=(8, 3))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis("off")
+        st.pyplot(fig)
 
-def format_control(row):
-    return f"Control - Department: {row['Department']}, Description: {row['Description']}"
-
-incident_texts = incident_df.apply(format_incident, axis=1).tolist()
-control_texts = controls_df.apply(format_control, axis=1).tolist()
-all_texts = incident_texts + control_texts
-
-@st.cache_resource
-def embed_data(texts):
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    embeddings = model.encode(texts, show_progress_bar=False)
-    index = faiss.IndexFlatL2(embeddings.shape[1])
-    index.add(embeddings)
-    return model, index, embeddings
-
-embedding_model, faiss_index, all_embeddings = embed_data(all_texts)
-
-# === Streamlit Layout ===
-st.set_page_config(page_title="Incident & Control Dashboard", layout="wide")
-st.title("📊 Incident & Control Insights")
-
-left_col, right_col = st.columns([2, 1])
-
-# === 🔍 Right Panel: Q&A Box ===
-with right_col:
-    st.markdown("### 💬 Ask the AI")
-    with st.container(border=True):
-        query = st.text_input("Type your question here")
-        if query:
-            with st.spinner("Answering..."):
-                query_emb = embedding_model.encode([query])
-                _, indices = faiss_index.search(np.array(query_emb), 4)
-                context = "\n".join([all_texts[i] for i in indices[0]])
-                messages = [
-                    {"role": "system", "content": "You are an expert on internal audit, controls and incidents."},
-                    {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{query}"}
-                ]
-                response = client.chat.completions.create(
-                    model=deployment_name,
-                    messages=messages,
-                    temperature=0.3,
-                    max_tokens=500
-                )
-                st.markdown("**Response:**")
-                st.write(response.choices[0].message.content)
-
-# === 📊 Left Panel: Visuals ===
-with left_col:
-
-    st.markdown("### 🔥 Top 5 Incident Types per Department")
-
-    top_incidents = (
-        incident_df.groupby(['Department', 'Description'])
-        .size()
-        .reset_index(name='Count')
-        .sort_values(['Department', 'Count'], ascending=[True, False])
-    )
-
-    top5_per_dept = top_incidents.groupby('Department').head(5)
-
-    fig1 = px.bar(top5_per_dept, x='Description', y='Count', color='Department',
-                  title='Top 5 Incidents by Department')
-    st.plotly_chart(fig1, use_container_width=True)
-
-    st.markdown("### 💸 Financial Impact Over Quarters")
-    impact_data = (
-        incident_df.groupby(['Quarter', 'Department'])['Financial Impact']
-        .sum()
-        .reset_index()
-    )
-
-    fig2 = px.line(impact_data, x='Quarter', y='Financial Impact', color='Department',
-                   markers=True, title='Financial Impact ($M) by Quarter')
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("### 🛡️ Controls for Top Incidents")
-
-    top_descriptions = top5_per_dept['Description'].unique().tolist()
-    matched_controls = []
-
-    for desc in top_descriptions:
-        query_msg = f"What are the controls relevant to the following incident?\n\nIncident: {desc}\n\nList them as a table with Department and Control Description."
-        messages = [
-            {"role": "system", "content": "You are a control mapping assistant. Use the knowledge base to identify controls related to incidents."},
-            {"role": "user", "content": query_msg}
-        ]
-        response = client.chat.completions.create(
-            model=deployment_name,
-            messages=messages,
-            temperature=0.3,
-            max_tokens=300
-        )
-        matched_controls.append(f"### 🔐 Controls for: *{desc}*\n{response.choices[0].message.content}")
-
-    for control_section in matched_controls:
-        st.markdown(control_section, unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"Could not generate WordClouds. Reason: {e}")

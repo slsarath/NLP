@@ -1,62 +1,62 @@
-import json
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
+import random
+import hashlib
 
-st.markdown("### ☁️ AI-Generated WordClouds of Top Incident Themes")
+st.markdown("### 🛡️ Controls Relevant to Top Incident Themes")
 
-# Step 1: Get top 3 departments by volume
-top_departments = (
-    incident_df['Department']
-    .value_counts()
-    .head(3)
-    .index
-    .tolist()
-)
+# Create a hash key based on themes list to cache only by unique themes
+def get_theme_hash(themes_list):
+    return hashlib.md5(",".join(sorted(themes_list)).encode()).hexdigest()
 
-filtered_df = incident_df[incident_df['Department'].isin(top_departments)]
+if selected_dept and selected_dept in theme_dict:
+    selected_themes = list(theme_dict[selected_dept].keys())
+    theme_hash = get_theme_hash(selected_themes)
 
-# Step 2: Only prompt OpenAI once and store in session state
-if "incident_theme_dict" not in st.session_state:
-    incident_summary_prompt = (
-        "You are a data analyst. I will provide incident data with columns: Department and Description. "
-        "For each department, identify the top 5 most frequently occurring incident themes based on the Description column. "
-        "Return the result as a JSON dictionary in this format:\n\n"
-        "{\n"
-        "  'Department1': {'theme1': count, 'theme2': count, ...},\n"
-        "  'Department2': {...},\n"
-        "  ...\n"
-        "}\n\n"
-        "Here is the incident data:\n"
-    )
-    sample_data = filtered_df[['Department', 'Description']].to_csv(index=False)
+    if "global_control_mapping" not in st.session_state:
+        st.session_state.global_control_mapping = {}
 
-    try:
-        response = client.chat.completions.create(
-            model=deployment_name,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
-                {"role": "user", "content": incident_summary_prompt + sample_data}
-            ],
-            temperature=0.3,
-            max_tokens=1000
+    # If this theme combo hasn't been processed yet, prompt OpenAI
+    if theme_hash not in st.session_state.global_control_mapping:
+        theme_string = ", ".join(selected_themes)
+        control_prompt = (
+            f"You are a risk expert. The following are the top incident themes: {theme_string}. "
+            f"For each, suggest one relevant control measure, and rewrite it to make it more robust. "
+            f"Return the result as a JSON list like:\n"
+            "[\n"
+            "  {\n"
+            "    'incident_theme': 'Data Breach',\n"
+            "    'control_description': 'Encrypt data',\n"
+            "    'robust_control': 'Implement AES-256 encryption with access logging and real-time anomaly detection.'\n"
+            "  }\n"
+            "]"
         )
 
-        text_response = response.choices[0].message.content
-        cleaned_text = text_response.strip().replace("```json", "").replace("```", "")
-        st.session_state.incident_theme_dict = json.loads(cleaned_text)
+        try:
+            response = client.chat.completions.create(
+                model=deployment_name,
+                messages=[
+                    {"role": "system", "content": "You map incident themes to internal controls and improve them."},
+                    {"role": "user", "content": control_prompt}
+                ],
+                temperature=0.4,
+                max_tokens=1000
+            )
 
-    except Exception as e:
-        st.error(f"Failed to get incident themes. Error: {e}")
+            # Parse and enrich
+            ctrl_text = response.choices[0].message.content.strip().replace("```json", "").replace("```", "")
+            control_list = json.loads(ctrl_text)
 
-# Step 3: Dropdown and WordCloud (no API calls now)
-if "incident_theme_dict" in st.session_state:
-    theme_dict = st.session_state.incident_theme_dict
-    selected_dept = st.selectbox("Select one of the top 3 departments:", list(theme_dict.keys()))
+            for ctrl in control_list:
+                ctrl['control_id'] = f"CTRL-{random.randint(1000, 9999)}"
 
-    if selected_dept and selected_dept in theme_dict:
-        st.markdown(f"#### 🏢 Department: {selected_dept}")
-        wordcloud = WordCloud(width=600, height=300, background_color='white').generate_from_frequencies(theme_dict[selected_dept])
-        fig, ax = plt.subplots(figsize=(8, 3))
-        ax.imshow(wordcloud, interpolation='bilinear')
-        ax.axis("off")
-        st.pyplot(fig)
+            st.session_state.global_control_mapping[theme_hash] = control_list
+
+        except Exception as e:
+            st.error(f"Failed to retrieve controls for themes: {e}")
+
+    # Display cached result
+    if theme_hash in st.session_state.global_control_mapping:
+        control_df = pd.DataFrame(
+            st.session_state.global_control_mapping[theme_hash]
+        )[['control_id', 'incident_theme', 'control_description', 'robust_control']]
+
+        st.dataframe(control_df, use_container_width=True)

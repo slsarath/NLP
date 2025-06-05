@@ -1,47 +1,28 @@
-import json
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
+st.markdown("### 🛡️ Controls Relevant to Top Incident Themes")
 
-st.markdown("### ☁️ AI-Generated WordClouds: Top 5 Incident Themes per Department")
+# Reuse theme_dict from earlier response (already parsed JSON)
+if theme_dict:
+    for dept, themes in theme_dict.items():
+        incident_theme_list = list(themes.keys())
 
-# Prompt OpenAI to summarize incident themes
-incident_summary_prompt = (
-    "You are a data analyst. I will provide incident data with columns: Incident ID, Incident Date, "
-    "Department, Description. For each department, identify the top 5 most frequently occurring incident themes "
-    "based on the Description column. Return the result as a JSON dictionary in this format:\n\n"
-    "{\n"
-    "  'Department1': {'theme1': count, 'theme2': count, ...},\n"
-    "  'Department2': {...},\n"
-    "  ...\n"
-    "}\n\n"
-    "Here is the incident data:\n"
-)
-sample_data = incident_df[['Department', 'Description']].head(100).to_csv(index=False)
+        # Join top 5 themes into a prompt-friendly string
+        themes_string = ", ".join(incident_theme_list)
 
-response = client.chat.completions.create(
-    model=deployment_name,
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant skilled in summarizing incidents."},
-        {"role": "user", "content": incident_summary_prompt + sample_data}
-    ],
-    temperature=0.3,
-    max_tokens=800
-)
+        control_prompt = (
+            f"You are an expert in risk controls. For the department '{dept}', the top 5 incident themes are: "
+            f"{themes_string}. Based on this, identify the relevant control measures in place. "
+            f"Return the answer as a Markdown table with two columns: 'Incident Theme' and 'Relevant Control Description'."
+        )
 
-# Parse OpenAI's response
-try:
-    text_response = response.choices[0].message.content
-    cleaned_text = text_response.strip().replace("```json", "").replace("```", "")
-    theme_dict = json.loads(cleaned_text)
+        response = client.chat.completions.create(
+            model=deployment_name,
+            messages=[
+                {"role": "system", "content": "You map incident themes to internal controls."},
+                {"role": "user", "content": control_prompt}
+            ],
+            temperature=0.3,
+            max_tokens=700
+        )
 
-    # Generate WordCloud per department
-    for dept, theme_data in theme_dict.items():
-        st.markdown(f"#### 🏢 Department: {dept}")
-        wordcloud = WordCloud(width=600, height=300, background_color='white').generate_from_frequencies(theme_data)
-        fig, ax = plt.subplots(figsize=(8, 3))
-        ax.imshow(wordcloud, interpolation='bilinear')
-        ax.axis("off")
-        st.pyplot(fig)
-
-except Exception as e:
-    st.error(f"Could not generate WordClouds. Reason: {e}")
+        st.markdown(f"#### 🔐 Controls for Department: **{dept}**")
+        st.markdown(response.choices[0].message.content, unsafe_allow_html=True)

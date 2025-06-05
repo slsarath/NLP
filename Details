@@ -3,72 +3,131 @@ import pandas as pd
 from openai import AzureOpenAI
 from sentence_transformers import SentenceTransformer
 import faiss
-import os
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from wordcloud import WordCloud
+import plotly.express as px
 
-# === Azure OpenAI Config ===
+# === Azure OpenAI Setup ===
 client = AzureOpenAI(
     api_key="<your-api-key>",
     api_version="2023-05-15",
     azure_endpoint="https://<your-resource-name>.openai.azure.com/"
 )
-deployment_name = "<your-deployment-name>"  # e.g., "gpt-35-turbo"
+deployment_name = "<your-deployment-name>"
 
-# === Load Excel Data ===
-@st.cache_data
-def load_data():
-    df_incident = pd.read_excel("incident_data.xlsx")
-    df_controls = pd.read_excel("controls_data.xlsx")
-    return df_incident, df_controls
+# === Load Your DataFrames Here ===
+incident_df = pd.read_csv("incident_data.csv")  # or load directly as df
+controls_df = pd.read_csv("controls_data.csv")
 
-incident_df, controls_df = load_data()
+# === Preprocessing ===
+incident_df['Incident Date'] = pd.to_datetime(incident_df['Incident Date'])
+incident_df['Quarter'] = incident_df['Incident Date'].dt.to_period('Q').astype(str)
 
-# === Create Combined Corpus ===
-def prepare_corpus(df, label):
-    return [f"{label} - {row['Department']}: {row['Description']}" for _, row in df.iterrows()]
+# === Embedding for RAG ===
+def format_incident(row):
+    return (
+        f"Incident ID: {row['Incident ID']}, "
+        f"Date: {row['Incident Date']}, "
+        f"Department: {row['Department']}, "
+        f"Impact: ${row['Financial Impact']}M, "
+        f"Description: {row['Description']}"
+    )
 
-incident_texts = prepare_corpus(incident_df, "Incident")
-control_texts = prepare_corpus(controls_df, "Control")
+def format_control(row):
+    return f"Control - Department: {row['Department']}, Description: {row['Description']}"
+
+incident_texts = incident_df.apply(format_incident, axis=1).tolist()
+control_texts = controls_df.apply(format_control, axis=1).tolist()
 all_texts = incident_texts + control_texts
 
-# === Generate Embeddings ===
 @st.cache_resource
-def embed_texts(texts):
+def embed_data(texts):
     model = SentenceTransformer("all-MiniLM-L6-v2")
-    embeddings = model.encode(texts, show_progress_bar=True)
+    embeddings = model.encode(texts, show_progress_bar=False)
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(embeddings)
     return model, index, embeddings
 
-embedding_model, faiss_index, embedded_texts = embed_texts(all_texts)
+embedding_model, faiss_index, all_embeddings = embed_data(all_texts)
 
-# === Streamlit UI ===
-st.set_page_config(page_title="RAG with Azure OpenAI", layout="wide")
-st.title("📄 Ask Questions on Incidents and Controls (Excel + Azure OpenAI)")
+# === Streamlit Layout ===
+st.set_page_config(page_title="Incident & Control Dashboard", layout="wide")
+st.title("📊 Incident & Control Insights")
 
-query = st.text_input("Ask a question based on incidents and controls:")
+left_col, right_col = st.columns([2, 1])
 
-if query:
-    with st.spinner("Searching knowledge base and generating response..."):
-        # Embed query
-        query_embedding = embedding_model.encode([query])
-        top_k = 3
-        distances, indices = faiss_index.search(query_embedding, top_k)
-        
-        # Get top matching chunks
-        context = "\n".join([all_texts[i] for i in indices[0]])
+# === 🔍 Right Panel: Q&A Box ===
+with right_col:
+    st.markdown("### 💬 Ask the AI")
+    with st.container(border=True):
+        query = st.text_input("Type your question here")
+        if query:
+            with st.spinner("Answering..."):
+                query_emb = embedding_model.encode([query])
+                _, indices = faiss_index.search(np.array(query_emb), 4)
+                context = "\n".join([all_texts[i] for i in indices[0]])
+                messages = [
+                    {"role": "system", "content": "You are an expert on internal audit, controls and incidents."},
+                    {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{query}"}
+                ]
+                response = client.chat.completions.create(
+                    model=deployment_name,
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=500
+                )
+                st.markdown("**Response:**")
+                st.write(response.choices[0].message.content)
 
-        # Prompt OpenAI with context
+# === 📊 Left Panel: Visuals ===
+with left_col:
+
+    st.markdown("### 🔥 Top 5 Incident Types per Department")
+
+    top_incidents = (
+        incident_df.groupby(['Department', 'Description'])
+        .size()
+        .reset_index(name='Count')
+        .sort_values(['Department', 'Count'], ascending=[True, False])
+    )
+
+    top5_per_dept = top_incidents.groupby('Department').head(5)
+
+    fig1 = px.bar(top5_per_dept, x='Description', y='Count', color='Department',
+                  title='Top 5 Incidents by Department')
+    st.plotly_chart(fig1, use_container_width=True)
+
+    st.markdown("### 💸 Financial Impact Over Quarters")
+    impact_data = (
+        incident_df.groupby(['Quarter', 'Department'])['Financial Impact']
+        .sum()
+        .reset_index()
+    )
+
+    fig2 = px.line(impact_data, x='Quarter', y='Financial Impact', color='Department',
+                   markers=True, title='Financial Impact ($M) by Quarter')
+    st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown("### 🛡️ Controls for Top Incidents")
+
+    top_descriptions = top5_per_dept['Description'].unique().tolist()
+    matched_controls = []
+
+    for desc in top_descriptions:
+        query_msg = f"What are the controls relevant to the following incident?\n\nIncident: {desc}\n\nList them as a table with Department and Control Description."
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context."},
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{query}"}
+            {"role": "system", "content": "You are a control mapping assistant. Use the knowledge base to identify controls related to incidents."},
+            {"role": "user", "content": query_msg}
         ]
-
         response = client.chat.completions.create(
             model=deployment_name,
             messages=messages,
             temperature=0.3,
-            max_tokens=500
+            max_tokens=300
         )
+        matched_controls.append(f"### 🔐 Controls for: *{desc}*\n{response.choices[0].message.content}")
 
-        st.markdown("**Answer:**")
-        st.write(response.choices[0].message.content)
+    for control_section in matched_controls:
+        st.markdown(control_section, unsafe_allow_html=True)

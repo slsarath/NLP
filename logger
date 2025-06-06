@@ -1,129 +1,18 @@
-Perfect! You’ve reached the GitLab CI/CD Catalog, which means you can now set up your deployment pipeline for the Streamlit + Databricks + Azure OpenAI app.
+Hi Team,
 
-Let’s walk you step by step from here — skip the catalog templates, and instead do this manually to fully control the pipeline for your custom setup.
+As you know, our monthly team calls are back on the calendar, and to make them a little more interactive (and fun!), we’re starting off with a light game: “Guess the Emoji Bio + One Secret” 🔍✨
 
-⸻
+Here’s how it works:
+	•	Send me a short emoji-only description (4–5 emojis) that reflects you — things you love, your personality, favorite food, hobbies, etc.
+	•	Along with the emojis, also share one fun/interesting secret about yourself — something the team probably doesn’t know. 🤫
+	•	During the call, I’ll read them both (without naming names), and the team will guess who it is!
 
-✅ Step-by-Step: Set Up Your GitLab CI/CD Pipeline
+Example:
+Emoji Bio: 🎮🌶️📚🐱
+Secret: I once binge-watched 5 seasons of a show in 3 days!
 
-⸻
+Please send yours to me by [insert deadline], and let’s see how well we really know each other!
 
-🔹 Step 1: Create Required Project Files
-
-Create these files locally (in VS Code or terminal), and you’ll push them to your GitLab repo.
-
-1. app.py – your Streamlit app
-
-This is where your frontend and logic go. For now, start with a basic template (we can expand later):
-
-import streamlit as st
-
-st.title("Alt Elite - Risk Intelligence Assistant")
-
-st.write("This is a placeholder for your GPT-powered control assurance dashboard.")
-
-
-⸻
-
-2. requirements.txt – list your dependencies
-
-streamlit
-openai
-pandas
-sqlalchemy
-databricks-sql-connector
-
-
-⸻
-
-3. .gitlab-ci.yml – CI/CD Pipeline Config File
-
-This tells GitLab how to build and deploy your app.
-
-image: python:3.11
-
-variables:
-  PYTHONUNBUFFERED: 1
-
-stages:
-  - build
-  - deploy
-
-before_script:
-  - pip install --upgrade pip
-  - pip install -r requirements.txt
-
-build:
-  stage: build
-  script:
-    - echo "Build step - validating Streamlit app"
-
-deploy:
-  stage: deploy
-  script:
-    - pip install azure-cli
-    - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
-    - az webapp up --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RG_NAME --sku F1 --location $AZURE_LOCATION
-  only:
-    - main
-
-🔐 Note: This script assumes your project secrets like AZURE_CLIENT_ID, AZURE_WEBAPP_NAME, etc., are added under GitLab → Settings → CI/CD → Variables.
-
-⸻
-
-4. README.md – describe your project for jury/others
-
-# Alt Elite - Risk Intelligence Assistant
-
-This project uses Azure Databricks and Azure OpenAI to build a smart control assurance platform.
-
-Features:
-- Predictive Control Failure Modeling
-- Compliance Communication Surveillance
-- GPT-Powered Dashboard
-
-
-⸻
-
-🔹 Step 2: Push Code to GitLab
-
-If you haven’t pushed anything yet:
-
-# From your local terminal
-git init
-git remote add origin https://gitlab.com/<your-username>/<your-project>.git
-git add .
-git commit -m "Initial commit with CI/CD setup"
-git push -u origin main
-
-
-⸻
-
-🔹 Step 3: Add CI/CD Variables in GitLab UI
-
-In GitLab:
-	•	Go to Settings → CI/CD → Variables
-	•	Add the following (as protected + masked):
-	•	AZURE_CLIENT_ID
-	•	AZURE_CLIENT_SECRET
-	•	AZURE_TENANT_ID
-	•	AZURE_WEBAPP_NAME
-	•	AZURE_RG_NAME
-	•	AZURE_LOCATION
-
-And later:
-	•	DATABRICKS_TOKEN
-	•	DATABRICKS_SERVER_HOSTNAME
-	•	DATABRICKS_HTTP_PATH
-	•	AZURE_OPENAI_API_KEY
-	•	AZURE_OPENAI_ENDPOINT
-
-⸻
-
-🔹 Step 4: Trigger the Pipeline
-	•	Once you push .gitlab-ci.yml, GitLab will auto-run the pipeline.
-	•	You can monitor it under CI/CD → Pipelines in the left menu.
-
-⸻
-
-Would you like me to generate a full GitLab project zip file that includes these files and a full app.py version?
+Looking forward to some fun guesses! 😄
+Cheers,
+Sarath

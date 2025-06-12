@@ -1,62 +1,28 @@
-import random
-import hashlib
+Sure! Here’s a smooth and engaging script you can use to kick off the activity in your team meeting:
 
-st.markdown("### 🛡️ Controls Relevant to Top Incident Themes")
+⸻
 
-# Create a hash key based on themes list to cache only by unique themes
-def get_theme_hash(themes_list):
-    return hashlib.md5(",".join(sorted(themes_list)).encode()).hexdigest()
+🎤 Script to Start the “Guess Your Colleague” Emoji Game
 
-if selected_dept and selected_dept in theme_dict:
-    selected_themes = list(theme_dict[selected_dept].keys())
-    theme_hash = get_theme_hash(selected_themes)
+Hi everyone!
+Hope you’re all doing great and ready for a little midweek fun 😄
 
-    if "global_control_mapping" not in st.session_state:
-        st.session_state.global_control_mapping = {}
+As part of today’s team connect, we’ve planned a light-hearted activity called “Guess Your Colleague: Emoji + Secret” — and trust me, you’re going to enjoy this one.
 
-    # If this theme combo hasn't been processed yet, prompt OpenAI
-    if theme_hash not in st.session_state.global_control_mapping:
-        theme_string = ", ".join(selected_themes)
-        control_prompt = (
-            f"You are a risk expert. The following are the top incident themes: {theme_string}. "
-            f"For each, suggest one relevant control measure, and rewrite it to make it more robust. "
-            f"Return the result as a JSON list like:\n"
-            "[\n"
-            "  {\n"
-            "    'incident_theme': 'Data Breach',\n"
-            "    'control_description': 'Encrypt data',\n"
-            "    'robust_control': 'Implement AES-256 encryption with access logging and real-time anomaly detection.'\n"
-            "  }\n"
-            "]"
-        )
+👇 Here’s how it works:
+	1.	You’ll be shown a set of emojis along with a fun little secret about one of your teammates.
+	2.	Your job is to guess who it is — but don’t shout it out just yet! Please note your guesses in the Teams chat, in the same order as the slides, so we keep the suspense alive till the end.
+	3.	While some colleagues gave us emoji with meanings, I’ve cleverly hidden the descriptions — because what’s the fun without a little decoding, right? 😄 The idea is to see how well you really know each other through these emoji puzzles!
 
-        try:
-            response = client.chat.completions.create(
-                model=deployment_name,
-                messages=[
-                    {"role": "system", "content": "You map incident themes to internal controls and improve them."},
-                    {"role": "user", "content": control_prompt}
-                ],
-                temperature=0.4,
-                max_tokens=1000
-            )
+Now, here’s the twist:
+Afnaan will be taking you through the slides one by one.
+Why Afnaan? Well, he doesn’t even know who the entries belong to — so he’s as unbiased and curious as the rest of you. That makes him the perfect host for the guessing part.
 
-            # Parse and enrich
-            ctrl_text = response.choices[0].message.content.strip().replace("```json", "").replace("```", "")
-            control_list = json.loads(ctrl_text)
+Once we’re done with all the slides, I’ll come back in to reveal who’s who — and maybe embarrass a few people in the process 😜
 
-            for ctrl in control_list:
-                ctrl['control_id'] = f"CTRL-{random.randint(1000, 9999)}"
+So, grab your detective hats and let’s get started!
+Afnaan, over to you!
 
-            st.session_state.global_control_mapping[theme_hash] = control_list
+⸻
 
-        except Exception as e:
-            st.error(f"Failed to retrieve controls for themes: {e}")
-
-    # Display cached result
-    if theme_hash in st.session_state.global_control_mapping:
-        control_df = pd.DataFrame(
-            st.session_state.global_control_mapping[theme_hash]
-        )[['control_id', 'incident_theme', 'control_description', 'robust_control']]
-
-        st.dataframe(control_df, use_container_width=True)
+Let me know if you’d like to tweak the tone (more formal, more witty, etc.)!

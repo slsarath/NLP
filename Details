@@ -1,29 +1,43 @@
+from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer
+from sklearn.cluster import KMeans
 
-# Load model
+# === Step 1: Clean utterances (skip if already done) ===
+def clean_text(text):
+    text = re.sub(r'[^a-zA-Z\s]', ' ', str(text).lower())
+    tokens = [word for word in text.split() if word not in all_stopwords]
+    return " ".join(tokens)
+
+df = df.dropna(subset=['Transcript'])
+df['Cleaned'] = df['Transcript'].apply(lambda x: clean_text(x) if isinstance(x, str) else "")
+
+# === Step 2: Embed Cleaned Text ===
 model = SentenceTransformer('all-MiniLM-L6-v2')
+df = df[df['Cleaned'].str.strip() != ""]  # remove blank cleaned rows
+embeddings = model.encode(df['Cleaned'].tolist(), show_progress_bar=True)
 
-# Extract raw utterances from transcript column
-raw_utterances = df['Transcript']
+# === Step 3: Cluster Embeddings ===
+n_clusters = 8
+kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+df['Cluster'] = kmeans.fit_predict(embeddings)
 
-# Initialize list to store cleaned, valid utterances
-utterances = []
+# === Step 4: Extract Theme Phrases per Cluster ===
+kw_model = KeyBERT(model='all-MiniLM-L6-v2')
+theme_phrases = {}
 
-for idx, line in raw_utterances.items():
-    if pd.isna(line):  # Skip NaN
-        continue
-    try:
-        text = str(line).strip()
-        if not text:
-            continue
-        cleaned = clean_text(text)  # Your cleaning function
-        if cleaned:
-            utterances.append(cleaned)
-    except Exception as e:
-        print(f"Skipping line at index {idx} due to error: {e}")
+for cluster_id in sorted(df['Cluster'].unique()):
+    texts = df[df['Cluster'] == cluster_id]['Cleaned']
+    combined_text = " ".join(texts)
+    keyphrases = kw_model.extract_keywords(
+        combined_text,
+        keyphrase_ngram_range=(2, 4),
+        stop_words=list(all_stopwords),
+        top_n=3
+    )
+    theme_phrases[cluster_id] = ", ".join([phrase for phrase, _ in keyphrases])
 
-# Final check before embedding
-print(f"Total valid utterances to embed: {len(utterances)}")
+# === Step 5: Assign theme phrases back to each row ===
+df['Theme_Phrases'] = df['Cluster'].map(theme_phrases)
 
-# Generate embeddings
-embeddings = model.encode(utterances, show_progress_bar=True)
+# === Optional: Preview results ===
+print(df[['Transcript', 'Cluster', 'Theme_Phrases']].head())

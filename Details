@@ -1,99 +1,16 @@
-import pandas as pd
-import re
-import nltk
-import numpy as np
-import matplotlib.pyplot as plt
-from nltk.corpus import stopwords
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
-from keybert import KeyBERT
-from wordcloud import WordCloud
+# Step 1: Start from the original 'Transcript' column
+utterance_series = df['Transcript']
 
-# === Setup ===
-nltk.download('stopwords')
+# Step 2: Drop missing/blank/non-string entries
+utterance_series = utterance_series.dropna().astype(str)
+utterance_series = utterance_series[utterance_series.str.strip() != ""]
 
-# === Step 1: Load Data ===
-df = pd.read_csv("negative_transcripts.csv")  # Replace with your file path
-
-# === Step 2: Filter Negative Customer Lines ===
-df = df[(df['Participant_id'].str.lower() == 'customer') & (df['Sentiment'].str.lower() == 'negative')]
-customer_grouped = df.groupby('Cust_id')['Transcript'].apply(list)
-
-# === Step 3: Preprocessing ===
-default_stopwords = set(stopwords.words('english'))
-custom_stopwords = {"ess", "ffr"}
-all_stopwords = default_stopwords.union(custom_stopwords)
-
-def clean_text(text):
-    text = re.sub(r'[^a-zA-Z\s]', ' ', text.lower())
-    tokens = [word for word in text.split() if word not in all_stopwords]
-    return " ".join(tokens)
-
-customer_docs = []
-for cust_id, utterances in customer_grouped.items():
-    cleaned = [clean_text(u) for u in utterances]
-    full_text = " ".join(cleaned)
-    customer_docs.append((cust_id, full_text))
-
-cust_ids = [cid for cid, _ in customer_docs]
-texts = [txt for _, txt in customer_docs]
-
-# === Step 4: TF-IDF Phrase Extraction ===
-vectorizer = TfidfVectorizer(stop_words=all_stopwords, ngram_range=(1, 4), min_df=2, max_df=0.6)
-tfidf_matrix = vectorizer.fit_transform(texts)
-feature_names = vectorizer.get_feature_names_out()
-
-avg_tfidf = tfidf_matrix.mean(axis=0).A1
-top_global_idx = avg_tfidf.argsort()[::-1][:20]
-top_global_phrases = [feature_names[i] for i in top_global_idx]
-
-print("=== TOP OVERALL COMPLAINT PHRASES ===")
-for phrase in top_global_phrases:
-    print("-", phrase)
-
-# === Step 5: Sentence Embedding & Clustering ===
-model = SentenceTransformer('all-MiniLM-L6-v2')
-utterances = [clean_text(u) for u in df['Transcript']]
-embeddings = model.encode(utterances, show_progress_bar=True)
-
-n_clusters = 8
-kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-labels = kmeans.fit_predict(embeddings)
-
-clusters = {i: [] for i in range(n_clusters)}
-for text, label in zip(utterances, labels):
-    clusters[label].append(text)
-
-# === Step 6: KeyBERT Theme Phrases per Cluster ===
-kw_model = KeyBERT(model='all-MiniLM-L6-v2')
-
-print("\n=== THEME PHRASES PER CLUSTER ===")
-for label, texts_in_cluster in clusters.items():
-    combined_text = " ".join(texts_in_cluster)
-    keyphrases = kw_model.extract_keywords(
-        combined_text,
-        keyphrase_ngram_range=(2, 4),
-        stop_words=list(all_stopwords),
-        top_n=5
-    )
-    print(f"\nTheme {label}:")
-    for phrase, score in keyphrases:
-        print(f" - {phrase} (score: {score:.4f})")
-
-# === Step 7: Word Cloud for Each Theme ===
-for label, texts_in_cluster in clusters.items():
-    cluster_text = " ".join(texts_in_cluster)
-    wc = WordCloud(
-        width=600,
-        height=400,
-        background_color='white',
-        stopwords=all_stopwords,
-        collocations=False
-    ).generate(cluster_text)
-
-    plt.figure(figsize=(7, 4))
-    plt.imshow(wc, interpolation='bilinear')
-    plt.axis('off')
-    plt.title(f"Theme {label} Word Cloud")
-    plt.show()
+# Step 3: Clean each line safely
+utterances = []
+for line in utterance_series:
+    try:
+        cleaned = clean_text(line)
+        if cleaned:  # skip empty after cleaning
+            utterances.append(cleaned)
+    except Exception as e:
+        print(f"Skipping invalid line due to error: {e}")

@@ -1,51 +1,36 @@
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import AgglomerativeClustering
 
-# Step 1: Create phrase list for each method
-tfidf_phrases = df['TFIDF_Themes'].dropna().unique().tolist()
-keybert_phrases = df['KeyBERT_Themes'].dropna().unique().tolist()
+# Step 1: Split phrases into list
+def split_phrases(text):
+    if pd.isna(text) or text.strip() == "":
+        return []
+    return [p.strip() for p in text.split(",") if p.strip()]
 
-# Step 2: Embed all phrases
-embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-tfidf_embeddings = embed_model.encode(tfidf_phrases, show_progress_bar=False)
-keybert_embeddings = embed_model.encode(keybert_phrases, show_progress_bar=False)
+df['TFIDF_Phrase_List'] = df['TFIDF_Themes'].apply(split_phrases)
+df['KeyBERT_Phrase_List'] = df['KeyBERT_Themes'].apply(split_phrases)
 
-# Step 3: Cluster phrases using AgglomerativeClustering (you can tune distance_threshold)
-def cluster_phrases(phrases, embeddings, distance=1.0):
+# Step 2: Get unique phrases from both methods
+tfidf_all_phrases = set(phrase for phrases in df['TFIDF_Phrase_List'] for phrase in phrases)
+keybert_all_phrases = set(phrase for phrases in df['KeyBERT_Phrase_List'] for phrase in phrases)
+
+# Step 3: Embed each unique phrase
+model = SentenceTransformer('all-MiniLM-L6-v2')
+tfidf_embeddings = model.encode(list(tfidf_all_phrases), show_progress_bar=True)
+keybert_embeddings = model.encode(list(keybert_all_phrases), show_progress_bar=True)
+
+# Step 4: Cluster phrases with flexible threshold
+def cluster_phrases(phrases, embeddings, distance=0.7):
     model = AgglomerativeClustering(n_clusters=None, distance_threshold=distance, metric='cosine', linkage='average')
     labels = model.fit_predict(embeddings)
     return dict(zip(phrases, labels))
 
-# Cluster them
-tfidf_cluster_map = cluster_phrases(tfidf_phrases, tfidf_embeddings, distance=1.0)
-keybert_cluster_map = cluster_phrases(keybert_phrases, keybert_embeddings, distance=1.0)
+tfidf_phrase_to_cluster = cluster_phrases(list(tfidf_all_phrases), tfidf_embeddings, distance=0.7)
+keybert_phrase_to_cluster = cluster_phrases(list(keybert_all_phrases), keybert_embeddings, distance=0.7)
 
-# Step 4: Map back to df
-df['TFIDF_Cluster'] = df['TFIDF_Themes'].map(tfidf_cluster_map)
-df['KeyBERT_Cluster'] = df['KeyBERT_Themes'].map(keybert_cluster_map)
+# Step 5: Map each row's phrases to their clusters
+def map_clusters(phrases, mapping):
+    return ",".join(str(mapping[p]) for p in phrases if p in mapping)
 
-
-Thanks for the clarity, Sarath! Since this is an internal VP-level interview at Barclays, the introduction should reflect:
-	•	Your existing contributions within Barclays
-	•	Your understanding of the firm’s culture, controls, and expectations
-	•	Your readiness to take the next step in leadership while still showing humility and growth mindset
-
-Here’s the refined, internal-facing self-introduction:
-
-⸻
-
-💼 Internal VP-Level Self-Introduction for Barclays
-
-“Hi, I’m Sarath, currently working as an Assistant Vice President – Data Scientist within the Control Assurance team here at Barclays. Over the past decade, and especially in my current role, I’ve focused on driving innovation at the intersection of data science, risk, and regulatory compliance.
-
-At Barclays, I’ve had the opportunity to lead and implement several impactful initiatives — from developing NLP-based semantic search for root cause analysis, to automating control effectiveness testing and large transaction reporting. These efforts have not only improved accuracy and reduced manual hours but also contributed to more proactive and consistent assurance outcomes across the organization.
-
-While I currently operate as an individual contributor, I’ve previously led a team of data analysts at HSBC, where I mentored the team and delivered risk models for AML and compliance monitoring. That experience helped shape my leadership approach — one that’s collaborative, hands-on, and focused on building trust across business and technical teams.
-
-I’m deeply aligned with Barclays’ values around stewardship, integrity, and service. My approach has always been value-first — ensuring that the AI/ML solutions we build are not only technically sound but also responsible, explainable, and embedded with the right controls. Whether it’s through automation, model transparency, or stakeholder engagement, I strive to build solutions that are scalable, sustainable, and compliance-ready.
-
-This VP role feels like a natural progression — an opportunity to build on the foundation I’ve laid, take on greater leadership responsibility, and contribute more strategically to our vision for intelligent and risk-aware decision-making across the enterprise.”
-
-⸻
-
-Let me know if you’d like to add a light personal touch at the end or want a shorter version for a panel setting.
+df['TFIDF_Cluster'] = df['TFIDF_Phrase_List'].apply(lambda x: map_clusters(x, tfidf_phrase_to_cluster))
+df['KeyBERT_Cluster'] = df['KeyBERT_Phrase_List'].apply(lambda x: map_clusters(x, keybert_phrase_to_cluster))

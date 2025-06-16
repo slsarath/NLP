@@ -1,16 +1,29 @@
-# Step 1: Start from the original 'Transcript' column
-utterance_series = df['Transcript']
+from sentence_transformers import SentenceTransformer
 
-# Step 2: Drop missing/blank/non-string entries
-utterance_series = utterance_series.dropna().astype(str)
-utterance_series = utterance_series[utterance_series.str.strip() != ""]
+# Load model
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Step 3: Clean each line safely
+# Extract raw utterances from transcript column
+raw_utterances = df['Transcript']
+
+# Initialize list to store cleaned, valid utterances
 utterances = []
-for line in utterance_series:
+
+for idx, line in raw_utterances.items():
+    if pd.isna(line):  # Skip NaN
+        continue
     try:
-        cleaned = clean_text(line)
-        if cleaned:  # skip empty after cleaning
+        text = str(line).strip()
+        if not text:
+            continue
+        cleaned = clean_text(text)  # Your cleaning function
+        if cleaned:
             utterances.append(cleaned)
     except Exception as e:
-        print(f"Skipping invalid line due to error: {e}")
+        print(f"Skipping line at index {idx} due to error: {e}")
+
+# Final check before embedding
+print(f"Total valid utterances to embed: {len(utterances)}")
+
+# Generate embeddings
+embeddings = model.encode(utterances, show_progress_bar=True)

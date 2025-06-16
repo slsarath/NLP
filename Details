@@ -1,75 +1,99 @@
 import pandas as pd
-import spacy
-from sentence_transformers import SentenceTransformer
-import umap
-import hdbscan
-from sklearn.feature_extraction.text import TfidfVectorizer
-import matplotlib.pyplot as plt
-from wordcloud import WordCloud
+import re
+import nltk
 import numpy as np
+import matplotlib.pyplot as plt
+from nltk.corpus import stopwords
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from keybert import KeyBERT
+from wordcloud import WordCloud
 
-# === Step 1: Load and Group Data ===
-df = pd.read_csv("negative_transcripts.csv")  # Replace with your actual file path
-df = df[df['Sentiment'] == 'Negative']
-grouped = df.groupby('Cust_id')['Transcript'].apply(' '.join).reset_index(name='text')
+# === Setup ===
+nltk.download('stopwords')
 
-# === Step 2: Text Preprocessing ===
-nlp = spacy.load('en_core_web_sm')
+# === Step 1: Load Data ===
+df = pd.read_csv("negative_transcripts.csv")  # Replace with your file path
+
+# === Step 2: Filter Negative Customer Lines ===
+df = df[(df['Participant_id'].str.lower() == 'customer') & (df['Sentiment'].str.lower() == 'negative')]
+customer_grouped = df.groupby('Cust_id')['Transcript'].apply(list)
+
+# === Step 3: Preprocessing ===
+default_stopwords = set(stopwords.words('english'))
+custom_stopwords = {"ess", "ffr"}
+all_stopwords = default_stopwords.union(custom_stopwords)
 
 def clean_text(text):
-    doc = nlp(text)
-    tokens = [token.lemma_.lower() for token in doc if token.is_alpha and not token.is_stop]
-    return ' '.join(tokens)
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text.lower())
+    tokens = [word for word in text.split() if word not in all_stopwords]
+    return " ".join(tokens)
 
-grouped['clean_text'] = grouped['text'].apply(clean_text)
+customer_docs = []
+for cust_id, utterances in customer_grouped.items():
+    cleaned = [clean_text(u) for u in utterances]
+    full_text = " ".join(cleaned)
+    customer_docs.append((cust_id, full_text))
 
-# === Step 3: Sentence Embedding ===
+cust_ids = [cid for cid, _ in customer_docs]
+texts = [txt for _, txt in customer_docs]
+
+# === Step 4: TF-IDF Phrase Extraction ===
+vectorizer = TfidfVectorizer(stop_words=all_stopwords, ngram_range=(1, 4), min_df=2, max_df=0.6)
+tfidf_matrix = vectorizer.fit_transform(texts)
+feature_names = vectorizer.get_feature_names_out()
+
+avg_tfidf = tfidf_matrix.mean(axis=0).A1
+top_global_idx = avg_tfidf.argsort()[::-1][:20]
+top_global_phrases = [feature_names[i] for i in top_global_idx]
+
+print("=== TOP OVERALL COMPLAINT PHRASES ===")
+for phrase in top_global_phrases:
+    print("-", phrase)
+
+# === Step 5: Sentence Embedding & Clustering ===
 model = SentenceTransformer('all-MiniLM-L6-v2')
-embeddings = model.encode(grouped['clean_text'].tolist(), show_progress_bar=True)
+utterances = [clean_text(u) for u in df['Transcript']]
+embeddings = model.encode(utterances, show_progress_bar=True)
 
-# === Step 4: Dimensionality Reduction ===
-reducer = umap.UMAP(n_components=10, metric='cosine', random_state=42)
-reduced_embeddings = reducer.fit_transform(embeddings)
+n_clusters = 8
+kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+labels = kmeans.fit_predict(embeddings)
 
-# === Step 5: Clustering using HDBSCAN ===
-clusterer = hdbscan.HDBSCAN(min_cluster_size=5, metric='euclidean', cluster_selection_method='eom')
-labels = clusterer.fit_predict(reduced_embeddings)
-grouped['theme'] = labels
+clusters = {i: [] for i in range(n_clusters)}
+for text, label in zip(utterances, labels):
+    clusters[label].append(text)
 
-# === Step 6: Extract Top Keywords per Theme ===
-vectorizer = TfidfVectorizer(max_df=0.9, min_df=2)
-tfidf = vectorizer.fit_transform(grouped['clean_text'])
-terms = vectorizer.get_feature_names_out()
+# === Step 6: KeyBERT Theme Phrases per Cluster ===
+kw_model = KeyBERT(model='all-MiniLM-L6-v2')
 
-print("\n=== THEME KEYWORDS ===")
-for theme in sorted(set(labels)):
-    if theme == -1:
-        continue
-    idxs = np.where(labels == theme)[0]
-    theme_tfidf = tfidf[idxs].sum(axis=0)
-    scores = np.array(theme_tfidf).flatten()
-    top_idxs = scores.argsort()[-5:][::-1]
-    keywords = [terms[i] for i in top_idxs]
-    print(f"Theme {theme} Keywords: {keywords}")
+print("\n=== THEME PHRASES PER CLUSTER ===")
+for label, texts_in_cluster in clusters.items():
+    combined_text = " ".join(texts_in_cluster)
+    keyphrases = kw_model.extract_keywords(
+        combined_text,
+        keyphrase_ngram_range=(2, 4),
+        stop_words=list(all_stopwords),
+        top_n=5
+    )
+    print(f"\nTheme {label}:")
+    for phrase, score in keyphrases:
+        print(f" - {phrase} (score: {score:.4f})")
 
-# === Step 7: Bar Chart of Theme Frequency ===
-theme_counts = grouped['theme'].value_counts().sort_index()
-plt.figure(figsize=(8, 5))
-plt.bar(theme_counts.index.astype(str), theme_counts.values)
-plt.xlabel("Theme ID")
-plt.ylabel("Number of Customers")
-plt.title("Complaint Themes Frequency")
-plt.show()
+# === Step 7: Word Cloud for Each Theme ===
+for label, texts_in_cluster in clusters.items():
+    cluster_text = " ".join(texts_in_cluster)
+    wc = WordCloud(
+        width=600,
+        height=400,
+        background_color='white',
+        stopwords=all_stopwords,
+        collocations=False
+    ).generate(cluster_text)
 
-# === Step 8: Word Clouds per Theme ===
-for theme in sorted(set(labels)):
-    if theme == -1:
-        continue
-    texts = grouped[grouped['theme'] == theme]['clean_text']
-    combined_text = ' '.join(texts)
-    wc = WordCloud(width=600, height=300, background_color='white').generate(combined_text)
     plt.figure(figsize=(7, 4))
     plt.imshow(wc, interpolation='bilinear')
     plt.axis('off')
-    plt.title(f"Theme {theme} Word Cloud")
+    plt.title(f"Theme {label} Word Cloud")
     plt.show()

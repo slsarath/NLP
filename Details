@@ -1,30 +1,12 @@
 import pandas as pd
 import re
 import nltk
-import numpy as np
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sentence_transformers import SentenceTransformer
-from sklearn.cluster import KMeans
 from keybert import KeyBERT
 
-# Optional: for visualizing clusters
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-
-# Download NLTK stopwords if not already done
+# Step 1: Setup
 nltk.download('stopwords')
-
-# === Step 1: Load Data ===
-df = pd.read_csv("negative_transcripts.csv")  # Replace with your path
-
-# === Step 2: Filter for Negative Customer Utterances ===
-df = df[
-    (df['Participant_id'].str.lower() == 'customer') &
-    (df['Sentiment'].str.lower() == 'negative')
-]
-
-# === Step 3: Text Cleaning ===
 default_stopwords = set(stopwords.words('english'))
 custom_stopwords = {"ess", "ffr"}
 all_stopwords = default_stopwords.union(custom_stopwords)
@@ -34,44 +16,51 @@ def clean_text(text):
     tokens = [word for word in text.split() if word not in all_stopwords]
     return " ".join(tokens)
 
-# Clean transcripts and store in new column
-df['Cleaned'] = df['Transcript'].apply(lambda x: clean_text(x) if isinstance(x, str) else "")
+# Step 2: Load your data
+df = pd.read_csv("negative_transcripts.csv")  # <-- Replace with your file path
 
-# Filter rows where Cleaned text is not empty
-df = df[df['Cleaned'].str.strip() != ""].reset_index(drop=True)
+# Step 3: Filter Customer + Negative and group by Cust_id
+filtered = df[
+    (df['Participant_id'].str.lower() == 'customer') &
+    (df['Sentiment'].str.lower() == 'negative')
+].dropna(subset=['Transcript'])
 
-# === Step 4: Sentence Embedding ===
-model = SentenceTransformer('all-MiniLM-L6-v2')
-utterances = df['Cleaned'].tolist()
-embeddings = model.encode(utterances, show_progress_bar=True)
+filtered['Cleaned'] = filtered['Transcript'].apply(clean_text)
 
-# === Step 5: Clustering ===
-n_clusters = 8  # You can tune this
-kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-labels = kmeans.fit_predict(embeddings)
-df['Cluster'] = labels
+# Step 4: Aggregate negative text per Cust_id
+grouped = filtered.groupby('Cust_id')['Cleaned'].apply(lambda x: ' '.join(x)).reset_index()
+grouped = grouped[grouped['Cleaned'].str.strip() != ""].reset_index(drop=True)
 
-# === Step 6: Extract Theme Phrases Per Cluster ===
+# Step 5: TF-IDF theme extraction per Cust_id
+vectorizer = TfidfVectorizer(stop_words=list(all_stopwords), ngram_range=(2, 4), min_df=1)
+tfidf_matrix = vectorizer.fit_transform(grouped['Cleaned'])
+feature_names = vectorizer.get_feature_names_out()
+
+def get_top_tfidf_phrases(tfidf_row, top_n=2):
+    row = tfidf_row.toarray().flatten()
+    top_idx = row.argsort()[::-1][:top_n]
+    return ", ".join([feature_names[i] for i in top_idx])
+
+grouped['TFIDF_Themes'] = [
+    get_top_tfidf_phrases(tfidf_matrix[i], top_n=2)
+    for i in range(tfidf_matrix.shape[0])
+]
+
+# Step 6: KeyBERT theme extraction per Cust_id
 kw_model = KeyBERT(model='all-MiniLM-L6-v2')
-theme_phrases = {}
+grouped['KeyBERT_Themes'] = grouped['Cleaned'].apply(
+    lambda x: ", ".join([kw[0] for kw in kw_model.extract_keywords(x, keyphrase_ngram_range=(2, 4), stop_words=list(all_stopwords), top_n=2)])
+)
 
-for cluster_id in sorted(df['Cluster'].unique()):
-    texts = df[df['Cluster'] == cluster_id]['Cleaned']
-    combined_text = " ".join(texts)
-    keyphrases = kw_model.extract_keywords(
-        combined_text,
-        keyphrase_ngram_range=(2, 4),
-        stop_words=list(all_stopwords),
-        top_n=3
-    )
-    # Store phrases as comma-separated string
-    theme_phrases[cluster_id] = ", ".join([phrase for phrase, _ in keyphrases])
+# Step 7: Map themes back to original DataFrame
+theme_map_tfidf = dict(zip(grouped['Cust_id'], grouped['TFIDF_Themes']))
+theme_map_kbert = dict(zip(grouped['Cust_id'], grouped['KeyBERT_Themes']))
 
-# === Step 7: Map Theme Phrases Back to Each Row ===
-df['Theme_Phrases'] = df['Cluster'].map(theme_phrases)
+df['TFIDF_Themes'] = df['Cust_id'].map(theme_map_tfidf)
+df['KeyBERT_Themes'] = df['Cust_id'].map(theme_map_kbert)
 
-# === Step 8: (Optional) View a Sample ===
-print(df[['Transcript', 'Theme_Phrases']].head(10))
+# Step 8: Done! Preview
+print(df[['Cust_id', 'Transcript', 'TFIDF_Themes', 'KeyBERT_Themes']].head(10))
 
-# === Step 9: (Optional) Export to CSV ===
-# df.to_csv("labeled_theme_transcripts.csv", index=False)
+# Optional: Save output
+# df.to_csv("with_theme_phrases.csv", index=False)

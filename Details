@@ -1,66 +1,51 @@
-import pandas as pd
-import re
-import nltk
-from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import TfidfVectorizer
-from keybert import KeyBERT
+from sentence_transformers import SentenceTransformer
+from sklearn.cluster import AgglomerativeClustering
 
-# Step 1: Setup
-nltk.download('stopwords')
-default_stopwords = set(stopwords.words('english'))
-custom_stopwords = {"ess", "ffr"}
-all_stopwords = default_stopwords.union(custom_stopwords)
+# Step 1: Create phrase list for each method
+tfidf_phrases = df['TFIDF_Themes'].dropna().unique().tolist()
+keybert_phrases = df['KeyBERT_Themes'].dropna().unique().tolist()
 
-def clean_text(text):
-    text = re.sub(r'[^a-zA-Z\s]', ' ', str(text).lower())
-    tokens = [word for word in text.split() if word not in all_stopwords]
-    return " ".join(tokens)
+# Step 2: Embed all phrases
+embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+tfidf_embeddings = embed_model.encode(tfidf_phrases, show_progress_bar=False)
+keybert_embeddings = embed_model.encode(keybert_phrases, show_progress_bar=False)
 
-# Step 2: Load your data
-df = pd.read_csv("negative_transcripts.csv")  # <-- Replace with your file path
+# Step 3: Cluster phrases using AgglomerativeClustering (you can tune distance_threshold)
+def cluster_phrases(phrases, embeddings, distance=1.0):
+    model = AgglomerativeClustering(n_clusters=None, distance_threshold=distance, metric='cosine', linkage='average')
+    labels = model.fit_predict(embeddings)
+    return dict(zip(phrases, labels))
 
-# Step 3: Filter Customer + Negative and group by Cust_id
-filtered = df[
-    (df['Participant_id'].str.lower() == 'customer') &
-    (df['Sentiment'].str.lower() == 'negative')
-].dropna(subset=['Transcript'])
+# Cluster them
+tfidf_cluster_map = cluster_phrases(tfidf_phrases, tfidf_embeddings, distance=1.0)
+keybert_cluster_map = cluster_phrases(keybert_phrases, keybert_embeddings, distance=1.0)
 
-filtered['Cleaned'] = filtered['Transcript'].apply(clean_text)
+# Step 4: Map back to df
+df['TFIDF_Cluster'] = df['TFIDF_Themes'].map(tfidf_cluster_map)
+df['KeyBERT_Cluster'] = df['KeyBERT_Themes'].map(keybert_cluster_map)
 
-# Step 4: Aggregate negative text per Cust_id
-grouped = filtered.groupby('Cust_id')['Cleaned'].apply(lambda x: ' '.join(x)).reset_index()
-grouped = grouped[grouped['Cleaned'].str.strip() != ""].reset_index(drop=True)
 
-# Step 5: TF-IDF theme extraction per Cust_id
-vectorizer = TfidfVectorizer(stop_words=list(all_stopwords), ngram_range=(2, 4), min_df=1)
-tfidf_matrix = vectorizer.fit_transform(grouped['Cleaned'])
-feature_names = vectorizer.get_feature_names_out()
+Thanks for the clarity, Sarath! Since this is an internal VP-level interview at Barclays, the introduction should reflect:
+	•	Your existing contributions within Barclays
+	•	Your understanding of the firm’s culture, controls, and expectations
+	•	Your readiness to take the next step in leadership while still showing humility and growth mindset
 
-def get_top_tfidf_phrases(tfidf_row, top_n=2):
-    row = tfidf_row.toarray().flatten()
-    top_idx = row.argsort()[::-1][:top_n]
-    return ", ".join([feature_names[i] for i in top_idx])
+Here’s the refined, internal-facing self-introduction:
 
-grouped['TFIDF_Themes'] = [
-    get_top_tfidf_phrases(tfidf_matrix[i], top_n=2)
-    for i in range(tfidf_matrix.shape[0])
-]
+⸻
 
-# Step 6: KeyBERT theme extraction per Cust_id
-kw_model = KeyBERT(model='all-MiniLM-L6-v2')
-grouped['KeyBERT_Themes'] = grouped['Cleaned'].apply(
-    lambda x: ", ".join([kw[0] for kw in kw_model.extract_keywords(x, keyphrase_ngram_range=(2, 4), stop_words=list(all_stopwords), top_n=2)])
-)
+💼 Internal VP-Level Self-Introduction for Barclays
 
-# Step 7: Map themes back to original DataFrame
-theme_map_tfidf = dict(zip(grouped['Cust_id'], grouped['TFIDF_Themes']))
-theme_map_kbert = dict(zip(grouped['Cust_id'], grouped['KeyBERT_Themes']))
+“Hi, I’m Sarath, currently working as an Assistant Vice President – Data Scientist within the Control Assurance team here at Barclays. Over the past decade, and especially in my current role, I’ve focused on driving innovation at the intersection of data science, risk, and regulatory compliance.
 
-df['TFIDF_Themes'] = df['Cust_id'].map(theme_map_tfidf)
-df['KeyBERT_Themes'] = df['Cust_id'].map(theme_map_kbert)
+At Barclays, I’ve had the opportunity to lead and implement several impactful initiatives — from developing NLP-based semantic search for root cause analysis, to automating control effectiveness testing and large transaction reporting. These efforts have not only improved accuracy and reduced manual hours but also contributed to more proactive and consistent assurance outcomes across the organization.
 
-# Step 8: Done! Preview
-print(df[['Cust_id', 'Transcript', 'TFIDF_Themes', 'KeyBERT_Themes']].head(10))
+While I currently operate as an individual contributor, I’ve previously led a team of data analysts at HSBC, where I mentored the team and delivered risk models for AML and compliance monitoring. That experience helped shape my leadership approach — one that’s collaborative, hands-on, and focused on building trust across business and technical teams.
 
-# Optional: Save output
-# df.to_csv("with_theme_phrases.csv", index=False)
+I’m deeply aligned with Barclays’ values around stewardship, integrity, and service. My approach has always been value-first — ensuring that the AI/ML solutions we build are not only technically sound but also responsible, explainable, and embedded with the right controls. Whether it’s through automation, model transparency, or stakeholder engagement, I strive to build solutions that are scalable, sustainable, and compliance-ready.
+
+This VP role feels like a natural progression — an opportunity to build on the foundation I’ve laid, take on greater leadership responsibility, and contribute more strategically to our vision for intelligent and risk-aware decision-making across the enterprise.”
+
+⸻
+
+Let me know if you’d like to add a light personal touch at the end or want a shorter version for a panel setting.

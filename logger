@@ -1,20 +1,13 @@
-Certainly! Here’s a more professional and polished version of your message:
+import pandas as pd
 
-⸻
+# Load all sheet names
+xls = pd.ExcelFile("your_file.xlsx")
+sheet_names = xls.sheet_names
 
-Hi Tanja,
+# Read all sheets into a list of dataframes (skip 2 rows and first column)
+dfs = [pd.read_excel(xls, sheet_name=sheet, skiprows=2).iloc[:, 1:] for sheet in sheet_names]
 
-Thank you for your note.
+# Optionally, combine all into one dataframe
+combined_df = pd.concat(dfs, ignore_index=True)
 
-As the filter criteria need to be applied on ORAC, we are expecting the input file to be provided by your team. Please note that this test population was not included as part of the current PROC mapping testing.
-
-The automation script is designed to process data starting from row 9 onwards.
-
-That said, we’d be happy to rerun the script once we receive all the required input files from your end.
-
-Additionally, please do let us know if you’re satisfied with the results of the PRO mapping shared so far.
-
-Feel free to reach out in case of any questions—happy to connect over a call if needed.
-
-Best regards,
-[Your Name]
+# To check individual dataframes: dfs[0], dfs[1], etc.

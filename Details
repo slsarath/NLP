@@ -1,37 +1,20 @@
-import pandas as pd
+Here’s a professionally rephrased version of your email:
 
-# Sample column names in df1
-# col1 = RiskId+ProcessId+impactedOrg
-# col2 = RiskId+ProcessId+RCSAOrg
-# df2 has column: join_key = RiskId+ProcessId+impactedOrg
+⸻
 
-# Merge on col1
-merged1 = pd.merge(df1, df2[['join_key', 'RelatedRisk']], left_on='col1', right_on='join_key', how='left')
+Subject: Updated Mapping Logic and Output File for PRO Matching
 
-# Merge on col2
-merged2 = pd.merge(df1, df2[['join_key', 'RelatedRisk']], left_on='col2', right_on='join_key', how='left')
+Hi [Recipient’s Name],
 
-# Fill missing values in merged1 with values from merged2
-merged1['RelatedRisk'] = merged1['RelatedRisk'].combine_first(merged2['RelatedRisk'])
+As discussed earlier, in the previously shared output file, the PRO mapping was based solely on the Primary Impacted Org, since the RCSA Org field had null values in most cases. For the specific risk highlighted below, there was no matching record in the PROC report, which is why the mapping was unsuccessful.
 
-# Optional: drop helper columns
-merged1.drop(columns=['join_key'], inplace=True)
+However, in the updated file attached, I’ve revised the logic to include RCSA Org in the PRO combination. This has allowed us to successfully map the mentioned risk, as the combination now matches with the PROC dataset.
 
-# Assuming df1 has columns: 'Derived1', 'Derived2'
-# df2 has: 'Risk_Process_Org' and 'Related Risk'
+We are now checking against both Impacted Org and RCSA Org to improve coverage.
 
-# Combine derived columns from df1 into a single column for lookup
-df1['lookup_key1'] = df1['Derived1']
-df1['lookup_key2'] = df1['Derived2']
+Note: There are still around 300 events that remain unmapped, as no matching PRO combination exists in the PROC report for these cases.
 
-# Create a dictionary from df2 for quick lookup
-risk_map = df2.set_index('Risk_Process_Org')['Related Risk'].to_dict()
+Please review the attached updated output and let me know if you have any questions.
 
-# Apply mapping: Check if any key in df1 matches a key in df2
-def find_related_risk(row):
-    for key in [row['lookup_key1'], row['lookup_key2']]:
-        if key in risk_map:
-            return risk_map[key]
-    return None
-
-df1['Related Risk'] = df1.apply(find_related_risk, axis=1)
+Best regards,
+[Your Name]

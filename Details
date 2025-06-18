@@ -1,54 +1,18 @@
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
 
-# Load model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# Sample column names in df1
+# col1 = RiskId+ProcessId+impactedOrg
+# col2 = RiskId+ProcessId+RCSAOrg
+# df2 has column: join_key = RiskId+ProcessId+impactedOrg
 
-# Step 1: Create a mapping of Cust_id → combined clean text (from earlier grouped negative feedback)
-cust_feedback_map = (
-    df[df['Participant_id'].str.lower() == 'customer']
-    .groupby('Cust_id')['Transcript']
-    .apply(lambda texts: ' '.join([str(t) for t in texts if pd.notna(t)]))
-    .apply(lambda x: re.sub(r'[^a-zA-Z\s]', ' ', x.lower()))
-    .to_dict()
-)
+# Merge on col1
+merged1 = pd.merge(df1, df2[['join_key', 'RelatedRisk']], left_on='col1', right_on='join_key', how='left')
 
-# Step 2: Define function to pick best phrase via similarity
-def pick_best_phrase(cust_id, tfidf_text, keybert_text):
-    phrases = []
-    if pd.notna(tfidf_text):
-        phrases += [p.strip() for p in tfidf_text.split(",") if p.strip()]
-    if pd.notna(keybert_text):
-        phrases += [p.strip() for p in keybert_text.split(",") if p.strip()]
-    
-    phrases = list(dict.fromkeys(phrases))  # remove duplicates
+# Merge on col2
+merged2 = pd.merge(df1, df2[['join_key', 'RelatedRisk']], left_on='col2', right_on='join_key', how='left')
 
-    if not phrases or cust_id not in cust_feedback_map:
-        return None
+# Fill missing values in merged1 with values from merged2
+merged1['RelatedRisk'] = merged1['RelatedRisk'].combine_first(merged2['RelatedRisk'])
 
-    full_text = cust_feedback_map[cust_id]
-    full_embedding = model.encode(full_text)
-    phrase_embeddings = model.encode(phrases)
-
-    sims = cosine_similarity([full_embedding], phrase_embeddings)[0]
-    best_idx = sims.argmax()
-    return phrases[best_idx]
-
-# Step 3: Apply to each row in the full DataFrame
-df['Final_Theme_Phrase'] = df.apply(
-    lambda row: pick_best_phrase(row['Cust_id'], row['TFIDF_Themes'], row['KeyBERT_Themes']),
-    axis=1
-)
-
-
-# Deduplicate unique theme phrases and cluster them
-unique_phrases = df['Final_Theme_Phrase'].dropna().unique().tolist()
-embeddings = model.encode(unique_phrases)
-
-from sklearn.cluster import AgglomerativeClustering
-
-cluster_model = AgglomerativeClustering(n_clusters=None, distance_threshold=0.7, affinity='cosine', linkage='average')
-labels = cluster_model.fit_predict(embeddings)
-phrase_to_cluster = dict(zip(unique_phrases, labels))
-
-df['Theme_Cluster'] = df['Final_Theme_Phrase'].map(phrase_to_cluster)
+# Optional: drop helper columns
+merged1.drop(columns=['join_key'], inplace=True)

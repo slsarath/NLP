@@ -16,3 +16,22 @@ merged1['RelatedRisk'] = merged1['RelatedRisk'].combine_first(merged2['RelatedRi
 
 # Optional: drop helper columns
 merged1.drop(columns=['join_key'], inplace=True)
+
+# Assuming df1 has columns: 'Derived1', 'Derived2'
+# df2 has: 'Risk_Process_Org' and 'Related Risk'
+
+# Combine derived columns from df1 into a single column for lookup
+df1['lookup_key1'] = df1['Derived1']
+df1['lookup_key2'] = df1['Derived2']
+
+# Create a dictionary from df2 for quick lookup
+risk_map = df2.set_index('Risk_Process_Org')['Related Risk'].to_dict()
+
+# Apply mapping: Check if any key in df1 matches a key in df2
+def find_related_risk(row):
+    for key in [row['lookup_key1'], row['lookup_key2']]:
+        if key in risk_map:
+            return risk_map[key]
+    return None
+
+df1['Related Risk'] = df1.apply(find_related_risk, axis=1)

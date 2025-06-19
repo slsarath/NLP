@@ -1,20 +1,46 @@
-Here’s a professionally rephrased version of your email:
+import pandas as pd
 
-⸻
+# Sample DataFrames
+RiskData = pd.DataFrame({
+    'Risk Name': ['Risk A', 'Risk B', 'Risk C'],
+    'RiskId': ['R001', 'R002', 'R003']
+})
 
-Subject: Updated Mapping Logic and Output File for PRO Matching
+PROCdata = pd.DataFrame({
+    'Related Process': ['Process A', 'Process B', 'Process C'],
+    'ProcessID': ['P001', 'P002', 'P003'],
+    'Org': ['Org1', 'Org2', 'Org3'],
+    'Related Risk': ['RR1', 'RR2', 'RR3']
+})
 
-Hi [Recipient’s Name],
+MainData = pd.DataFrame({
+    'Risk Aligned': ['Risk A', 'Risk B', 'Risk C'],
+    'Causal Process': ['Process A', 'Process B', 'Process C'],
+    'ImpactedOrg': ['Org1', 'Org2', 'Org3'],
+    'RCSAOrg': ['Org1', 'Org2', 'Org3']
+})
 
-As discussed earlier, in the previously shared output file, the PRO mapping was based solely on the Primary Impacted Org, since the RCSA Org field had null values in most cases. For the specific risk highlighted below, there was no matching record in the PROC report, which is why the mapping was unsuccessful.
+# Step 1: Add RiskId from RiskData
+MainData = MainData.merge(RiskData, how='left', left_on='Risk Aligned', right_on='Risk Name')
 
-However, in the updated file attached, I’ve revised the logic to include RCSA Org in the PRO combination. This has allowed us to successfully map the mentioned risk, as the combination now matches with the PROC dataset.
+# Step 2: Add ProcessID from PROCdata
+MainData = MainData.merge(PROCdata[['Related Process', 'ProcessID']], how='left',
+                          left_on='Causal Process', right_on='Related Process')
 
-We are now checking against both Impacted Org and RCSA Org to improve coverage.
+# Step 3: Create combo columns
+MainData['Combo_Impacted'] = MainData['RiskId'] + MainData['ProcessID'] + MainData['ImpactedOrg']
+MainData['Combo_RCSA'] = MainData['RiskId'] + MainData['ProcessID'] + MainData['RCSAOrg']
 
-Note: There are still around 300 events that remain unmapped, as no matching PRO combination exists in the PROC report for these cases.
+# Create Combo_PROC in PROCdata
+# First match RiskId from RiskData
+PROCdata = PROCdata.merge(RiskData, how='left', left_on='Related Risk', right_on='Risk Name')
+PROCdata['Combo_PROC'] = PROCdata['RiskId'] + PROCdata['ProcessID'] + PROCdata['Org']
 
-Please review the attached updated output and let me know if you have any questions.
+# Step 4: Map Related Risk
+combo_map = dict(zip(PROCdata['Combo_PROC'], PROCdata['Related Risk']))
 
-Best regards,
-[Your Name]
+MainData['Related Risk from PROC'] = MainData['Combo_Impacted'].map(combo_map)
+MainData['Related Risk from PROC'] = MainData['Related Risk from PROC'].fillna(MainData['Combo_RCSA'].map(combo_map))
+
+# View result
+print(MainData[['Risk Aligned', 'Causal Process', 'ImpactedOrg', 'RCSAOrg', 'RiskId', 'ProcessID', 'Related Risk from PROC']])

@@ -1,13 +1,32 @@
 import pandas as pd
+from openpyxl import load_workbook
+from tkinter import messagebox
 
-# Load all sheet names
-xls = pd.ExcelFile("your_file.xlsx")
-sheet_names = xls.sheet_names
+IFRS_FILE_PATH = "your_path/IFRS9.xlsx"
+saved_file_path = "your_path/template_output.xlsx"
+orac_id = "your_orac_id"
 
-# Read all sheets into a list of dataframes (skip 2 rows and first column)
-dfs = [pd.read_excel(xls, sheet_name=sheet, skiprows=2).iloc[:, 1:] for sheet in sheet_names]
+try:
+    df = pd.read_excel(IFRS_FILE_PATH, engine='openpyxl')
+    filtered = df[df["ORAC CTRL ID"].astype(str).str.strip() == orac_id]
 
-# Optionally, combine all into one dataframe
-combined_df = pd.concat(dfs, ignore_index=True)
+    if filtered.empty:
+        messagebox.showwarning("No Data", f"No data found in IFRS9.xlsx for ORAC ID: {orac_id}")
+    else:
+        row = filtered.iloc[0]
+        wb = load_workbook(saved_file_path)
+        sheet = wb["1. ABC Details"]
 
-# To check individual dataframes: dfs[0], dfs[1], etc.
+        sheet["B5"] = row.get("ORAC CTRL ID", "")
+        sheet["C5"] = row.get("KPMG ID", "")
+        sheet["D5"] = row.get("Unique ID", "")
+        sheet["E5"] = row.get("IT Service Instance ID:IT Service Instance Name", "")
+        sheet["F5"] = row.get("ABC Short Name", "")
+        sheet["G5"] = row.get("ABC Description", "")
+
+        wb.save(saved_file_path)
+        wb.close()
+        messagebox.showinfo("Success", f"Template created and data copied to: {saved_file_path}")
+
+except Exception as e:
+    messagebox.showerror("Error", f"Error while processing IFRS9.xlsx:\n{e}")

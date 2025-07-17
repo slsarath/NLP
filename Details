@@ -1,46 +1,5 @@
-import pandas as pd
+Thank you again for your earlier update regarding the positive feedback from my interview. I wanted to check if there have been any further developments, as I haven’t yet received a formal update or seen any changes on the portal.
 
-# Sample DataFrames
-RiskData = pd.DataFrame({
-    'Risk Name': ['Risk A', 'Risk B', 'Risk C'],
-    'RiskId': ['R001', 'R002', 'R003']
-})
+You had mentioned that the role may have moved from the UK to Dubai — if that’s the case, could you kindly confirm the current status? Also, if there is someone specific I should be in touch with for further updates, I’d appreciate it if you could point me in the right direction.
 
-PROCdata = pd.DataFrame({
-    'Related Process': ['Process A', 'Process B', 'Process C'],
-    'ProcessID': ['P001', 'P002', 'P003'],
-    'Org': ['Org1', 'Org2', 'Org3'],
-    'Related Risk': ['RR1', 'RR2', 'RR3']
-})
-
-MainData = pd.DataFrame({
-    'Risk Aligned': ['Risk A', 'Risk B', 'Risk C'],
-    'Causal Process': ['Process A', 'Process B', 'Process C'],
-    'ImpactedOrg': ['Org1', 'Org2', 'Org3'],
-    'RCSAOrg': ['Org1', 'Org2', 'Org3']
-})
-
-# Step 1: Add RiskId from RiskData
-MainData = MainData.merge(RiskData, how='left', left_on='Risk Aligned', right_on='Risk Name')
-
-# Step 2: Add ProcessID from PROCdata
-MainData = MainData.merge(PROCdata[['Related Process', 'ProcessID']], how='left',
-                          left_on='Causal Process', right_on='Related Process')
-
-# Step 3: Create combo columns
-MainData['Combo_Impacted'] = MainData['RiskId'] + MainData['ProcessID'] + MainData['ImpactedOrg']
-MainData['Combo_RCSA'] = MainData['RiskId'] + MainData['ProcessID'] + MainData['RCSAOrg']
-
-# Create Combo_PROC in PROCdata
-# First match RiskId from RiskData
-PROCdata = PROCdata.merge(RiskData, how='left', left_on='Related Risk', right_on='Risk Name')
-PROCdata['Combo_PROC'] = PROCdata['RiskId'] + PROCdata['ProcessID'] + PROCdata['Org']
-
-# Step 4: Map Related Risk
-combo_map = dict(zip(PROCdata['Combo_PROC'], PROCdata['Related Risk']))
-
-MainData['Related Risk from PROC'] = MainData['Combo_Impacted'].map(combo_map)
-MainData['Related Risk from PROC'] = MainData['Related Risk from PROC'].fillna(MainData['Combo_RCSA'].map(combo_map))
-
-# View result
-print(MainData[['Risk Aligned', 'Causal Process', 'ImpactedOrg', 'RCSAOrg', 'RiskId', 'ProcessID', 'Related Risk from PROC']])
+Looking forward to hearing from you.

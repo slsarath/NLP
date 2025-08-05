@@ -1,5 +1,39 @@
-Thank you again for your earlier update regarding the positive feedback from my interview. I wanted to check if there have been any further developments, as I haven’t yet received a formal update or seen any changes on the portal.
+Here’s a crisp 3-minute script for your presentation on the automation QA tool you’ve built, tailored to highlight background, how it works, and its impact:
 
-You had mentioned that the role may have moved from the UK to Dubai — if that’s the case, could you kindly confirm the current status? Also, if there is someone specific I should be in touch with for further updates, I’d appreciate it if you could point me in the right direction.
+⸻
 
-Looking forward to hearing from you.
+🔹 [Start – Background | ~30 seconds]
+
+“Hi everyone,
+I wanted to quickly share how the Rationale QA tool we developed has significantly streamlined our RCSA process.
+
+To give a bit of background — during the Inherent Risk Assessment (IHR) phase of the RCSA programme, over 58,000 Process-Risk-Org combinations were created, each requiring a rationale. Manually reviewing these for quality would’ve been a massive effort — close to 290 days of work, even with a dedicated team of four engagement leads.
+
+This made it clear we needed an automated, intelligent way to perform quality assurance at scale.”
+
+⸻
+
+🔹 [Middle – How the Tool Works | ~45 seconds]
+
+“The tool automates rationale review by applying a rule-based and NLP-assisted logic to assess if each rationale meets defined quality standards — things like clarity, completeness, consistency, and relevance.
+
+It flags rationales that fall short of criteria — essentially highlighting where remediation is required.
+The tool integrates with our workflow, provides scoring and comments, and updates dynamically as new PROs are added.”
+
+⸻
+
+🔹 [End – Value Addition | ~1.5 minutes]
+
+“During the IHR phase alone, the tool helped us identify around 14,000 rationales that didn’t meet the criteria — enabling early and focused remediation by our engagement leads.
+
+In the control assessment window, the tool flagged 2,500 more rationales needing improvement. Without the tool, this level of review would’ve been impossible.
+
+This has not only saved hundreds of manual review days but also ensured that the business teams received timely and accurate feedback — improving overall quality, transparency, and audit-readiness.
+
+Going forward, we’re keen to enhance the tool further — possibly with more advanced ML/NLP capabilities — to keep raising the bar on rationale quality.
+
+So in short, this tool is turning an otherwise unmanageable task into a scalable and consistent process, while significantly boosting efficiency and governance.”
+
+⸻
+
+Let me know if you’ll have slides — I can help you design them with key points and visuals too.

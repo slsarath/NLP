@@ -1,50 +1,53 @@
-WITH ordered_lines AS (
+WITH raw_lines AS (
   SELECT
-    ca.customermetadata_contactid AS contact_id,
-    CONCAT(
-      CASE
-        WHEN tagname LIKE '%ParticipantId%' THEN 'AParticipantId'
-        ELSE NULL
-      END,
-      ': ',
-      REGEXP_REPLACE(tagvalue, '[^\\x00-\\x7F]', '?') -- Clean emojis/non-ASCII
-    ) AS line,
+    customermetadata_contactid AS contact_id,
+    tagname,
+    tagvalue,
+    -- extract sequence number from tagname (like Customer_Content_1 → 1)
     CAST(SPLIT(tagname, '_')[1] AS INT) AS order_number
-  FROM e_awsconnect_db.cl_custm_attr ca
-  WHERE
-    ca.customermetadata_contactid IN (
-      -- Paste your batch of contact IDs here
-      '88541c4e-5bac-4f5a-ba01-2d82b02052a2',
-      '8d838fea-92df-4407-bdod-a26e1435435d'
-    )
-    AND (
-      tagname LIKE '%_Content%' OR tagname LIKE '%ParticipantId%'
-    )
-    AND tagname NOT LIKE 'Participants%'
+  FROM e_awsconnect_db.cl_custm_attr
+  WHERE customermetadata_contactid IN (
+    -- paste your 500-1000 contact IDs here
+    '88541c4e-5bac-4f5a-ba01-2d82b02052a2',
+    '8d838fea-92df-4407-bdod-a26e1435435d',
+    '6b5ff163-7489-4bb4-a5bd-dd1d019171e0'
+    -- etc...
+  )
+  AND (tagname LIKE '%_Content%' OR tagname LIKE '%ParticipantId%')
+  AND tagname NOT LIKE 'Participants%'
 ),
-speaker_fixed AS (
+
+labeled_lines AS (
   SELECT
     contact_id,
-    -- Fix speaker prefix outside CASE
-    CONCAT_WS(
-      '',
-      CASE
-        WHEN line LIKE 'AParticipantId:%' THEN 'Agent'
-        ELSE SPLIT(line, ':')[0]
-      END,
-      ': ',
-      SPLIT(line, ': ')[1]
-    ) AS speaker_line,
-    order_number
-  FROM ordered_lines
+    CASE
+      WHEN tagname LIKE '%Agent%' THEN 'Agent'
+      WHEN tagname LIKE '%Customer%' THEN 'Customer'
+      WHEN tagname LIKE '%ParticipantId%' THEN 'Agent'  -- treat ParticipantId as Agent
+      ELSE 'Unknown'
+    END AS speaker,
+    order_number,
+    -- clean non-ASCII chars from tagvalue
+    REGEXP_REPLACE(tagvalue, '[^\\x00-\\x7F]', '?') AS text
+  FROM raw_lines
 ),
+
+speaker_lines AS (
+  SELECT
+    contact_id,
+    CONCAT(speaker, ': ', text) AS line,
+    order_number
+  FROM labeled_lines
+),
+
 aggregated_transcripts AS (
   SELECT
     contact_id,
-    SORT_ARRAY(COLLECT_LIST(CONCAT_WS('~', LPAD(order_number, 5, '0'), speaker_line))) AS ordered_lines
-  FROM speaker_fixed
+    SORT_ARRAY(COLLECT_LIST(CONCAT(LPAD(order_number, 5, '0'), '~', line))) AS ordered_lines
+  FROM speaker_lines
   GROUP BY contact_id
 )
+
 SELECT
   contact_id,
   CONCAT_WS('\n', TRANSFORM(ordered_lines, x -> SPLIT(x, '~')[1])) AS call_transcript

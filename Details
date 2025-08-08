@@ -1,54 +1,31 @@
-WITH raw_lines AS (
-  SELECT
-    customermetadata_contactid AS contact_id,
-    tagname,
-    tagvalue,
-    -- extract sequence number from tagname (like Customer_Content_1 → 1)
-    CAST(SPLIT(tagname, '_')[1] AS INT) AS order_number
-  FROM e_awsconnect_db.cl_custm_attr
-  WHERE customermetadata_contactid IN (
-    -- paste your 500-1000 contact IDs here
-    '88541c4e-5bac-4f5a-ba01-2d82b02052a2',
-    '8d838fea-92df-4407-bdod-a26e1435435d',
-    '6b5ff163-7489-4bb4-a5bd-dd1d019171e0'
-    -- etc...
-  )
-  AND (tagname LIKE '%_Content%' OR tagname LIKE '%ParticipantId%')
-  AND tagname NOT LIKE 'Participants%'
-),
-
-labeled_lines AS (
-  SELECT
-    contact_id,
-    CASE
-      WHEN tagname LIKE '%Agent%' THEN 'Agent'
-      WHEN tagname LIKE '%Customer%' THEN 'Customer'
-      WHEN tagname LIKE '%ParticipantId%' THEN 'Agent'  -- treat ParticipantId as Agent
-      ELSE 'Unknown'
-    END AS speaker,
-    order_number,
-    -- clean non-ASCII chars from tagvalue
-    REGEXP_REPLACE(tagvalue, '[^\\x00-\\x7F]', '?') AS text
-  FROM raw_lines
-),
-
-speaker_lines AS (
-  SELECT
-    contact_id,
-    CONCAT(speaker, ': ', text) AS line,
-    order_number
-  FROM labeled_lines
-),
-
-aggregated_transcripts AS (
-  SELECT
-    contact_id,
-    SORT_ARRAY(COLLECT_LIST(CONCAT(LPAD(order_number, 5, '0'), '~', line))) AS ordered_lines
-  FROM speaker_lines
-  GROUP BY contact_id
+WITH TEMP1 AS (
+    SELECT 
+        a.*,
+        CAST(SPLIT_PART(a.tagname, '-', 2) AS INT) AS number,
+        REGEXP_REPLACE(a.tagname, 'ParticipantId', 'AParticipantId') AS new_tagname
+    FROM e_awsconnect_db.cl_custm_attr a
+    WHERE customermetadata_contactid IN (
+        'Oc84deec-bc35-424b-af1a-02c3832951a0',
+        '88541c4e-5bac-4f5a-ba01-2d82b02052a2',
+        '8d838fea-92df-4407-bd0d-a26e1435435d',
+        '6b5ff163-7489-4bb4-a5bd-dd1d019171e0',
+        '4d2f19de-a4fa-4e7f-ab0a-9912849b62ad',
+        '35b05b26-515b-41cf-90aa-6d189f10b448',
+        '965e1e1d-fead-4a5c-9e48-7add46856C49'
+    )
+    AND (tagname LIKE '%_Content%' OR tagname LIKE '%ParticipantId%')
+    AND tagname NOT LIKE 'Participants%'
 )
 
-SELECT
-  contact_id,
-  CONCAT_WS('\n', TRANSFORM(ordered_lines, x -> SPLIT(x, '~')[1])) AS call_transcript
-FROM aggregated_transcripts;
+-- Now apply GROUP_CONCAT with ORDERING inside a subquery
+SELECT 
+    customermetadata_contactid,
+    GROUP_CONCAT(tagvalue, '\n') AS call_transcript
+FROM (
+    SELECT 
+        customermetadata_contactid,
+        tagvalue
+    FROM TEMP1
+    ORDER BY customermetadata_contactid, number, new_tagname
+) ordered_data
+GROUP BY customermetadata_contactid;

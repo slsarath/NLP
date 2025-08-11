@@ -1,609 +1,190 @@
-Alright — if you want to hand stakeholders something that’s more than just a “basic pivot” and really looks like you’ve thought through the MI, you can slice this data in several smart ways.
-
-I’ll break this into two parts: core pivots they expect and bonus pivots that’ll impress.
-
-⸻
-
-1. Core pivots for your stated ask
-
-A. Risk Event–Level Closure Rate
-	•	Rows → Risk Event ID
-	•	Values →
-	•	Count of Action ID (Total Actions)
-	•	Count of Action ID where Action Status = “Closed” (Closed Actions)
-	•	Calculated Field = Closed Actions ÷ Total Actions (Closure %)
-
-This directly answers: “Total number of closed actions per Risk Event vs. total actions.”
-
-⸻
-
-B. Month-wise Action Closures
-	•	Rows → Month (from Action Closed Date)
-	•	Columns → Risk Event ID or Escalation Rating
-	•	Values → Count of Action ID
-
-This shows how many actions got closed each month per event or per severity.
-
-⸻
-
-2. Bonus pivots to impress stakeholders
-
-These give insight, not just data dumps:
-
-⸻
-
-C. Risk Event Aging View
-	•	Rows → Risk Event ID
-	•	Columns → Action Status (Open / In Progress / Closed)
-	•	Values → Count of Actions
-	•	Add Conditional Formatting → highlight overdue actions (Action Due Date < Today AND not Closed)
-
-📌 Why this matters: Shows at a glance where bottlenecks are.
-
-⸻
-
-D. Closure Timeliness
-	•	Rows → Risk Event ID
-	•	Values → Average (Action Closed Date – Action Start Date) = Avg Days to Close
-	•	Filter out open items (null close date)
-
-📌 Stakeholders like to see whether closures are happening promptly.
-
-⸻
-
-E. Overdue Actions by Month
-	•	Rows → Month (Action Due Date)
-	•	Columns → Escalation Rating
-	•	Values → Count of Actions where Action Closed Date > Action Due Date
-
-📌 Highlights where deadlines are being missed, and whether high-rated risks are being managed better.
-
-⸻
-
-F. Financial Impact Heatmap
-	•	Rows → Risk Event ID
-	•	Columns → Escalation Rating
-	•	Values → Sum of Gross Direct Financial Impact (GBP)
-	•	Filter → Only events with overdue actions
-
-📌 Links financial impact with execution discipline — very persuasive in discussions.
-
-⸻
-
-G. Linked Issue Drilldown
-	•	Rows → Linked Issue(s)
-	•	Columns → Action Status
-	•	Values → Count of Action ID
-
-📌 Shows how linked issues are tracking with action closure — good for governance.
-
-⸻
-
-H. Actions per Workflow Status
-	•	Rows → Workflow Status
-	•	Values → Count of Actions
-	•	Columns → Action Status
-
-📌 Tells you whether workflow stage correlates with closure likelihood.
-
-⸻
-
-I. Action Burndown Over Time
-	•	Rows → Month (Action Start Date)
-	•	Values → Cumulative count of closed actions
-	•	Overlay with cumulative count of actions started
-
-📌 Visualizes whether backlog is shrinking or growing.
-
-⸻
-
-If you want, I can give you a pre-built Excel pivot table structure (with calculated fields) that plugs into your data so you just refresh and it’s boardroom-ready.
-
-Do you want me to prepare that next?
-
------------------
-
-Got it — you basically want a lifecycle view of Risk Events, not just the actions tied to them.
-
-We can build something that shows risk event creation vs closure trends, and also how many are still open, so stakeholders see pipeline health.
-
-⸻
-
-Risk Event–Focused MI Ideas
-
-1. Monthly Risk Event Raised vs Closed
-	•	Rows → Month (based on Event Occurrence Date for “Raised”)
-	•	Columns → Status Type (Raised / Closed)
-	•	Values → Count of Risk Event ID
-
-📌 This answers: In a given month, how many risks were initiated and how many were resolved.
-
-⸻
-
-2. Open Risk Event Backlog Trend
-	•	Rows → Month (calendar month series)
-	•	Values →
-	•	Risk Events Open at Month Start
-	•	Risk Events Closed During Month
-	•	Risk Events Open at Month End (calculated)
-
-📌 Shows whether backlog is growing or shrinking.
-
-⸻
-
-3. Risk Event Aging Buckets
-	•	Rows → Age Bucket (e.g., 0–30 days, 31–60 days, 61–90 days, 90+ days since occurrence date)
-	•	Columns → Escalation Rating
-	•	Values → Count of Risk Events (currently open)
-
-📌 Highlights risks that are lingering too long.
-
-⸻
-
-4. Raised vs Closed by Escalation Rating
-	•	Rows → Month
-	•	Columns → Escalation Rating
-	•	Values →
-	•	Count of Raised Risk Events
-	•	Count of Closed Risk Events
-
-📌 Stakeholders see whether critical/high escalation risks are being closed promptly.
-
-⸻
-
-5. Risk Closure Timeliness
-	•	Rows → Risk Event ID
-	•	Values → Days from Occurrence Date to Closure Date
-	•	Conditional Formatting → Flag anything over X days based on policy
-
-📌 Great for governance metrics.
-
-⸻
-
-6. “Vintage” View of Risks
-	•	Rows → Month Risk Was Raised (Occurrence Date)
-	•	Columns → Month Risk Was Closed (Closure Date)
-	•	Values → Count of Risk Event IDs
-
-📌 This matrix shows how long risks from a certain period take to close.
-
-⸻
-
-7. Rolling 12-Month Raised vs Closed Ratio
-	•	Rows → Month (last 12 months)
-	•	Values → Raised Count, Closed Count, Ratio = Closed / Raised
-
-📌 Indicates whether you’re keeping up with incoming risks over time.
-
-⸻
-
-If you give me your columns for risk closure date (I assume “Workflow Status” and maybe a closure date field) I can map exact pivot table structures so you just refresh and send.
-
-Do you want me to prep that mapping for your dataset? That way the stakeholders get a clean “Risk Event lifecycle dashboard” in Excel.
-
-
--------------
-Alright — the tricky bit here is that Excel pivots won’t magically “look across rows” and figure out if all actions for a Risk Event were closed by their due date.
-We have to first prep the data so each Risk Event in a given month has a single remediation status.
-
-⸻
-
-Step 1 – Pre-calculate “Fully Remediated on Time”
-
-You’ll need a helper column in your dataset (before pivoting):
-	1.	Group by Risk Event ID + Month of Action Due Date
-	2.	For each group:
-	•	Count total actions → Total_Actions
-	•	Count actions closed on or before their due date → Closed_On_Time_Actions
-	•	If Total_Actions = Closed_On_Time_Actions → mark as “Fully Remediated On Time”
-	•	Else → “Not Fully Remediated”
-
-You can do this in Excel with:
-	•	Power Query (Group By → All Rows → Add column comparing counts)
-	•	or Pivot Table pre-step in a separate table.
-
-⸻
-
-Quick Excel Formula Approach (no Power Query)
-
-If your data has:
-	•	Risk Event ID = A
-	•	Action Due Date = B
-	•	Action Closed Date = C
-
-	1.	Add helper column Closed_On_Time:
-
-=IF(C2<=B2,1,0)
-
-
-	2.	Add another column MonthDue:
-
-=EOMONTH(B2,0)
-
-
-	3.	Create a Summary Table with UNIQUE combinations of Risk Event ID + MonthDue.
-	4.	Use COUNTIFS to get:
-	•	Total_Actions = COUNTIFS(RiskEventID, X, MonthDue, Y)
-	•	Closed_On_Time_Actions = SUMIFS(Closed_On_Time, RiskEventID, X, MonthDue, Y)
-	5.	In another column:
-
-=IF(Total_Actions=Closed_On_Time_Actions,"Fully Remediated","Not Fully Remediated")
-
-
-
-Now you have one row per Risk Event per month with its remediation status.
-
-⸻
-
-Step 2 – Build the Pivot for % Remediated
-
-Once you have the cleaned summary table:
-	•	Rows → MonthDue
-	•	Values → Count of Risk Event IDs
-	•	Columns → Remediation Status (Fully Remediated / Not Fully Remediated)
-	•	Value Field Settings → Show Values As → % of Row Total
-
-This will give:
-
-Month	Fully Remediated	Not Fully Remediated
-Jan 2025	75%	25%
-Feb 2025	82%	18%
+Alright — here’s a Python version that will take your Excel file, create all the derived columns we discussed, and save it back so you can make the pivot in Excel.
+
+I’ll assume your file is named risk_data.xlsx and has the columns you listed.
+
+import pandas as pd
+
+# 1. Load the file
+df = pd.read_excel("risk_data.xlsx")
+
+# 2. Ensure date columns are parsed properly
+date_cols = ["Event Occurrence Date", "Action Due Date", "Action Start Date", "Action Closed Date"]
+for col in date_cols:
+    df[col] = pd.to_datetime(df[col], errors="coerce")
+
+# 3. Derived Column – Due Month (YYYY-MM)
+df["Due Month"] = df["Action Due Date"].dt.to_period("M").astype(str)
+df.loc[df["Action Due Date"].isna(), "Due Month"] = ""
+
+# 4. Derived Column – Action Closure Status
+def closure_status(row):
+    if row["Action Status"] == "Closed":
+        if pd.notna(row["Action Due Date"]):
+            return "Closed On Time" if pd.notna(row["Action Closed Date"]) and row["Action Closed Date"] <= row["Action Due Date"] else "Closed Late"
+        else:
+            return "Closed (No Due Date)"
+    else:
+        return "Open"
+
+df["Action Closure Status"] = df.apply(closure_status, axis=1)
+
+# 5. Derived Column – Fully Remediated
+fully_remediated_flags = []
+for idx, row in df.iterrows():
+    if row["Due Month"] == "":
+        fully_remediated_flags.append("")
+    else:
+        same_risk_month = df[(df["Risk Event ID"] == row["Risk Event ID"]) & (df["Due Month"] == row["Due Month"])]
+        total_actions = same_risk_month.shape[0]
+        closed_actions = same_risk_month[same_risk_month["Action Status"] == "Closed"].shape[0]
+        fully_remediated_flags.append("Yes" if closed_actions == total_actions else "No")
+
+df["Fully Remediated"] = fully_remediated_flags
+
+# 6. Save the processed file
+df.to_excel("risk_data_with_derived.xlsx", index=False)
+
+print("Derived columns created and saved to risk_data_with_derived.xlsx")
 
 
 ⸻
 
-If you want, I can walk you through a Power Query version so you don’t have to do intermediate COUNTIFS — just refresh and it calculates the “% of fully remediated risks” each month automatically.
+What this gives you
 
-Do you want me to do that version? It’s much cleaner for repeating MI.
-
-
----------
-
-Got it — let’s walk through the Power Query approach so you can go from your raw risk events/actions table to a “% fully remediated per month” view without manual COUNTIFS.
+After running this, you’ll have three new columns in risk_data_with_derived.xlsx:
+	1.	Due Month – YYYY-MM format (blank if no due date)
+	2.	Action Closure Status – Closed On Time, Closed Late, Closed (No Due Date), Open
+	3.	Fully Remediated – Yes/No per Risk Event per month
 
 ⸻
 
-Step 1 – Load Data into Power Query
-	1.	Select your table in Excel → Data tab → Get & Transform → From Table/Range.
-	2.	Make sure your table has headers (Risk Event ID, Action Due Date, Action Closed Date, etc.).
+From here, in Excel:
+	•	Make a Pivot Table
+	•	Use Due Month as row labels
+	•	Count distinct Risk Event ID for “Yes” in Fully Remediated vs Total Risks
+	•	Add a calculated % column.
 
 ⸻
 
-Step 2 – Add a “Closed On Time” Flag
-	1.	In Power Query, Add Column → Custom Column:
+If you want, I can add one more derived column in Python so you can directly pivot “% of risks remediated per month” without creating a calculated field in Excel — it’ll make your reporting plug-and-play.
 
-if [Action Closed Date] <= [Action Due Date] then 1 else 0
+Do you want me to add that?
 
-Name this column Closed_On_Time.
-
-⸻
-
-Step 3 – Create “Month Due” Column
-	1.	Add Column → Date → Month → Start of Month on [Action Due Date].
-This creates a column you can use for monthly grouping — call it MonthDue.
+Got it — let’s extend the Python so you get direct % remediation per month in the exported file, and then I’ll walk you through exactly how to pivot it in Excel.
 
 ⸻
 
-Step 4 – Group by Risk Event + Month
-	1.	Home → Group By
-	•	Group by: Risk Event ID, MonthDue
-	•	Operation: “All Rows” (not Sum yet).
-	2.	In the grouped table column, we’ll now calculate counts:
-	•	Click the small table icon in one group.
-	•	Add a custom column:
+Updated Python
 
-List.Count([Action ID])
+import pandas as pd
 
-→ call it Total_Actions
+# 1. Load the file
+df = pd.read_excel("risk_data.xlsx")
 
-	•	Another custom column:
+# 2. Ensure date columns are parsed properly
+date_cols = ["Event Occurrence Date", "Action Due Date", "Action Start Date", "Action Closed Date"]
+for col in date_cols:
+    df[col] = pd.to_datetime(df[col], errors="coerce")
 
-List.Sum([Closed_On_Time])
+# 3. Derived Column – Due Month (YYYY-MM)
+df["Due Month"] = df["Action Due Date"].dt.to_period("M").astype(str)
+df.loc[df["Action Due Date"].isna(), "Due Month"] = ""
 
-→ call it Closed_On_Time_Actions
+# 4. Derived Column – Action Closure Status
+def closure_status(row):
+    if row["Action Status"] == "Closed":
+        if pd.notna(row["Action Due Date"]):
+            return "Closed On Time" if pd.notna(row["Action Closed Date"]) and row["Action Closed Date"] <= row["Action Due Date"] else "Closed Late"
+        else:
+            return "Closed (No Due Date)"
+    else:
+        return "Open"
 
-	•	Add one more:
+df["Action Closure Status"] = df.apply(closure_status, axis=1)
 
-if [Total_Actions] = [Closed_On_Time_Actions] then "Fully Remediated" else "Not Fully Remediated"
+# 5. Fully Remediated – Yes if all actions in same Risk ID & Due Month are Closed
+fully_remediated_flags = []
+for idx, row in df.iterrows():
+    if row["Due Month"] == "":
+        fully_remediated_flags.append("")
+    else:
+        same_risk_month = df[(df["Risk Event ID"] == row["Risk Event ID"]) & (df["Due Month"] == row["Due Month"])]
+        total_actions = same_risk_month.shape[0]
+        closed_actions = same_risk_month[same_risk_month["Action Status"] == "Closed"].shape[0]
+        fully_remediated_flags.append("Yes" if closed_actions == total_actions else "No")
 
-→ call it Remediation_Status
+df["Fully Remediated"] = fully_remediated_flags
 
-	3.	Remove the “All Rows” table column (you only need the summary values now).
+# 6. % Remediated per Month
+# First: unique risk-month combinations
+risk_month_status = df[df["Due Month"] != ""].groupby(["Due Month", "Risk Event ID"]).agg(
+    all_closed=("Action Status", lambda x: all(status == "Closed" for status in x))
+).reset_index()
 
-⸻
+# Calculate monthly % remediated
+monthly_stats = risk_month_status.groupby("Due Month").agg(
+    total_risks=("Risk Event ID", "nunique"),
+    remediated_risks=("all_closed", lambda x: sum(x))
+).reset_index()
 
-Step 5 – Get Monthly % Fully Remediated
-	1.	With the summary table (Risk Event ID + MonthDue + Remediation_Status), do another Group By:
-	•	Group by: MonthDue, Remediation_Status
-	•	Operation: Count Rows → call it RiskEvents_Count.
-	2.	Go to Transform → Pivot Column:
-	•	Column to pivot: Remediation_Status
-	•	Values: RiskEvents_Count
-	•	Fill missing values with 0.
-	3.	Add a custom column for:
+monthly_stats["% Remediated"] = (monthly_stats["remediated_risks"] / monthly_stats["total_risks"]) * 100
 
-[Fully Remediated] / ([Fully Remediated] + [Not Fully Remediated])
+# Merge back into main file (optional, just for reference)
+df = df.merge(monthly_stats[["Due Month", "% Remediated"]], on="Due Month", how="left")
 
-Format it as a %.
+# 7. Save the processed file
+df.to_excel("risk_data_with_derived.xlsx", index=False)
 
-⸻
-
-Step 6 – Load to Excel
-
-Click Close & Load → now you have a clean table like:
-
-MonthDue	Fully Remediated	Not Fully Remediated	% Fully Remediated
-Jan 2025	15	5	75%
-Feb 2025	18	4	81.8%
-
-
-⸻
-
-If you want, I can write you the exact M-code for this transformation so you can paste it into Power Query’s “Advanced Editor” and just tweak column names. That way you don’t have to click through menus every time.
-
-Do you want me to give you that M-code directly?
-
-Got it — let’s walk through the Power Query approach so you can go from your raw risk events/actions table to a “% fully remediated per month” view without manual COUNTIFS.
-
-⸻
-
-Step 1 – Load Data into Power Query
-	1.	Select your table in Excel → Data tab → Get & Transform → From Table/Range.
-	2.	Make sure your table has headers (Risk Event ID, Action Due Date, Action Closed Date, etc.).
-
-⸻
-
-Step 2 – Add a “Closed On Time” Flag
-	1.	In Power Query, Add Column → Custom Column:
-
-if [Action Closed Date] <= [Action Due Date] then 1 else 0
-
-Name this column Closed_On_Time.
-
-⸻
-
-Step 3 – Create “Month Due” Column
-	1.	Add Column → Date → Month → Start of Month on [Action Due Date].
-This creates a column you can use for monthly grouping — call it MonthDue.
-
-⸻
-
-Step 4 – Group by Risk Event + Month
-	1.	Home → Group By
-	•	Group by: Risk Event ID, MonthDue
-	•	Operation: “All Rows” (not Sum yet).
-	2.	In the grouped table column, we’ll now calculate counts:
-	•	Click the small table icon in one group.
-	•	Add a custom column:
-
-List.Count([Action ID])
-
-→ call it Total_Actions
-
-	•	Another custom column:
-
-List.Sum([Closed_On_Time])
-
-→ call it Closed_On_Time_Actions
-
-	•	Add one more:
-
-if [Total_Actions] = [Closed_On_Time_Actions] then "Fully Remediated" else "Not Fully Remediated"
-
-→ call it Remediation_Status
-
-	3.	Remove the “All Rows” table column (you only need the summary values now).
-
-⸻
-
-Step 5 – Get Monthly % Fully Remediated
-	1.	With the summary table (Risk Event ID + MonthDue + Remediation_Status), do another Group By:
-	•	Group by: MonthDue, Remediation_Status
-	•	Operation: Count Rows → call it RiskEvents_Count.
-	2.	Go to Transform → Pivot Column:
-	•	Column to pivot: Remediation_Status
-	•	Values: RiskEvents_Count
-	•	Fill missing values with 0.
-	3.	Add a custom column for:
-
-[Fully Remediated] / ([Fully Remediated] + [Not Fully Remediated])
-
-Format it as a %.
-
-⸻
-
-Step 6 – Load to Excel
-
-Click Close & Load → now you have a clean table like:
-
-MonthDue	Fully Remediated	Not Fully Remediated	% Fully Remediated
-Jan 2025	15	5	75%
-Feb 2025	18	4	81.8%
+print("Derived columns created and saved to risk_data_with_derived.xlsx")
 
 
 ⸻
 
-If you want, I can write you the exact M-code for this transformation so you can paste it into Power Query’s “Advanced Editor” and just tweak column names. That way you don’t have to click through menus every time.
+What You’ll Have Now
 
-Do you want me to give you that M-code directly?
-
-
-Step 3 in Power Query — creating the Month Due column from Action Due Date — is actually pretty quick. Here’s exactly how:
-
-⸻
-
-In Power Query
-	1.	Make sure your Action Due Date column is a Date type (if not, click the column header → Transform → Data Type → Date).
-	2.	Select the Action Due Date column.
-	3.	Go to Add Column tab → Date → Month → Start of Month.
-	•	This creates a new column with the first day of the month for each Action Due Date.
-	4.	Rename the new column to MonthDue.
+New Columns in Excel:
+	•	Due Month
+	•	Action Closure Status
+	•	Fully Remediated
+	•	% Remediated (same for all rows of that month — this is a monthly aggregate for quick reporting)
 
 ⸻
 
-Example
-If your Action Due Date is:
+How to Make MI Pivots in Excel
 
-Action Due Date
-15-Jan-2025
-27-Jan-2025
-04-Feb-2025
+1. % of Risks Remediated per Month
+	•	Insert Pivot Table from the processed file.
+	•	Rows → Due Month
+	•	Values → % Remediated (Average)
+	•	Format as Percentage.
 
-Then MonthDue will be:
+2. Risk Closure Performance
+	•	Rows → Due Month
+	•	Columns → Action Closure Status
+	•	Values → Count of Action ID.
+	•	This shows On-Time, Late, Open counts.
 
-MonthDue
-01-Jan-2025
-01-Jan-2025
-01-Feb-2025
+3. Risk Volume Trend
+	•	Rows → Month from Event Occurrence Date (grouped by Month-Year)
+	•	Values → Count of Risk Event ID (distinct if possible).
+	•	This gives raised risk volume per month.
 
-
-⸻
-
-If you prefer it to show just “Jan-2025” instead of a date:
-	•	After adding MonthDue, select it → Transform → Format → Month → Name of Month,
-	•	Or Add Column → Date → Month → Name of Month and combine with the Year using a custom column like:
-
-Text.Start(Date.MonthName([Action Due Date]),3) & "-" & Text.From(Date.Year([Action Due Date]))
-
-→ Result: Jan-2025, Feb-2025 etc.
-
-⸻
-
-If you want, I can give you the exact formula in M so you can just paste it without clicking through menus. That will also make it easier to reuse later.
-
-Do you want me to prepare that formula for you?
-
-
-Nice — let’s break Step 4 down cleanly. I’ll show you two ways: (A) the quick Power Query UI method (ideal if rows are clean), and (B) the Advanced M method (exact code you can paste into Advanced Editor). I’ll also show a variant if you need to count distinct Action IDs.
+4. Fully Remediated Tracking
+	•	Rows → Due Month
+	•	Columns → Fully Remediated (Yes/No)
+	•	Values → Count of Risk Event ID.
+	•	Optional: Add calculated field → Yes / (Yes + No) for %.
 
 ⸻
 
-Quick recap of prerequisites (must be done before Step 4)
-
-You should already have these columns in your query:
-	•	Risk Event ID (text)
-	•	Action Due Date (Date)
-	•	Action Closed Date (Date)
-	•	Closed_On_Time (Number: 1 if Closed_On_or_Before_Due, else 0)
-Example formula in Power Query Add Column → Custom Column:
-
-if [Action Closed Date] <> null and [Action Closed Date] <= [Action Due Date] then 1 else 0
-
-
-	•	MonthDue (Date = first day of the month for Action Due Date)
-Add Column → Date → Month → Start of Month (or use Date.StartOfMonth([Action Due Date])).
-
-If those exist, you’re ready for Step 4.
+If you want this to look impressive for stakeholders, I’d recommend:
+	•	Using a Combo Chart in Excel:
+	•	Line for % Remediated
+	•	Columns for Total Risks raised.
+	•	Color-coding On-Time vs Late closures.
 
 ⸻
 
-A — UI Method (fast, no code)
-	1.	In Power Query editor, with your table active, go to Home → Group By.
-	2.	Choose Advanced grouping.
-	3.	Group by: select Risk Event ID and MonthDue.
-	4.	New column 1:
-	•	Name: Total_Actions
-	•	Operation: Count Rows
-	5.	New column 2:
-	•	Name: Closed_On_Time_Actions
-	•	Operation: Sum
-	•	Column: Closed_On_Time
-	6.	Click OK.
+If you want, I can also merge the monthly stats into a clean summary tab in Python, so you can hand over a ready-to-plot table without even touching Pivot logic. That would make the MI look instantly polished.
 
-You now have one row per Risk Event ID + MonthDue with two columns: total actions and closed-on-time actions.
-	7.	Add a Custom Column (Add Column → Custom Column) called Remediation_Status:
-
-if [Total_Actions] = [Closed_On_Time_Actions] then "Fully Remediated" else "Not Fully Remediated"
-
-	8.	(Optional) Add % Closed On Time:
-
-if [Total_Actions] = 0 then null else Number.Round([Closed_On_Time_Actions] / [Total_Actions], 4)
-
-That’s it — this summary table now gives you one row per risk-per-month with remediation status ready for further aggregation/pivot.
-
-⸻
-
-B — Exact M code (paste into Advanced Editor)
-
-Copy/paste this into Advanced Editor and tweak the Source step to match your query/table name.
-
-let
-    // Replace this with your actual source step
-    Source = Excel.CurrentWorkbook(){[Name="Table1"]}[Content],
-
-    // Ensure types - adjust column names if needed
-    ChangedTypes = Table.TransformColumnTypes(Source, {
-        {"Risk Event ID", type text},
-        {"Action Due Date", type date},
-        {"Action Closed Date", type date},
-        {"Action ID", type text}   // optional but useful if you have Action ID
-    }),
-
-    // Closed_On_Time flag: 1 if closed on/before due date, else 0
-    AddClosedOnTime = Table.AddColumn(ChangedTypes, "Closed_On_Time", each if [Action Closed Date] <> null and [Action Closed Date] <= [Action Due Date] then 1 else 0, Int64.Type),
-
-    // MonthDue = first day of month for action due date
-    AddMonthDue = Table.AddColumn(AddClosedOnTime, "MonthDue", each Date.StartOfMonth([Action Due Date]), type date),
-
-    // Group by Risk Event ID + MonthDue, compute total actions and sum of closed-on-time
-    Grouped = Table.Group(
-        AddMonthDue,
-        {"Risk Event ID", "MonthDue"},
-        {
-            {"Total_Actions", each Table.RowCount(_), Int64.Type},
-            {"Closed_On_Time_Actions", each List.Sum(Table.Column(_, "Closed_On_Time")), Int64.Type}
-        }
-    ),
-
-    // Add remediation status and percent closed on time
-    AddStatus = Table.AddColumn(Grouped, "Remediation_Status", each if [Total_Actions] = [Closed_On_Time_Actions] then "Fully Remediated" else "Not Fully Remediated"),
-    AddPct = Table.AddColumn(AddStatus, "Pct_Closed_On_Time", each if [Total_Actions] = 0 then null else Number.Round([Closed_On_Time_Actions] / [Total_Actions], 4), type number)
-in
-    AddPct
-
-
-⸻
-
-C — If you need to ensure distinct Action IDs (avoid duplicate actions)
-
-Use this variant to group on distinct Action ID within each Risk+Month before counting:
-
-// inside Advanced Editor, replace the Grouped step above with:
-
-// First remove duplicate Action ID rows per RiskEvent+MonthDue+ActionID (if duplicates exist)
-Deduped = Table.Distinct(AddMonthDue, {"Risk Event ID", "MonthDue", "Action ID"}),
-
-GroupedDistinct = Table.Group(
-    Deduped,
-    {"Risk Event ID", "MonthDue"},
-    {
-        {"Total_Actions", each Table.RowCount(_), Int64.Type},
-        {"Closed_On_Time_Actions", each List.Sum(Table.Column(_, "Closed_On_Time")), Int64.Type}
-    }
-),
-...
-
-
-⸻
-
-How to validate results (quick checks)
-	•	Pick one Risk Event ID and a MonthDue, then filter the original query on those keys and manually count total actions and those where Closed_On_Time = 1. Compare with your grouped row.
-	•	Check that MonthDue values are canonical (first of month). If you prefer text like Jan-2025, convert using Date.ToText([MonthDue], "MMM-yyyy").
-
-⸻
-
-Next (quick): get % remediated per month for stakeholders
-
-After the grouped table (AddPct), do:
-	1.	Home → Group By MonthDue (Group by MonthDue only).
-	2.	Aggregate:
-	•	FullyRemediatedCount = Count rows where Remediation_Status = “Fully Remediated” (use Group By → Advanced with Sum of a conditional column) — easiest: before grouping add IsFullyRemediated = if Remediation_Status=“Fully Remediated” then 1 else 0, then Group By MonthDue and Sum IsFullyRemediated, Count Rows = total risk events that month.
-	3.	Compute % Remediated = FullyRemediatedCount / TotalRiskEventsInThatMonth.
-
-If you want, I can give you the complete M from raw source to monthly % remediated table — paste your exact column names and I’ll craft it.
-
-⸻
-
-Want the full end-to-end M code that returns a final table: MonthDue | Total_Risk_Events | Fully_Remediated | %_Fully_Remediated ? If yes, tell me whether you need distinct Action ID handling and I’ll produce it.
-
-
+Do you want me to do that extra summary export?

@@ -1,32 +1,42 @@
 import pandas as pd
 
-# Read your dataset (adjust filename as needed)
+# Read your dataset
 df = pd.read_csv("risk_events.csv")
 
-# Convert dates to datetime (ignoring errors for blanks/invalid formats)
+# Convert date columns
 df["Action Due Date"] = pd.to_datetime(df["Action Due Date"], errors="coerce")
 df["Action Closed Date"] = pd.to_datetime(df["Action Closed Date"], errors="coerce")
 
-# Extract month-year periods
+# Extract month-year for pivoting
 df["Due_Month"] = df["Action Due Date"].dt.to_period("M")
 df["Closed_Month"] = df["Action Closed Date"].dt.to_period("M")
 
-# Closed On Time = status is Closed- Actions completed AND due month == closed month
-df["Closed_On_Time"] = (
+# Define flags for each row
+df["On_Time"] = (
     (df["Action Status"] == "Closed- Actions completed") &
     (df["Due_Month"] == df["Closed_Month"])
 )
 
-# Late Closure = status is Closed- Actions completed AND closed month > due month
-df["Late_Closure"] = (
+df["Late"] = (
     (df["Action Status"] == "Closed- Actions completed") &
     (df["Closed_Month"] > df["Due_Month"])
 )
 
-# Not Closed = not Closed- Actions completed (covers open, overdue, etc.)
 df["Not_Closed"] = ~(df["Action Status"] == "Closed- Actions completed")
 
-# Save the enriched dataset for Excel pivot
-df.to_csv("risk_events_with_flags.csv", index=False)
+# Aggregate at Risk Event ID level
+agg_df = df.groupby(["Risk Event ID", "Due_Month"]).agg(
+    Total_Actions=("Action ID", "count"),
+    On_Time_Actions=("On_Time", "sum"),
+    Late_Actions=("Late", "sum"),
+    Not_Closed_Actions=("Not_Closed", "sum")
+).reset_index()
 
-print("Derived columns added and file saved as risk_events_with_flags.csv")
+# Add % On Time column
+agg_df["Pct_On_Time"] = (agg_df["On_Time_Actions"] / agg_df["Total_Actions"]) * 100
+
+# Save enriched files
+df.to_csv("risk_events_with_flags.csv", index=False)  # Detailed per-action file
+agg_df.to_csv("risk_event_summary.csv", index=False)  # Aggregated file for direct pivot use
+
+print("Files saved: risk_events_with_flags.csv (row-level), risk_event_summary.csv (aggregated)")

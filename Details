@@ -1,190 +1,227 @@
-Alright — here’s a Python version that will take your Excel file, create all the derived columns we discussed, and save it back so you can make the pivot in Excel.
+Nice — here’s a concise, non-fluffy walk-through you can use with confidence: what the Python script does, why each derived column exists, how the Excel pivots are built from those columns, and exactly how to present the results to management.
 
-I’ll assume your file is named risk_data.xlsx and has the columns you listed.
+Python: what it does and why (step-by-step)
+
+Here’s a production-ready, efficient version of the Python flow. After that I’ll explain each block and the assumptions.
 
 import pandas as pd
 
-# 1. Load the file
-df = pd.read_excel("risk_data.xlsx")
+# ---------- CONFIG ----------
+INPUT_FILE = "risk_data.xlsx"
+OUTPUT_FILE = "risk_data_with_derived.xlsx"
+CLOSE_PREFIX = "Closed"   # we'll treat anything that startswith "Closed" as closed
 
-# 2. Ensure date columns are parsed properly
+# ---------- LOAD & PARSE ----------
+df = pd.read_excel(INPUT_FILE)
 date_cols = ["Event Occurrence Date", "Action Due Date", "Action Start Date", "Action Closed Date"]
-for col in date_cols:
-    df[col] = pd.to_datetime(df[col], errors="coerce")
+for c in date_cols:
+    if c in df.columns:
+        df[c] = pd.to_datetime(df[c], errors="coerce")
 
-# 3. Derived Column – Due Month (YYYY-MM)
-df["Due Month"] = df["Action Due Date"].dt.to_period("M").astype(str)
+# ---------- DUE MONTH ----------
+# YYYY-MM for grouping; blank if no due date
+df["Due Month"] = df.get("Action Due Date").dt.to_period("M").astype(str)
 df.loc[df["Action Due Date"].isna(), "Due Month"] = ""
 
-# 4. Derived Column – Action Closure Status
+# ---------- ACTION CLOSURE STATUS ----------
 def closure_status(row):
-    if row["Action Status"] == "Closed":
-        if pd.notna(row["Action Due Date"]):
-            return "Closed On Time" if pd.notna(row["Action Closed Date"]) and row["Action Closed Date"] <= row["Action Due Date"] else "Closed Late"
+    status = str(row.get("Action Status",""))
+    if status.startswith(CLOSE_PREFIX):
+        if pd.notna(row.get("Action Due Date")):
+            if pd.notna(row.get("Action Closed Date")) and row["Action Closed Date"] <= row["Action Due Date"]:
+                return "Closed On Time"
+            else:
+                return "Closed Late"
         else:
             return "Closed (No Due Date)"
     else:
         return "Open"
-
 df["Action Closure Status"] = df.apply(closure_status, axis=1)
 
-# 5. Derived Column – Fully Remediated
-fully_remediated_flags = []
-for idx, row in df.iterrows():
-    if row["Due Month"] == "":
-        fully_remediated_flags.append("")
-    else:
-        same_risk_month = df[(df["Risk Event ID"] == row["Risk Event ID"]) & (df["Due Month"] == row["Due Month"])]
-        total_actions = same_risk_month.shape[0]
-        closed_actions = same_risk_month[same_risk_month["Action Status"] == "Closed"].shape[0]
-        fully_remediated_flags.append("Yes" if closed_actions == total_actions else "No")
+# ---------- RISK-MONTH LEVEL: fully remediated or not ----------
+# produce one row per (Due Month, Risk Event ID) with counts
+has_action_id = "Action ID" in df.columns and not df["Action ID"].isna().all()
 
-df["Fully Remediated"] = fully_remediated_flags
+if has_action_id:
+    agg_total = ("Action ID", "nunique")
+else:
+    agg_total = ("Action Status", "size")
 
-# 6. Save the processed file
-df.to_excel("risk_data_with_derived.xlsx", index=False)
+risk_month = (
+    df[df["Due Month"] != ""]
+    .groupby(["Due Month", "Risk Event ID"])
+    .agg(
+        total_actions = agg_total,
+        closed_actions = ("Action Status", lambda x: sum(str(s).startswith(CLOSE_PREFIX) for s in x.astype(str)))
+    )
+    .reset_index()
+)
 
-print("Derived columns created and saved to risk_data_with_derived.xlsx")
+risk_month["Fully_Remediated"] = (risk_month["total_actions"] == risk_month["closed_actions"])
+risk_month["IsFullyRemediated"] = risk_month["Fully_Remediated"].astype(int)
 
+# ---------- MONTHLY SUMMARY ----------
+monthly_stats = (
+    risk_month.groupby("Due Month")
+    .agg(
+        total_risks = ("Risk Event ID", "nunique"),
+        remediated_risks = ("IsFullyRemediated", "sum")
+    )
+    .reset_index()
+)
+monthly_stats["Pct_Remediated"] = monthly_stats["remediated_risks"] / monthly_stats["total_risks"]
 
-⸻
+# ---------- MERGE BACK (optional but useful for pivoting) ----------
+# join IsFullyRemediated back to the row-level data so every row has the risk-month flag
+df = df.merge(
+    risk_month[["Due Month","Risk Event ID","IsFullyRemediated","Fully_Remediated"]],
+    on=["Due Month","Risk Event ID"],
+    how="left"
+)
+df["IsFullyRemediated"] = df["IsFullyRemediated"].fillna(0).astype(int)
 
-What this gives you
+# ---------- EXPORT ----------
+with pd.ExcelWriter(OUTPUT_FILE, engine="openpyxl") as w:
+    df.to_excel(w, sheet_name="Processed_Rows", index=False)
+    risk_month.to_excel(w, sheet_name="RiskMonthSummary", index=False)
+    monthly_stats.to_excel(w, sheet_name="MonthlySummary", index=False)
 
-After running this, you’ll have three new columns in risk_data_with_derived.xlsx:
-	1.	Due Month – YYYY-MM format (blank if no due date)
-	2.	Action Closure Status – Closed On Time, Closed Late, Closed (No Due Date), Open
-	3.	Fully Remediated – Yes/No per Risk Event per month
+print("Done. Output saved to", OUTPUT_FILE)
 
-⸻
+What each block does (plain English)
+	•	Load & parse: reads your Excel and coerces date columns into real dates. Invalid / blank dates become NaT.
+	•	Due Month: creates Due Month = "YYYY-MM" from Action Due Date. If Action Due Date is blank, Due Month is blank. This is the month-bucket we use for “remediation this month”.
+	•	Action Closure Status: a readable label per action:
+	•	Closed On Time (closed and closed_date ≤ due_date)
+	•	Closed Late
+	•	Closed (No Due Date)
+	•	Open
+This helps pivot counts by on-time vs late vs open.
+	•	Risk-Month aggregation: for each (Due Month, Risk Event ID) we:
+	•	count the total actions (unique Action IDs if present; otherwise rows),
+	•	count closed actions (anything starting with "Closed"),
+	•	set Fully_Remediated = True only if all actions in that risk-month are closed.
+	•	expose IsFullyRemediated as 1/0 (useful for averaging in Pivot).
+	•	Monthly summary: for each Due Month we compute:
+	•	total_risks (number of distinct risk IDs with actions due that month)
+	•	remediated_risks (how many of those risk-months were fully remediated)
+	•	Pct_Remediated = remediated_risks / total_risks (decimal fraction)
+	•	Merge back: attach the IsFullyRemediated flag back to each original row — convenient for building pivots directly from the full table.
+	•	Export: writes three sheets:
+	•	Processed_Rows (row-level, derived columns added)
+	•	RiskMonthSummary (one row per risk-month)
+	•	MonthlySummary (clean one-row-per-month summary with %)
 
-From here, in Excel:
-	•	Make a Pivot Table
-	•	Use Due Month as row labels
-	•	Count distinct Risk Event ID for “Yes” in Fully Remediated vs Total Risks
-	•	Add a calculated % column.
+Important assumptions & edge cases
+	•	The code treats any status that starts with "Closed" as closed. That handles Closed- Actions completed and similar variants. You can change CLOSE_PREFIX if needed.
+	•	Rows with no Action Due Date are excluded from the “Due Month” bucket (they get Due Month = ""). They do not contribute to monthly % remediated unless you decide to map them differently.
+	•	For total_actions, the code uses Action ID distinct count if available; otherwise it counts rows.
+	•	If Action Closed Date is blank for a row marked closed, it will be treated as Closed Late unless no due date exists (then Closed (No Due Date)).
+	•	The risk-month definition ties remediations to the month of the Action Due Date (per your ask). If you want to measure closure by the month when the risk was closed, we can change to use Action Closed Date or a vintage matrix.
 
-⸻
+Excel: pivots to build from the exported file
 
-If you want, I can add one more derived column in Python so you can directly pivot “% of risks remediated per month” without creating a calculated field in Excel — it’ll make your reporting plug-and-play.
+You now have Processed_Rows, RiskMonthSummary, and MonthlySummary. Use whichever is easiest for the report. I’ll give concrete pivot builds you can create quickly.
 
-Do you want me to add that?
-
-Got it — let’s extend the Python so you get direct % remediation per month in the exported file, and then I’ll walk you through exactly how to pivot it in Excel.
-
-⸻
-
-Updated Python
-
-import pandas as pd
-
-# 1. Load the file
-df = pd.read_excel("risk_data.xlsx")
-
-# 2. Ensure date columns are parsed properly
-date_cols = ["Event Occurrence Date", "Action Due Date", "Action Start Date", "Action Closed Date"]
-for col in date_cols:
-    df[col] = pd.to_datetime(df[col], errors="coerce")
-
-# 3. Derived Column – Due Month (YYYY-MM)
-df["Due Month"] = df["Action Due Date"].dt.to_period("M").astype(str)
-df.loc[df["Action Due Date"].isna(), "Due Month"] = ""
-
-# 4. Derived Column – Action Closure Status
-def closure_status(row):
-    if row["Action Status"] == "Closed":
-        if pd.notna(row["Action Due Date"]):
-            return "Closed On Time" if pd.notna(row["Action Closed Date"]) and row["Action Closed Date"] <= row["Action Due Date"] else "Closed Late"
-        else:
-            return "Closed (No Due Date)"
-    else:
-        return "Open"
-
-df["Action Closure Status"] = df.apply(closure_status, axis=1)
-
-# 5. Fully Remediated – Yes if all actions in same Risk ID & Due Month are Closed
-fully_remediated_flags = []
-for idx, row in df.iterrows():
-    if row["Due Month"] == "":
-        fully_remediated_flags.append("")
-    else:
-        same_risk_month = df[(df["Risk Event ID"] == row["Risk Event ID"]) & (df["Due Month"] == row["Due Month"])]
-        total_actions = same_risk_month.shape[0]
-        closed_actions = same_risk_month[same_risk_month["Action Status"] == "Closed"].shape[0]
-        fully_remediated_flags.append("Yes" if closed_actions == total_actions else "No")
-
-df["Fully Remediated"] = fully_remediated_flags
-
-# 6. % Remediated per Month
-# First: unique risk-month combinations
-risk_month_status = df[df["Due Month"] != ""].groupby(["Due Month", "Risk Event ID"]).agg(
-    all_closed=("Action Status", lambda x: all(status == "Closed" for status in x))
-).reset_index()
-
-# Calculate monthly % remediated
-monthly_stats = risk_month_status.groupby("Due Month").agg(
-    total_risks=("Risk Event ID", "nunique"),
-    remediated_risks=("all_closed", lambda x: sum(x))
-).reset_index()
-
-monthly_stats["% Remediated"] = (monthly_stats["remediated_risks"] / monthly_stats["total_risks"]) * 100
-
-# Merge back into main file (optional, just for reference)
-df = df.merge(monthly_stats[["Due Month", "% Remediated"]], on="Due Month", how="left")
-
-# 7. Save the processed file
-df.to_excel("risk_data_with_derived.xlsx", index=False)
-
-print("Derived columns created and saved to risk_data_with_derived.xlsx")
-
+Prep (recommended)
+	1.	Open risk_data_with_derived.xlsx.
+	2.	Convert Processed_Rows into an Excel Table (select data → Insert → Table). Name it tblProcessed.
+	3.	When you create pivot(s), check Add this data to the Data Model — that enables Distinct Count if you want it.
 
 ⸻
 
-What You’ll Have Now
+Pivot A — % Fully Remediated per Month (recommended)
 
-New Columns in Excel:
-	•	Due Month
-	•	Action Closure Status
-	•	Fully Remediated
-	•	% Remediated (same for all rows of that month — this is a monthly aggregate for quick reporting)
+Data: use tblProcessed (has IsFullyRemediated), or use MonthlySummary for a straight table.
 
-⸻
-
-How to Make MI Pivots in Excel
-
-1. % of Risks Remediated per Month
-	•	Insert Pivot Table from the processed file.
+If using tblProcessed:
+	•	Insert → PivotTable (from Table/Range, add to Data Model).
 	•	Rows → Due Month
-	•	Values → % Remediated (Average)
-	•	Format as Percentage.
+	•	Values →
+	•	IsFullyRemediated → Value Field Settings → Average → Format as Percentage (this gives % of risk-months fully remediated)
+	•	Risk Event ID → Value Field Settings → Distinct Count (shows total risk count in month)
 
-2. Risk Closure Performance
+If using MonthlySummary (no pivot needed):
+	•	The Pct_Remediated column is already ready. You can create a simple chart from it.
+
+⸻
+
+Pivot B — Action Closure Distribution (On-time / Late / Open)
+
+Data: tblProcessed
 	•	Rows → Due Month
 	•	Columns → Action Closure Status
-	•	Values → Count of Action ID.
-	•	This shows On-Time, Late, Open counts.
+	•	Values → Action ID (Count) or Action ID Distinct Count if you need unique actions
+	•	This shows monthly counts of On Time vs Late vs Open actions.
 
-3. Risk Volume Trend
-	•	Rows → Month from Event Occurrence Date (grouped by Month-Year)
-	•	Values → Count of Risk Event ID (distinct if possible).
-	•	This gives raised risk volume per month.
+⸻
 
-4. Fully Remediated Tracking
+Pivot C — Risk Volume Trend (risks raised per occurrence month)
+
+Data: Processed_Rows
+	•	Rows → Event Occurrence Date (group by Month)
+	•	Values → Risk Event ID → Distinct Count
+	•	This shows new risks raised by month.
+
+⸻
+
+Pivot D — Fully Remediated tracking (Yes/No)
+
+Data: RiskMonthSummary or tblProcessed if easier
 	•	Rows → Due Month
-	•	Columns → Fully Remediated (Yes/No)
-	•	Values → Count of Risk Event ID.
-	•	Optional: Add calculated field → Yes / (Yes + No) for %.
+	•	Columns → Fully_Remediated (True/False or Yes/No)
+	•	Values → Risk Event ID → Distinct Count
+	•	Add calculated % if you prefer, or use IsFullyRemediated average approach.
 
 ⸻
 
-If you want this to look impressive for stakeholders, I’d recommend:
-	•	Using a Combo Chart in Excel:
-	•	Line for % Remediated
-	•	Columns for Total Risks raised.
-	•	Color-coding On-Time vs Late closures.
+Chart idea (management-friendly)
+
+Build a combo chart:
+	•	Bars = Total risks (per month) (from Distinct Count)
+	•	Line = % Fully Remediated (Average of IsFullyRemediated)
+	•	Put the % line on secondary axis, format clearly, add a benchmark line (e.g., target 90% remediation)
+
+Insert → PivotChart or create chart from MonthlySummary.
+
+How to explain this to management — what to say
+
+Here’s a short script + bullet points to accompany charts.
+
+Slide / headline:
+“Remediation performance (Due-month basis): X% of risks with actions due in Jul-2025 were fully remediated on time.”
+
+Explain metric (one sentence):
+“Fully remediated = every action tied to the risk for that due-month was closed. We measure per risk-month because actions can span months; this tells us if the risk was cleaned up within the month it was due.”
+
+What the chart shows:
+	•	Trend line = % of risk-months that were fully remediated on time.
+	•	Bars = number of risk-months in that period (volume).
+	•	Use the combo view to explain whether increasing volume is driving any drop in remediation %.
+
+Top talking points to show:
+	•	Current month % and change vs previous month (delta).
+	•	3-month trend (improving/worsening).
+	•	Top 5 risk events not remediated (with financial impact & days open).
+	•	Root causes: missing due dates, resource bottlenecks, high complexity actions.
+	•	Recommended actions: assign owners, tighten SLAs, complete missing due dates.
+
+Caveats to call out (be explicit):
+	•	Rows with blank Action Due Date are excluded from the monthly % (they appear as Due Month = ""). We should decide whether these should be assigned to a month.
+	•	Our definition of “Closed” accepts any status starting with “Closed”. If your process introduces new closed statuses, it’ll still match.
+	•	A risk raised in Jan whose actions become due in May will not count in Jan’s % — this is by design (we measure remediation relative to when actions were due).
+
+Practical tips / next steps
+	•	If you want to count risks by the month they were closed instead of due, we can easily produce a vintage matrix (Raised Month vs Closed Month).
+	•	If some Action Due Date are missing, ask the source team to backfill — that materially improves accuracy.
+	•	If your workbook will be refreshed monthly, make the Python step a one-click script (or use an automated ETL job) so the three sheets are always ready.
+	•	Add Slicers to the pivot for Escalation Rating and Workflow Status so execs can filter to high-severity risks.
 
 ⸻
 
-If you want, I can also merge the monthly stats into a clean summary tab in Python, so you can hand over a ready-to-plot table without even touching Pivot logic. That would make the MI look instantly polished.
+If you want, I’ll:
+	•	produce the exact Excel pivot layout screenshots (I can produce the step-by-step text),
+	•	or adapt the script to treat blank due-dates differently (e.g., map to Action Closed Date month),
+	•	or give the exact text for 3 slides you can drop into PowerPoint.
 
-Do you want me to do that extra summary export?
+Which one should I do next?

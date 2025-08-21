@@ -1,7 +1,89 @@
-Thank you for keeping me informed about the transition of the role from Glasgow to Pune and the creation of a new requisition ID.
+Perfect — thanks for laying this out so clearly. You basically have a supervised learning problem: multiclass text classification (Complaint vs Concern vs Query) using call transcripts + supporting features (sentiment score, cost, etc.). Let me walk you through how I’d design it:
 
-As I had completed the first round of interviews for the Glasgow role and received positive feedback, I just wanted to check whether that outcome can be considered for the Pune role, or if it would be better to restart the process from the first round.
+⸻
 
-I completely understand that such transitions involve certain process changes, and I’m happy to follow whatever steps are required. Please let me know if there’s anything you’d like me to do in the meantime.
+1. Frame the Problem
+	•	Inputs: Call transcripts (text), customer sentiment score (-5 to +5), financial impact (numeric), possibly metadata like call duration if available.
+	•	Output Labels: Complaint, Concern, Query.
+	•	Type of Task: Supervised multiclass classification (with some imbalance likely, since not all calls escalate).
 
-I truly appreciate your support and guidance throughout this process.
+⸻
+
+2. Data Preparation
+	1.	Text Cleaning
+	•	Remove boilerplate agent phrases like “Welcome to Barclays”, “Let me verify your credentials”.
+	•	Normalize punctuation, lowercase, remove filler words like “uh”, “hmm”.
+	•	Consider speaker separation (Agent vs Customer) — you may find that customer utterances carry most of the signal.
+	2.	Label Assignment
+	•	You already have “complaint” vs “concern” tags.
+	•	For queries, you’ll likely have to backfill/null-tagged calls with heuristics:
+	•	No dissatisfaction keywords + neutral/positive sentiment = Query.
+	•	Or, you can manually label a seed set of nulls to bootstrap a Query class.
+	3.	Feature Engineering
+	•	From Text: embeddings from models like BERT, RoBERTa, or domain fine-tuned FinBERT.
+	•	From Structured Data:
+	•	Sentiment score → strong signal (negative sentiment correlates with complaints).
+	•	Financial impact → high > complaint; low/zero > likely concern/query.
+	•	Combine both (early fusion: concat embeddings + features into classifier).
+
+⸻
+
+3. Model Approaches
+	•	Baseline: TF-IDF + Logistic Regression or SVM (good for explainability, quick benchmark).
+	•	Next Step: Fine-tuned transformer (DistilBERT, FinBERT, or domain-adapted model) on your transcripts.
+	•	Hybrid:
+	1.	Transformer encodes text → dense embedding.
+	2.	Append sentiment score + financial impact.
+	3.	Feed into a classifier head (dense layers → softmax).
+
+⸻
+
+4. Handling Definitions
+
+Your definitions of complaint vs concern vs query map nicely to keywords + features:
+	•	Complaint:
+	•	Language: “raise complaint”, “file a complaint”, “compensation”, “loss”, “refund”.
+	•	Features: negative sentiment, non-zero cost.
+	•	Concern:
+	•	Language: “issue”, “problem”, “not working”, but softer tone.
+	•	Features: mild negative sentiment, low/zero financial cost, resolved by explanation.
+	•	Query:
+	•	Language: “how do I…?”, “can you tell me…?”, “what is…?”.
+	•	Features: neutral/positive sentiment, no dissatisfaction terms.
+
+👉 You can seed weak labels using regex/keyword rules + sentiment thresholds, then refine via ML. This is powerful if you don’t have huge labeled data yet.
+
+⸻
+
+5. Evaluation Strategy
+	•	Use F1-score per class (since imbalances will matter).
+	•	Pay attention to Complaint recall (regulatory risk if you miss them).
+	•	Use Confusion Matrix to see if model often mixes Concern vs Complaint — common pain point.
+
+⸻
+
+6. Explainability
+
+Since this is in risk/compliance assurance, explainability matters. Options:
+	•	Use SHAP or LIME to show which words/features influenced prediction.
+	•	Maintain keyword-based fallback rules for edge cases (especially for regulatory reporting).
+
+⸻
+
+7. Deployment Flow
+	1.	Ingest call transcript from AWS Contact Lens.
+	2.	Preprocess text → transformer embedding.
+	3.	Combine with sentiment + cost.
+	4.	ML model → predict {Complaint, Concern, Query}.
+	5.	Route:
+	•	Complaint → special queue (regulatory).
+	•	Concern → normal service resolution.
+	•	Query → FAQ/first-level support.
+
+⸻
+
+⚡ So, with your current dataset, you’re in an excellent position: you already have labels, transcripts, sentiment, and cost impact. That’s basically a full supervised training set.
+
+⸻
+
+Do you want me to draft a prototype pipeline in Python (pseudocode or actual code) that shows how you’d train such a classifier (text embeddings + sentiment + cost → multiclass prediction)?

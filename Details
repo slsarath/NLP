@@ -1,60 +1,289 @@
-Perfect — that’s a classic Personal Development Plan (PDP) structure. Since you’re a data scientist in risk & compliance assurance (2.5 years), I’ll draft a complete example for you. You can tweak wording as per your style, but this will be professional and aligned with your role + aspirations.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+ORX RCL vs Internal Control Library mapping (Purpose-only matching)
+- Reads two Excel files:
+    * ORX_FILE: ORX Data (must contain 'ORX Risk L1' and 'Control Description' or similar)
+    * CONTROL_FILE: Control Library (must contain 'Horizontal' and 'Description' or similar)
+- For each control in Control Library, extracts the PURPOSE section from Description
+  (if Purpose label not found, falls back to full Description).
+- Restricts candidate ORX matches to ORX entries whose ORX Risk L1 appears in the
+  control Horizontal list (comma/semicolon separated). If Horizontal empty, considers all ORX entries.
+- Computes semantic similarity using sentence-transformers/all-mpnet-base-v2 (chunk + mean pooling).
+- Produces an Excel workbook with sheets:
+    - mapping_suggestions
+    - orx_gap_report
+    - duplicates_report
+    - review_sample_high_low
+    - summary
+- Nothing is written as JSON. All outputs are Excel.
+- Edit the INPUT / OUTPUT paths and parameters below before running.
+"""
 
-⸻
+import os
+import re
+from pathlib import Path
+from typing import List, Optional, Tuple, Dict, Any
 
-1. What is my goal?
+import numpy as np
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import normalize
 
-To strengthen my expertise in advanced analytics and Generative AI, and apply these capabilities to risk and compliance assurance, with the aim of progressing into a senior data scientist/lead role and driving high-impact AI solutions for the finance sector.
+# --- USER CONFIG: update these paths before running ---
+ORX_FILE = "ORX_Data.xlsx"            # path to ORX data Excel file
+CONTROL_FILE = "Control_Library.xlsx" # path to Control Library Excel file
+OUTPUT_DIR = "orx_mapping_outputs"    # where results workbook will be saved
+OUTPUT_FILENAME = "orx_mapping_results.xlsx"
+EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
+TOP_K = 5
+SIMILARITY_THRESHOLD = 0.65          # threshold to consider an ORX entry 'covered'
+HIGH_SAMPLE = 0.80
+LOW_SAMPLE = 0.40
+CHUNK_MAX_CHARS = 1000               # chunk size for long texts
+# -----------------------------------------------------
 
-⸻
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_PATH = Path(OUTPUT_DIR) / OUTPUT_FILENAME
 
-2. Where am I now?
+# ----------------- helper functions -----------------
+def detect_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
+    """Return first matching column name from candidates (case-insensitive), or None."""
+    cols = list(df.columns)
+    for cand in candidates:
+        for c in cols:
+            if c.strip().lower() == cand.strip().lower():
+                return c
+    return None
 
-I have 2.5 years of experience as a data scientist within risk and compliance assurance, working on automation, QA tools, and analytical solutions. I have strong foundations in Python, ML, NLP, and compliance analytics, and I have delivered tools that saved significant manual effort. However, I want to expand my skills in generative AI, stakeholder leadership, and domain-specific applications in finance.
+def extract_purpose(text: str) -> str:
+    """
+    Extract the Purpose section from a control description.
+    If a clearly labelled 'Purpose' section isn't found, return the whole text cleaned.
+    """
+    if not isinstance(text, str):
+        return ""
+    s = text.strip()
+    # Normalize some separators and remove excessive whitespace
+    s = re.sub(r"\r\n|\r", "\n", s)
+    # Regex to capture content after "Purpose" up to next known label or end.
+    # Look for 'purpose' label (case-insensitive) followed by text up to next section label
+    pattern = re.compile(
+        r"(?is)\bpurpose\b\s*[:\-]?\s*(.+?)(?=(\bhow\b|\bevidence\b|\bcontrols\b|\bsteps\b|\bobjective\b|\bdescription\b|\n\s*\bhow\b|\Z))"
+    )
+    m = pattern.search(s)
+    if m:
+        purpose = m.group(1).strip()
+        # remove trailing section labels if any
+        purpose = re.sub(r"(?is)\b(how|evidence|controls|steps|objective|description)\b.*$", "", purpose).strip()
+        purpose = re.sub(r"\s+", " ", purpose)
+        return purpose
+    # fallback: try simple 'Purpose' anywhere (single-line form)
+    m2 = re.search(r"(?im)\bpurpose\b\s*[:\-]?\s*(.*)", s)
+    if m2:
+        p = m2.group(1).strip()
+        p = re.sub(r"\s+", " ", p)
+        return p
+    # final fallback: return whole cleaned text
+    return re.sub(r"\s+", " ", s)
 
-⸻
+def split_horizontal_vals(text: str) -> List[str]:
+    """Split Horizontal field into normalized category tokens (lowercase, stripped)."""
+    if not isinstance(text, str):
+        return []
+    parts = re.split(r"[;,/|]", text)
+    vals = [p.strip().lower() for p in parts if p.strip()]
+    return vals
 
-3. Why do I want to achieve this goal?
-	•	To contribute more strategically to my team by implementing advanced, scalable solutions.
-	•	To position myself for future leadership opportunities in data science within the financial sector.
-	•	To stay at the forefront of emerging AI trends (such as Generative AI) that are highly relevant to risk, compliance, and regulatory assurance.
-	•	To increase both my technical depth and business impact.
+def chunk_and_encode(model, texts: List[str], max_chars: int = CHUNK_MAX_CHARS) -> np.ndarray:
+    """
+    Chunk long texts into max_chars, encode chunks, and mean-pool chunk embeddings into a single vector.
+    Returns ndarray shape (len(texts), embedding_dim).
+    """
+    emb_dim = model.get_sentence_embedding_dimension()
+    all_embs = np.zeros((len(texts), emb_dim), dtype=np.float32)
+    for i, t in enumerate(texts):
+        if not isinstance(t, str) or not t.strip():
+            continue
+        # naive chunking by characters (keeps words intact mostly)
+        chunks = [t[j:j+max_chars] for j in range(0, len(t), max_chars)]
+        # encode all chunks and mean-pool
+        vecs = model.encode(chunks, convert_to_numpy=True, show_progress_bar=False)
+        if isinstance(vecs, np.ndarray) and vecs.ndim == 2 and vecs.shape[0] > 0:
+            all_embs[i] = vecs.mean(axis=0)
+        else:
+            # fallback to zeros if encode failed
+            all_embs[i] = np.zeros(emb_dim, dtype=np.float32)
+    return all_embs
 
-⸻
+# ----------------- main pipeline -----------------
+def main():
+    # 1) Load input files
+    if not Path(ORX_FILE).exists():
+        raise FileNotFoundError(f"ORX file not found: {ORX_FILE}")
+    if not Path(CONTROL_FILE).exists():
+        raise FileNotFoundError(f"Control Library file not found: {CONTROL_FILE}")
 
-4. What actions am I going to take, and where can I go for support?
-	•	Complete relevant certifications (e.g., AWS ML Specialty, AI in Finance programs, GenAI workshops).
-	•	Work on internal projects applying generative AI/NLP to compliance and complaints data.
-	•	Seek mentorship from senior colleagues and leadership within the risk and compliance function.
-	•	Actively engage in AI/finance communities to keep up with best practices.
-	•	Attend internal training and leverage L&D resources.
+    df_orx = pd.read_excel(ORX_FILE)
+    df_ctrl = pd.read_excel(CONTROL_FILE)
 
-⸻
+    # 2) Detect essential columns (try common names)
+    orx_desc_col = detect_column(df_orx, ["Control Description", "Control description", "Description", "control_description"])
+    orx_cat_col  = detect_column(df_orx, ["ORX Risk L1", "ORX Risk L1 ", "Risk L1", "Risk L1 "])
 
-5. What will evidence achievement of this goal?
-	•	Delivery of at least one project that integrates generative AI/advanced ML into compliance assurance.
-	•	Recognition from stakeholders for improving efficiency, accuracy, or insight.
-	•	Achieving a certification in advanced AI/ML within the next review cycle.
-	•	Increased ownership of projects and mentoring of junior colleagues.
-	•	Progression toward a senior role or broader responsibilities.
+    ctrl_desc_col = detect_column(df_ctrl, ["Description", "Control description", "Description ", "description"])
+    ctrl_horiz_col = detect_column(df_ctrl, ["Horizontal", "horizontal", "Horizontals", "Horizontal "])
+    ctrl_name_col = detect_column(df_ctrl, ["Control Name", "Control name", "Name"])
 
-⸻
+    if orx_desc_col is None or orx_cat_col is None:
+        raise ValueError("Could not find ORX description or category columns in ORX file. Inspect column names.")
+    if ctrl_desc_col is None or ctrl_horiz_col is None:
+        raise ValueError("Could not find Control Library Description or Horizontal columns. Inspect column names.")
 
-6. Timescales
-	•	Short term (3–6 months): Complete AI/ML certification, start applying new techniques in pilot projects.
-	•	Medium term (6–12 months): Deliver an AI-enhanced compliance assurance solution.
-	•	Long term (12–18 months): Demonstrate readiness for a senior role and showcase measurable business impact.
+    # 3) Preprocess text fields
+    df_orx = df_orx.reset_index(drop=True)
+    df_ctrl = df_ctrl.reset_index(drop=True)
 
-⸻
+    # ORX text and normalized category
+    df_orx["orx_text"] = df_orx[orx_desc_col].fillna("").astype(str).apply(lambda s: re.sub(r"\s+", " ", s).strip())
+    df_orx["orx_cat"] = df_orx[orx_cat_col].fillna("").astype(str).str.strip().str.lower()
 
-7. Review, how am I doing?
-	•	Quarterly self-assessment and check-in with manager.
-	•	Track completion of certifications and training milestones.
-	•	Gather stakeholder feedback on project contributions.
-	•	Reflect on how much business impact and efficiency gains the projects have created.
+    # Control - extract Purpose section
+    df_ctrl["ctrl_raw_desc"] = df_ctrl[ctrl_desc_col].fillna("").astype(str)
+    df_ctrl["ctrl_purpose"] = df_ctrl["ctrl_raw_desc"].apply(extract_purpose).apply(lambda s: re.sub(r"\s+", " ", s).strip())
+    df_ctrl["ctrl_horiz_raw"] = df_ctrl[ctrl_horiz_col].fillna("").astype(str)
+    df_ctrl["ctrl_horiz_list"] = df_ctrl["ctrl_horiz_raw"].apply(split_horizontal_vals)
+    if ctrl_name_col:
+        df_ctrl["ctrl_name"] = df_ctrl[ctrl_name_col].fillna("").astype(str)
+    else:
+        df_ctrl["ctrl_name"] = df_ctrl.index.astype(str)
 
-⸻
+    # 4) Load embedding model
+    try:
+        from sentence_transformers import SentenceTransformer
+    except Exception as e:
+        raise RuntimeError("Please install sentence-transformers: pip install sentence-transformers") from e
 
-✅ This shows you’re ambitious, structured, and aligned to both personal growth and organizational value.
+    model = SentenceTransformer(EMBEDDING_MODEL)
 
-Do you want me to make a short, crisp version (1–2 lines per section) so it’s easy to paste directly into your office PDP form?
+    # 5) Encode ORX texts (once) and control purposes
+    print("Encoding ORX descriptions...")
+    orx_texts = df_orx["orx_text"].tolist()
+    orx_emb = chunk_and_encode(model, orx_texts, CHUNK_MAX_CHARS)
+    orx_emb = normalize(orx_emb)
+
+    print("Encoding Control PURPOSE texts...")
+    ctrl_texts = df_ctrl["ctrl_purpose"].tolist()
+    ctrl_emb = chunk_and_encode(model, ctrl_texts, CHUNK_MAX_CHARS)
+    ctrl_emb = normalize(ctrl_emb)
+
+    # 6) Build mapping suggestions (category-restricted)
+    mapping_rows = []
+    for i, ctrl_row in df_ctrl.iterrows():
+        ctrl_vec = ctrl_emb[i].reshape(1, -1)
+        horiz_list = ctrl_row["ctrl_horiz_list"]  # list of lowercase categories
+        # Determine candidate ORX indices
+        if horiz_list and len(horiz_list) > 0:
+            candidate_idx = df_orx[df_orx["orx_cat"].isin(horiz_list)].index.tolist()
+            # If no candidates found within horiz list, relax to all ORX (optional)
+            if len(candidate_idx) == 0:
+                candidate_idx = df_orx.index.tolist()
+        else:
+            candidate_idx = df_orx.index.tolist()
+
+        if len(candidate_idx) == 0:
+            continue
+
+        cand_embs = orx_emb[candidate_idx]
+        sims = cosine_similarity(ctrl_vec, cand_embs)[0]  # shape (len(candidate_idx),)
+        # sort top-k
+        top_positions = list(np.argsort(-sims)[:TOP_K])
+        for rank, pos in enumerate(top_positions):
+            orx_idx = candidate_idx[pos]
+            sim = float(sims[pos])
+            mapping_rows.append({
+                "ctrl_index": int(i),
+                "ctrl_name": ctrl_row.get("ctrl_name", ""),
+                "ctrl_horizontal": ctrl_row.get("ctrl_horiz_raw", ""),
+                "ctrl_purpose": ctrl_row.get("ctrl_purpose", "")[:1000],
+                "orx_index": int(orx_idx),
+                "orx_cat": df_orx.at[orx_idx, "orx_cat"],
+                "orx_text": df_orx.at[orx_idx, "orx_text"][:1000],
+                "similarity": sim,
+                "rank": rank + 1
+            })
+
+    df_map = pd.DataFrame(mapping_rows)
+
+    # 7) Gap analysis: ORX entries with no control >= threshold
+    covered_orx = set(df_map[df_map["similarity"] >= SIMILARITY_THRESHOLD]["orx_index"].unique())
+    all_orx = set(df_orx.index.tolist())
+    uncovered = sorted(list(all_orx - covered_orx))
+    df_gaps = df_orx.loc[uncovered, [orx_cat_col, orx_desc_col]].copy()
+    df_gaps = df_gaps.rename(columns={orx_cat_col: "ORX_Risk_L1", orx_desc_col: "ORX_Control_Description"}).reset_index().rename(columns={"index":"orx_index"})
+
+    # 8) Duplicates: controls mapping to same ORX top-1
+    if not df_map.empty:
+        top1 = df_map[df_map["rank"] == 1].copy()
+        dup = top1.groupby("orx_index").agg({
+            "ctrl_index": lambda x: list(x),
+            "ctrl_name": lambda x: list(x),
+            "similarity": lambda x: list(x)
+        }).reset_index()
+    else:
+        dup = pd.DataFrame(columns=["orx_index", "ctrl_index", "ctrl_name", "similarity"])
+
+    # 9) Review sample: high and low similarity examples
+    high_df = df_map[df_map["similarity"] >= HIGH_SAMPLE].sort_values("similarity", ascending=False).head(200)
+    low_df  = df_map[df_map["similarity"] <= LOW_SAMPLE].sort_values("similarity", ascending=True).head(200)
+    review_df = pd.concat([high_df, low_df]).reset_index(drop=True)
+
+    # 10) Summary
+    summary = {
+        "total_orx": int(len(df_orx)),
+        "total_controls": int(len(df_ctrl)),
+        "mapped_pairs": int(len(df_map)),
+        "orx_gaps": int(len(df_gaps)),
+        "similarity_threshold": float(SIMILARITY_THRESHOLD),
+        "top_k": int(TOP_K)
+    }
+    # 11) Save everything into a single Excel workbook (multiple sheets)
+    out_path = OUTPUT_PATH
+    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+        # mapping suggestions
+        if not df_map.empty:
+            df_map.to_excel(writer, sheet_name="mapping_suggestions", index=False)
+        else:
+            pd.DataFrame(columns=[
+                "ctrl_index","ctrl_name","ctrl_horizontal","ctrl_purpose",
+                "orx_index","orx_cat","orx_text","similarity","rank"
+            ]).to_excel(writer, sheet_name="mapping_suggestions", index=False)
+
+        # gaps
+        df_gaps.to_excel(writer, sheet_name="orx_gap_report", index=False)
+
+        # duplicates
+        dup.to_excel(writer, sheet_name="duplicates_report", index=False)
+
+        # review sample
+        review_df.to_excel(writer, sheet_name="review_sample_high_low", index=False)
+
+        # optional: include original processed tables for reference
+        df_orx[["orx_cat", "orx_text"]].to_excel(writer, sheet_name="orx_processed", index=True)
+        df_ctrl[["ctrl_name", "ctrl_horiz_raw", "ctrl_purpose"]].to_excel(writer, sheet_name="control_processed", index=True)
+
+        # summary sheet as small dataframe
+        pd.DataFrame([summary]).to_excel(writer, sheet_name="summary", index=False)
+
+    print(f"Saved Excel results to: {out_path.resolve()}")
+
+    # also save embeddings (optional .npy) to speed reruns - helpful but not required
+    try:
+        np.save(Path(OUTPUT_DIR) / "orx_embeddings.npy", orx_emb)
+        np.save(Path(OUTPUT_DIR) / "ctrl_embeddings.npy", ctrl_emb)
+        print("Saved embeddings (.npy) to output dir.")
+    except Exception:
+        pass
+
+if __name__ == "__main__":
+    main()

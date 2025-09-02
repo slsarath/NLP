@@ -1,73 +1,118 @@
-import pandas as pd
-import logging
-import os
+Subject: ORX → Control Library Mapping — results, method, and next steps
 
-class AnotherProcessor:
-    def __init__(self):
-        self.df = None
-        self.risk_library_df = None
-        self.proc_library_df = None
-        self.or_df = None
+Hi [Manager Name],
 
-    def load_data(self, file_path):
-        logging.info(f"Loading data from {file_path}")
-        try:
-            normalized_path = os.path.normpath(file_path)
-            self.df = pd.read_excel(normalized_path)
-        except Exception as e:
-            logging.error(f"Error loading data: {e}")
-            raise
+I ran the ORX vs Control-Library mapping exercise and produced a single Excel workbook with the results and everything your SMEs need to review. Below is a short summary of what I did, what’s in the output, and recommended next steps.
 
-    def load_risk_library(self, file_path):
-        logging.info(f"Loading risk library data from {file_path}")
-        try:
-            normalized_path = os.path.normpath(file_path)
-            self.risk_library_df = pd.read_excel(normalized_path)
-        except Exception as e:
-            logging.error(f"Error loading risk library data: {e}")
-            raise
+⸻
 
-    def load_proc_library(self, file_path):
-        logging.info(f"Loading PROC library data from {file_path}")
-        try:
-            normalized_path = os.path.normpath(file_path)
-            self.proc_library_df = pd.read_excel(normalized_path)
-        except Exception as e:
-            logging.error(f"Error loading PROC library data: {e}")
-            raise
+What I did (high level)
+	•	Matched ORX controls (ORX Risk L1 + Control Description) to our internal controls by comparing the ORX description to the Purpose section of each control in the Control Library.
+	•	Restricted candidate matches to ORX controls whose ORX Risk L1 is included in the control’s Horizontal values (comma/semicolon separated). If Horizontal was empty, the control compared against all ORX entries.
+	•	Used semantic embeddings (MPNet) with chunking + mean pooling and cosine similarity to score matches.
+	•	Produced an Excel workbook (all sheets in one file) for SME review — no JSON files.
 
-    def load_or_file(self, file_path):
-        logging.info(f"Loading OR data from {file_path}")
-        try:
-            normalized_path = os.path.normpath(file_path)
-            self.or_df = pd.read_excel(normalized_path)
-        except Exception as e:
-            logging.error(f"Error loading OR data: {e}")
-            raise
+Key parameters used
+	•	Embedding model: sentence-transformers/all-mpnet-base-v2
+	•	Top candidates per control: TOP_K = 5
+	•	Similarity threshold for “covered”: SIMILARITY_THRESHOLD = 0.65
+	•	Purpose extraction: regex that pulls labelled “Purpose:” content (falls back to full description if absent)
 
-    def process_data(self, creation_date_from, creation_date_to):
-        logging.info("Processing data for Req2")
-        try:
-            # Filter the data based on creation dates
-            self.df = self.df[
-                (self.df['Creation Date'] >= creation_date_from) & 
-                (self.df['Creation Date'] <= creation_date_to)
-            ]
+Where to find outputs
+	•	Excel workbook: orx_mapping_results.xlsx (saved in the output folder specified when running the script).
+— It contains all reports and the processed source tables so reviewers see exactly what was matched.
 
-            # Example of merging data with the risk library, proc library, and or files
-            self.df = self.df.merge(self.risk_library_df, how='left', left_on='Risk Name', right_on='Risk Aligned to impact')
-            self.df = self.df.merge(self.proc_library_df, how='left', left_on='Process Name', right_on='Causal Process')
-            self.df = self.df.merge(self.or_df, how='left', left_on='Organization', right_on='Causal Organization')
+What’s in the workbook (sheet by sheet)
+	1.	mapping_suggestions
+	•	For each internal control: top-K ORX candidates with similarity and rank. Columns include ctrl_name, ctrl_horizontal, ctrl_purpose, orx_cat, orx_text, similarity, rank.
+	•	Use: SME should review rank=1 and any candidate with similarity >= 0.65.
+	2.	orx_gap_report
+	•	ORX entries that have no internal control achieving similarity ≥ threshold.
+	•	Use: owners decide if a new control is required or if an existing control should be rephrased/retagged.
+	3.	duplicates_report
+	•	ORX entries that multiple internal controls map to (top-1).
+	•	Use: check for redundant controls and consolidation opportunities.
+	4.	review_sample_high_low
+	•	A curated QA sample: high-similarity (≥ 0.80) and low-similarity (≤ 0.40) examples for quick SME calibration.
+	5.	orx_processed and control_processed
+	•	The preprocessed ORX and Control Library texts used for matching (for traceability). Includes the extracted ctrl_purpose.
+	6.	summary
+	•	Counts and parameters used (total ORX, total controls, mapped pairs, gaps, threshold, top_k).
 
-            # Add more processing steps as needed
-        except Exception as e:
-            logging.error(f"Error processing data: {e}")
-            raise
+How to interpret similarity (practical guidance)
+	•	≥ 0.85 → very strong match
+	•	0.70–0.85 → good candidate (review recommended)
+	•	0.60–0.70 → borderline — manual check required
+	•	< 0.60 → low (unlikely match unless wording is very different)
 
-    def save_output(self, output_path):
-        logging.info(f"Saving output to {output_path}")
-        try:
-            self.df.to_excel(output_path, index=False)
-        except Exception as e:
-            logging.error(f"Error saving output: {e}")
-            raise
+Recommended SME workflow (what I suggest we do next)
+	1.	Open review_sample_high_low and validate the high/low examples to tune threshold if needed.
+	2.	Review mapping_suggestions:
+	•	Accept clearly correct matches (we can mark them in the sheet).
+	•	Reject/flag incorrect suggestions.
+	3.	Triage orx_gap_report:
+	•	Confirm whether the ORX control is genuinely uncovered, or whether a control exists under a different Horizontal or with different wording.
+	•	For true gaps, capture remediation steps (create control / assign owner).
+	4.	Use duplicates_report to identify consolidation candidates.
+	5.	After SMEs have made decisions on a modest sample (100–300 pairs), we can:
+	•	Train a cross-encoder reranker on accepted mappings to improve top-1 precision, and/or
+	•	Re-run the pipeline with a tuned threshold.
+
+Operational notes & next technical options
+	•	The script saves embeddings (.npy) so reruns / experimentation are fast.
+	•	If you want higher precision at top-1, I recommend: (a) collecting SME labels on a sample, then (b) training a cross-encoder (ms-marco-MiniLM-L6-v2) to rerank top candidates.
+	•	If many controls have empty/misaligned Horizontal values, consider standardizing that field first — category filtering materially improves precision.
+	•	If you want, I can produce a one-page reviewer checklist (step-by-step actions for SMEs) and a short template for capturing accept/reject decisions.
+
+If you want me to proceed
+	•	I can (A) prepare the reviewer checklist and the sheet with columns to record SME decisions, or (B) run a rerun with adjusted threshold/model after you review the QA sample. Tell me which and I’ll prepare the deliverable.
+
+Regards,
+Sho
+
+—
+(If you’d like, I can paste in the exact command to run the script locally and where to set the input/output paths.)
+
+
+Here’s a simplified, manager-friendly draft of that email — no jargon like “top-k”, “embeddings”, or thresholds. Just clear outcomes and next steps.
+
+⸻
+
+Subject: ORX vs Internal Control Library – Results and Next Steps
+
+Hi [Manager Name],
+
+I’ve completed the first run of mapping our ORX controls against our Internal Control Library. The results are pulled into a single Excel file so it’s easy for SMEs to review. Here’s a quick overview:
+
+What I did
+	•	Matched each ORX control to the Purpose part of our internal controls (ignoring procedural details like “How” or “Evidence”).
+	•	Only compared ORX controls to internal controls that fall under the same risk category.
+	•	Produced similarity scores that show how closely an ORX item aligns to each internal control.
+
+What you’ll find in the Excel
+	•	Mapping suggestions – each internal control has suggested ORX matches, with a score showing how strong the match is.
+	•	Gap report – ORX items where no close match was found in our library. These highlight potential control gaps or wording mismatches.
+	•	Duplicate report – cases where multiple internal controls map to the same ORX item, pointing to possible overlaps.
+	•	Review samples – a short list of very strong matches and very weak matches, to help SMEs quickly calibrate what “good” and “bad” matches look like.
+	•	Processed views – shows exactly what text was compared (so reviewers can see the extracted “Purpose” text).
+	•	Summary – headline counts: number of ORX items, internal controls, suggested matches, and potential gaps.
+
+How to use it
+	1.	SMEs should start by reviewing the Review Samples sheet — this will help set the bar for what counts as an acceptable match.
+	2.	Go through the Mapping Suggestions and confirm/reject matches.
+	3.	Look at the Gap Report to decide whether these are true missing controls or simply cases where wording/categories need fixing.
+	4.	Use the Duplicate Report to identify where controls might be consolidated.
+
+Next steps
+	•	Once SMEs confirm a set of matches, we can fine-tune the process so future runs are even more accurate.
+	•	The gap list will need owner review to confirm whether new controls are required.
+	•	If helpful, I can prepare a simple reviewer checklist to guide SMEs through the file.
+
+Let me know if you’d like me to set up the review checklist or walk the team through the Excel outputs in a quick session.
+
+Best,
+Sho
+
+⸻
+
+Do you want me to also draft that one-page reviewer checklist I mentioned, so your SMEs have a clear step-by-step when opening the Excel?

@@ -1,59 +1,198 @@
-import os
-import time
-from PIL import ImageGrab, Image
-from tkinter import simpledialog, messagebox
-from openpyxl import load_workbook
-from openpyxl.drawing.image import Image as XLImage
+What the script produces (file + sheets) — plain, practical explanation
 
-# Screenshot function
-time.sleep(0.3)
-screenshot = ImageGrab.grab()
-temp_path = os.path.join(os.path.expanduser("~"), "temp_screenshot.png")
-screenshot.save(temp_path)
+When you run the script it writes a single Excel workbook:
+<OUTPUT_DIR>/orx_mapping_results.xlsx
 
-# Get comment from user
-comment = simpledialog.askstring("Screenshot Info", "Enter keyword and description (e.g. DS-Src, Login Screen):")
-if not comment:
-    raise Exception("No comment entered.")
+The workbook contains these sheets. Below each sheet name I list the exact columns and explain what each column means and how you should use it.
 
-try:
-    keyword, *desc_parts = comment.strip().split(",", 1)
-    description = desc_parts[0].strip() if desc_parts else ""
-    keyword = keyword.strip()
+⸻
 
-    # Example KEYWORD_MAPPING
-    KEYWORD_MAPPING = {
-        "DS-Src": ("Sheet1", 5, 10),
-        "DS-Login": ("Sheet2", 15, 20),
-        # Add more mappings here
-    }
+mapping_suggestions
 
-    if keyword not in KEYWORD_MAPPING:
-        messagebox.showerror("Invalid Keyword", f"Keyword '{keyword}' not recognized.")
-        raise Exception("Invalid keyword")
+What it contains
+	•	ctrl_index — row index in your Control Library file (for traceability).
+	•	ctrl_name — control short name (if present) or index fallback.
+	•	ctrl_horizontal — raw Horizontal value from Control Library (comma/semicolon list).
+	•	ctrl_purpose — the extracted Purpose text (cleaned) from the Control Library Description (this is what we matched against ORX).
+	•	orx_index — row index in the ORX file (traceability).
+	•	orx_cat — the ORX ORX Risk L1 value (normalized lowercased).
+	•	orx_text — ORX Control Description (cleaned).
+	•	similarity — cosine similarity (0.0 → 1.0) between control Purpose embedding and ORX description embedding.
+	•	rank — 1..TOP_K (top-ranked ORX candidates for that control).
 
-    sheet_name, start_row, end_row = KEYWORD_MAPPING[keyword]
-    saved_file_path = "output.xlsx"  # Replace with your actual path
+How to use it
+	•	Each control has up to TOP_K suggested ORX matches. Start by looking at rank=1 rows: these are the top suggestions.
+	•	similarity is the confidence proxy. Higher means the texts are semantically closer. Expect high-quality matches around 0.75–0.95 for typical business-control wording.
+	•	For similarity >= SIMILARITY_THRESHOLD (default 0.65) treat as candidate automatic match to be reviewed. For lower values, treat as “suggestion + needs closer SME review”.
 
-    # Load workbook and sheet
-    wb = load_workbook(saved_file_path)
-    ws = wb[sheet_name]
+⸻
 
-    # Define image and insert position
-    img = XLImage(temp_path)
-    img.width = 300
-    img.height = 180
-    cell_location = f"B{start_row}"
+orx_gap_report
 
-    ws.add_image(img, cell_location)
+What it contains
+	•	orx_index — ORX row index.
+	•	ORX_Risk_L1 — original ORX category.
+	•	ORX_Control_Description — ORX description text.
 
-    # Add comment
-    comment_cell = f"B{start_row - 2}"
-    ws[comment_cell] = description
+How to use it
+	•	These are the ORX controls that had no Control Library entry mapping with similarity >= SIMILARITY_THRESHOLD (category-matched).
+	•	Each row is a potential gap: the organization either does not have a corresponding control, or the existing control wording is too different to be matched by the current pipeline.
+	•	For each gap, ask SMEs: do we need a new control, or is there a control that simply needs rephrasing or metadata fix (Horizontal)?
 
-    wb.save(saved_file_path)
-    wb.close()
-    os.remove(temp_path)
+⸻
 
-except Exception as e:
-    messagebox.showerror("Screenshot Error", str(e))
+duplicates_report
+
+What it contains
+	•	orx_index — ORX row index (the ORX control that multiple internal controls mapped to).
+	•	ctrl_index — list of control indices (internal controls mapping to that ORX).
+	•	ctrl_name — list of corresponding control names.
+	•	similarity — list of similarity values for those mappings.
+
+How to use it
+	•	These are consolidation candidates. If multiple internal controls map strongly to the same ORX item, consider merging or clarifying their scope to avoid duplicated control effort.
+	•	Inspect the similarity values — if all are high, duplication is likely. If values vary widely, maybe these internal controls differ in nuance and require distinct treatment.
+
+⸻
+
+review_sample_high_low
+
+What it contains
+	•	A manual QA sample concatenating:
+	•	high-similarity examples (≥ HIGH_SAMPLE, default 0.80), and
+	•	low-similarity examples (≤ LOW_SAMPLE, default 0.40).
+	•	Columns same as mapping_suggestions.
+
+How to use it
+	•	Give this sheet to SMEs for quick triage. It helps you calibrate the threshold and understand false positives/negatives.
+	•	Use SME decisions to tune threshold or to create training data for a reranker.
+
+⸻
+
+orx_processed
+
+What it contains
+	•	orx_cat and orx_text — the normalized ORX category and the cleaned ORX description. (index preserved)
+
+How to use it
+	•	Reference: shows exactly what the script matched on for ORX entries.
+
+⸻
+
+control_processed
+
+What it contains
+	•	ctrl_name, ctrl_horiz_raw, ctrl_purpose — internal control name, raw horizontal string, and the extracted Purpose text.
+
+How to use it
+	•	Reference: shows the exact Purpose text the mapping used. If SMEs say matches look wrong, edit the ctrl_purpose source or extraction rules.
+
+⸻
+
+summary
+
+What it contains (single-row table)
+	•	total_orx — count of ORX rows processed.
+	•	total_controls — count of control library rows processed.
+	•	mapped_pairs — number of control→ORX candidate pairs produced (top-K per control).
+	•	orx_gaps — count of ORX entries with no candidate above threshold.
+	•	similarity_threshold and top_k — the parameters used.
+
+How to use it
+	•	Quick health check. orx_gaps / total_orx shows coverage gaps at the chosen threshold.
+
+⸻
+
+What the code does — step-by-step, with reasons
+	1.	Load your two Excel files (ORX_FILE, CONTROL_FILE)
+	•	Script expects ORX file to contain an ORX category column (e.g., ORX Risk L1) and a short ORX description column.
+	•	Control Library file must have Horizontal and Description columns.
+	2.	Detect & normalize required columns
+	•	detect_column() tries common column names (case-insensitive). If detection fails the script raises an error to avoid silent mismatches.
+	3.	Extract Purpose from Control Library descriptions (extract_purpose)
+	•	Uses regex to find a labelled Purpose block and capture text until the next known label (How, Evidence, Steps, Objective, Description) or end of text.
+	•	If Purpose: label not present, the function falls back to a sensible line-grab or returns the full cleaned text.
+	•	Rationale: matching ORX descriptions to the purpose of internal control is more precise than matching on procedural details (How) or Evidence fields.
+	4.	Normalize categories
+	•	ORX Risk L1 → orx_cat (lowercased).
+	•	Horizontal in control library → split into a list ctrl_horiz_list (split on , ; / |) and lowercased.
+	•	Rationale: we restrict comparisons only to category-relevant ORX controls to avoid unlikely cross-domain matches.
+	5.	Embedding model & chunking
+	•	Loads sentence-transformers/all-mpnet-base-v2.
+	•	For each text, chunks into ~CHUNK_MAX_CHARS slices (safe for very long fields), encodes each chunk, then mean-pools chunk embeddings into one vector.
+	•	L2-normalizes embeddings.
+	•	Rationale: semantic embeddings capture meaning beyond lexical overlap; chunking keeps long descriptions handled robustly.
+	6.	Candidate selection by category
+	•	For each internal control, the candidate set is ORX rows whose orx_cat matches any token in the control Horizontal list.
+	•	If a control has empty Horizontal the candidate set falls back to all ORX entries.
+	•	Rationale: prevents irrelevant cross-domain matching and reduces computation.
+	7.	Similarity & top-K
+	•	Compute cosine similarity between the control embedding and candidate ORX embeddings; pick top-K (default 5) by similarity; record rank and score.
+	•	Rationale: top-K gives SMEs a short list of likely mappings.
+	8.	Gap detection
+	•	Mark any ORX row as a gap if no internal control achieved similarity ≥ SIMILARITY_THRESHOLD.
+	•	Rationale: these are either true gaps or mis-described internal controls.
+	9.	Duplicates
+	•	Compute which internal controls map to the same ORX top-1 to flag consolidation opportunities.
+	10.	Sample for SME QA
+	•	Save highest and lowest scoring matches so SMEs can quickly validate or calibrate thresholds.
+	11.	Save Excel workbook
+	•	All outputs saved to a single Excel file with multiple sheets, as you requested.
+
+⸻
+
+How to interpret similarity (practical guidance)
+	•	similarity is cosine similarity on embeddings; values roughly in [0.0, 1.0].
+	•	Typical expectations (approximate, domain-dependent):
+	•	>= 0.85 — very strong match (likely same control concept).
+	•	0.70–0.85 — good candidate; review recommended.
+	•	0.60–0.70 — borderline; could be match if wording differs.
+	•	< 0.60 — low; usually not a good match unless wording is very different.
+	•	Start with SIMILARITY_THRESHOLD = 0.65. Use the review_sample_high_low to calibrate. If many false positives at 0.65, raise to 0.75. If you miss obvious matches, lower it.
+
+⸻
+
+Recommended SME review workflow (concise)
+	1.	Open review_sample_high_low and accept/reject pairs (50–200 examples).
+	2.	Inspect mapping_suggestions for all rank=1 and similarity >= threshold. Accept obvious matches in bulk.
+	3.	Triage orx_gap_report. For each gap: (a) find owner and confirm if control missing, (b) check whether an internal control exists under different Horizontal or needs text rewrite, (c) add new control if required.
+	4.	For duplicates_report, check for redundant controls and plan consolidation.
+	5.	Save SME decisions — use them to train a small cross-encoder reranker for improved top-1 precision (optional, later).
+
+⸻
+
+Parameters you can tune (and the effect)
+	•	TOP_K — more candidates = more SME work; use 3–5 for efficiency.
+	•	SIMILARITY_THRESHOLD — higher means fewer false positives, more false negatives. Start at 0.65.
+	•	CHUNK_MAX_CHARS — make larger if descriptions are long; smaller if you want more granular chunking.
+	•	EMBEDDING_MODEL — all-mpnet-base-v2 is a strong default. If you want faster/lighter, try all-MiniLM-L6-v2 (less accurate).
+	•	HIGH_SAMPLE / LOW_SAMPLE — adjust for QA sample sizes.
+
+⸻
+
+Common issues and fixes
+	•	Wrong column detection: inspect control_processed and orx_processed sheets. If the script picked wrong columns, update detect_column() candidates or rename input columns.
+	•	Purpose extraction misses content: update extract_purpose() regex to cover the label formats your Description uses (e.g., PURPOSE -, Purpose (Objective):, OBJECTIVE:).
+	•	Too many gaps: check Horizontal values for mismatches (spelling/casing); open control_processed to confirm ctrl_horiz_list. If many Horizontal values don’t match ORX categories, consider standardizing or temporarily relaxing category restriction.
+	•	Poor semantic matches: ensure sentence-transformers is installed and model downloads succeeded; embedding-based matching is much stronger than TF-IDF. Use reranker for top-1 quality.
+
+⸻
+
+How to run (reminder)
+	1.	pip install sentence-transformers openpyxl
+	2.	Edit top-of-script variables: ORX_FILE, CONTROL_FILE, OUTPUT_DIR, maybe SIMILARITY_THRESHOLD and TOP_K.
+	3.	python orx_mapping_script.py
+	4.	Open <OUTPUT_DIR>/orx_mapping_results.xlsx in Excel and follow SME workflow above.
+
+⸻
+
+Final practical suggestions (next steps)
+	•	Do a quick run and open review_sample_high_low. If the high/low samples look wrong, adjust extract_purpose rules first — getting the right input text (purpose) is more powerful than fiddling with model settings.
+	•	After collecting SME accept/reject labels (a few hundred), train a cross-encoder reranker — it will lift top-1 accuracy substantially.
+	•	Keep embeddings saved (orx_embeddings.npy / ctrl_embeddings.npy) so you can iterate without recomputing everything.
+
+⸻
+
+If you want, I can now:
+	•	Produce a short checklist the reviewers can follow when triaging the Excel (step-by-step actions in a single page), or
+	•	Draft a small example of how to convert SME accept/reject decisions into training data for a reranker.

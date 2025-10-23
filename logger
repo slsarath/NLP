@@ -1,32 +1,345 @@
+#!/usr/bin/env python3
+"""
+Phrases -> Control Chunks (MPNet) with extra top-3-per-obligation sheet.
+
+Outputs an Excel with three sheets:
+ - chunk_phrase_matches         (one row per control chunk with top-3 phrase matches)
+ - obligation_to_controls       (one row per obligation, matched controls summary)
+ - top3_controls_per_obligation (one row per obligation-control (top3) with full explainability)
+
+Requirements:
+    pip install sentence-transformers pandas openpyxl numpy
+"""
+
+import re
+import sys
+from typing import List, Dict, Tuple
+import numpy as np
 import pandas as pd
-from openpyxl import load_workbook
-from tkinter import messagebox
 
-IFRS_FILE_PATH = "your_path/IFRS9.xlsx"
-saved_file_path = "your_path/template_output.xlsx"
-orac_id = "your_orac_id"
+MODEL_NAME = 'all-mpnet-base-v2'
+TOP_N_PHRASES = 3
+CHUNK_TARGET_CHARS = 500
+CHUNK_OVERLAP_SENT_RATIO = 0.25
+MIN_SENT_LEN = 20
 
-try:
-    df = pd.read_excel(IFRS_FILE_PATH, engine='openpyxl')
-    filtered = df[df["ORAC CTRL ID"].astype(str).str.strip() == orac_id]
+# -------------------- TEXT UTILITIES -----------------
+def normalize_text(t) -> str:
+    if t is None:
+        return ''
+    if not isinstance(t, str):
+        if pd.isna(t):
+            return ''
+        t = str(t)
+    t = t.replace('\r\n', '\n').replace('\r', '\n')
+    t = t.replace('\t', ' ')
+    t = re.sub(r'[\u2018\u2019]', "'", t)
+    t = re.sub(r'[\u201c\u201d]', '"', t)
+    t = re.sub(r'[\u2022\u2023\u25E6\u2043]', '-', t)
+    t = re.sub(r'\n+', ' ', t)
+    t = re.sub(r'\s+', ' ', t)
+    return t.strip()
 
-    if filtered.empty:
-        messagebox.showwarning("No Data", f"No data found in IFRS9.xlsx for ORAC ID: {orac_id}")
+def sentence_split(text: str) -> List[str]:
+    if not text:
+        return []
+    sents = re.split(r'(?<=[.!?])\s+', text.strip())
+    sents = [s.strip() for s in sents if s.strip()]
+    return sents
+
+def merge_short_sentences(sents: List[str], min_len: int = MIN_SENT_LEN) -> List[str]:
+    if not sents:
+        return []
+    out = []
+    buf = ''
+    for s in sents:
+        if len(s) < min_len:
+            if buf:
+                buf += ' ' + s
+            else:
+                buf = s
+            if len(buf) >= min_len:
+                out.append(buf)
+                buf = ''
+        else:
+            if buf:
+                out.append(buf)
+                buf = ''
+            out.append(s)
+    if buf:
+        out.append(buf)
+    return out
+
+def build_chunks_from_sentences(sents: List[str], target_chars: int = CHUNK_TARGET_CHARS,
+                                overlap_ratio: float = CHUNK_OVERLAP_SENT_RATIO) -> List[List[str]]:
+    if not sents:
+        return []
+    chunks = []
+    cur = []
+    cur_len = 0
+    for sent in sents:
+        if cur_len + len(sent) + (1 if cur else 0) > target_chars and cur:
+            chunks.append(cur)
+            overlap_count = max(1, int(len(cur) * overlap_ratio))
+            cur = cur[-overlap_count:].copy()
+            cur_len = sum(len(x) + 1 for x in cur)
+        else:
+            cur.append(sent)
+            cur_len += len(sent) + (1 if cur else 0)
+    if cur:
+        chunks.append(cur)
+    return [c for c in chunks if c]
+
+def join_chunk_sentences(chunk_sents: List[str]) -> str:
+    return ' '.join(chunk_sents).strip()
+
+# -------------------- EMBEDDINGS (MPNet) --------------------
+def get_mpnet_embedder(model_name: str = MODEL_NAME):
+    try:
+        from sentence_transformers import SentenceTransformer
+    except Exception as e:
+        raise RuntimeError(
+            "sentence-transformers not found. Install with:\n"
+            "    pip install sentence-transformers\n"
+            "This script uses 'all-mpnet-base-v2' only."
+        ) from e
+    model = SentenceTransformer(model_name)
+    def embed(texts: List[str]) -> np.ndarray:
+        if not texts:
+            return np.zeros((0, model.get_sentence_embedding_dimension()), dtype=float)
+        embs = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
+        norms = np.linalg.norm(embs, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        return embs / norms
+    return embed
+
+def cos_sim_matrix(A: np.ndarray, B: np.ndarray) -> np.ndarray:
+    if A.size == 0 or B.size == 0:
+        return np.zeros((A.shape[0], B.shape[0]))
+    return np.dot(A, B.T)
+
+# -------------------- CORE PROCESS (phrases -> control chunks) --------------------
+def phrases_to_controls_pipeline(
+    df_controls: pd.DataFrame,
+    df_phrases: pd.DataFrame,
+    embed_fn,
+    top_n_phrases: int = TOP_N_PHRASES
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # validate columns
+    if 'Control Id' not in df_controls.columns or 'Full Description' not in df_controls.columns:
+        raise ValueError("Controls must include columns: 'Control Id', 'Full Description'")
+    if 'Obligation id' not in df_phrases.columns or 'Phrase' not in df_phrases.columns:
+        raise ValueError("Phrases must include columns: 'Obligation id', 'Phrase'")
+
+    df_controls = df_controls[['Control Id', 'Full Description']].copy()
+    df_controls['Full Description'] = df_controls['Full Description'].apply(normalize_text)
+    df_phrases = df_phrases[['Obligation id', 'Phrase']].copy()
+    df_phrases['Phrase'] = df_phrases['Phrase'].apply(normalize_text)
+
+    phrase_texts = df_phrases['Phrase'].tolist()
+    phrase_obl_ids = df_phrases['Obligation id'].tolist()
+
+    # build control chunks
+    control_chunks_texts: List[str] = []
+    control_chunks_meta: List[Dict] = []
+    for ctrl_idx, row in df_controls.iterrows():
+        ctrl_id = row['Control Id']
+        full = row['Full Description'] or ''
+        sents = sentence_split(full)
+        sents = merge_short_sentences(sents)
+        chunks_sent_lists = build_chunks_from_sentences(sents)
+        if not chunks_sent_lists:
+            chunks_sent_lists = [[full]] if full else []
+        for cidx, chunk_sents in enumerate(chunks_sent_lists):
+            chunk_text = join_chunk_sentences(chunk_sents)
+            control_chunks_texts.append(chunk_text)
+            control_chunks_meta.append({
+                'control_idx': int(ctrl_idx),
+                'Control Id': ctrl_id,
+                'Full Description': full,
+                'chunk_idx': int(cidx),
+                'chunk_sentences': chunk_sents,
+                'chunk_text': chunk_text
+            })
+
+    # embed
+    if control_chunks_texts:
+        ctrl_chunks_emb = embed_fn(control_chunks_texts)
     else:
-        row = filtered.iloc[0]
-        wb = load_workbook(saved_file_path)
-        sheet = wb["1. ABC Details"]
+        ctrl_chunks_emb = np.zeros((0, embed_fn([ "a" ]).shape[1]))
+    phrase_emb = embed_fn(phrase_texts) if phrase_texts else np.zeros((0, ctrl_chunks_emb.shape[1]))
 
-        sheet["B5"] = row.get("ORAC CTRL ID", "")
-        sheet["C5"] = row.get("KPMG ID", "")
-        sheet["D5"] = row.get("Unique ID", "")
-        sheet["E5"] = row.get("IT Service Instance ID:IT Service Instance Name", "")
-        sheet["F5"] = row.get("ABC Short Name", "")
-        sheet["G5"] = row.get("ABC Description", "")
+    # similarity: control_chunks x phrases
+    sim_mat = cos_sim_matrix(ctrl_chunks_emb, phrase_emb)  # n_chunks x n_phrases
 
-        wb.save(saved_file_path)
-        wb.close()
-        messagebox.showinfo("Success", f"Template created and data copied to: {saved_file_path}")
+    # produce chunk-level rows with top phrases and sentence justification
+    chunk_rows = []
+    for i, meta in enumerate(control_chunks_meta):
+        sims = sim_mat[i] if sim_mat.size else np.array([])
+        top_idx = np.argsort(sims)[::-1][:top_n_phrases] if sims.size else []
+        top_phrases_with_scores = []
+        # pre-embed chunk sentences so we can find best sentence for each phrase
+        chunk_sents = meta['chunk_sentences'] if meta.get('chunk_sentences') else [meta['chunk_text']]
+        sent_embeddings = embed_fn(chunk_sents) if chunk_sents else np.zeros((0, phrase_emb.shape[1]))
+        for pi in top_idx:
+            score = float(round(float(sims[pi]), 6))
+            phrase_text = phrase_texts[pi]
+            obl_id = phrase_obl_ids[pi]
+            if sent_embeddings.size and phrase_emb.size:
+                pvec = phrase_emb[pi]
+                s_sims = np.dot(sent_embeddings, pvec)
+                best_sent_idx = int(np.argmax(s_sims))
+                best_sent_text = chunk_sents[best_sent_idx]
+                best_sent_score = float(round(float(s_sims[best_sent_idx]), 6))
+            else:
+                best_sent_text = ''
+                best_sent_score = 0.0
+            top_phrases_with_scores.append((phrase_text, score, obl_id, best_sent_text, best_sent_score))
 
-except Exception as e:
-    messagebox.showerror("Error", f"Error while processing IFRS9.xlsx:\n{e}")
+        # aggregated obligations: best score per obligation id from the top phrases
+        obl_score_map: Dict[str, float] = {}
+        obl_sentence_map: Dict[str, Tuple[str, float]] = {}
+        for (ptext, pscore, obl, best_sent, best_sent_score) in top_phrases_with_scores:
+            if obl in obl_score_map:
+                if pscore > obl_score_map[obl]:
+                    obl_score_map[obl] = pscore
+                    obl_sentence_map[obl] = (best_sent, best_sent_score)
+            else:
+                obl_score_map[obl] = pscore
+                obl_sentence_map[obl] = (best_sent, best_sent_score)
+        agg_obligations_sorted = sorted(obl_score_map.items(), key=lambda x: x[1], reverse=True)
+
+        row = {
+            'Control Id': meta['Control Id'],
+            'Control Full Description': meta['Full Description'],
+            'Chunk Index': meta['chunk_idx'],
+            'Chunk Text': meta['chunk_text'],
+            'Aggregated_Obligation_Matches': str(agg_obligations_sorted),
+        }
+        for k in range(top_n_phrases):
+            row[f'Phrase{k+1}'] = top_phrases_with_scores[k][0] if k < len(top_phrases_with_scores) else ''
+            row[f'Phrase{k+1}_Score'] = top_phrases_with_scores[k][1] if k < len(top_phrases_with_scores) else ''
+            row[f'Phrase{k+1}_Obligation'] = top_phrases_with_scores[k][2] if k < len(top_phrases_with_scores) else ''
+            row[f'Phrase{k+1}_Best_Sentence'] = top_phrases_with_scores[k][3] if k < len(top_phrases_with_scores) else ''
+            row[f'Phrase{k+1}_Best_Sentence_Score'] = top_phrases_with_scores[k][4] if k < len(top_phrases_with_scores) else ''
+        justification = "; ".join([f"'{p}' ({s:.3f}) -> {o} | best sentence: \"{sent}\" ({ss:.3f})"
+                                  for (p,s,o,sent,ss) in top_phrases_with_scores])
+        row['Justification_Text'] = justification
+        chunk_rows.append(row)
+
+    chunk_matches_df = pd.DataFrame(chunk_rows)
+
+    # build obligation -> control mapping (best score per control for each obligation)
+    obl_to_ctrl: Dict[str, Dict[str, Dict]] = {}
+    for row in chunk_rows:
+        ctrl_id = row['Control Id']
+        for k in range(top_n_phrases):
+            obl = row.get(f'Phrase{k+1}_Obligation')
+            score = row.get(f'Phrase{k+1}_Score') or 0.0
+            best_sent = row.get(f'Phrase{k+1}_Best_Sentence') or ''
+            if not obl:
+                continue
+            if obl not in obl_to_ctrl:
+                obl_to_ctrl[obl] = {}
+            cmap = obl_to_ctrl[obl]
+            if ctrl_id not in cmap or float(score) > float(cmap[ctrl_id]['best_score']):
+                cmap[ctrl_id] = {'best_score': float(score), 'best_sentence': best_sent, 'chunk_text': row['Chunk Text']}
+    # obligation_map_df
+    obl_rows = []
+    for obl, cmap in obl_to_ctrl.items():
+        ctrl_list = sorted([(cid, info['best_score'], info['best_sentence']) for cid, info in cmap.items()],
+                           key=lambda x: x[1], reverse=True)
+        compact = "; ".join([f"{cid} ({s:.3f})" for cid, s, _ in ctrl_list])
+        obl_rows.append({'Obligation id': obl, 'Matched Controls (ControlId (score))': compact, 'Matched Controls Detailed': str(ctrl_list)})
+    obligation_map_df = pd.DataFrame(obl_rows)
+
+    return chunk_matches_df, obligation_map_df, obl_to_ctrl
+
+# ------------------ Build Top-3-per-Obligation Sheet ------------------
+def build_top3_controls_sheet(obl_to_ctrl: Dict[str, Dict[str, Dict]],
+                              df_controls: pd.DataFrame,
+                              df_obligations: pd.DataFrame,
+                              top_k: int = 3) -> pd.DataFrame:
+    """
+    For each obligation id in obl_to_ctrl, pick top_k controls and provide explainability.
+    Uses df_controls and df_obligations to include full row values in output.
+    """
+    # map control id -> full description (for quick lookup)
+    control_lookup = {}
+    for _, r in df_controls.iterrows():
+        control_lookup[r['Control Id']] = r.get('Full Description', '')
+
+    # map obligation id -> text (from df_obligations if present)
+    obligation_lookup = {}
+    if 'Obligation id' in df_obligations.columns and 'Detailed obligation description' in df_obligations.columns:
+        for _, r in df_obligations.iterrows():
+            obligation_lookup[r['Obligation id']] = r.get('Detailed obligation description', '')
+
+    rows = []
+    for obl, cmap in obl_to_ctrl.items():
+        # sort controls by best_score desc and take top_k
+        ctrl_list = sorted([(cid, info['best_score'], info['best_sentence'], info['chunk_text']) for cid, info in cmap.items()],
+                           key=lambda x: x[1], reverse=True)[:top_k]
+        for rank, (cid, best_score, best_sentence, chunk_text) in enumerate(ctrl_list, start=1):
+            row = {
+                'Obligation id': obl,
+                'Obligation Text': obligation_lookup.get(obl, ''),
+                'Rank': rank,
+                'Matched Control ID': cid,
+                'Matched Control Full Description': control_lookup.get(cid, ''),
+                'Best Phrase Score': round(float(best_score), 6),
+                'Best Chunk Text': chunk_text,
+                'Best Sentence Justification': best_sentence
+            }
+            # Also collect top phrases for this control+obligation by scanning chunk_matches later could be costly;
+            # but we can attempt to add phrases if desired by later joining chunk sheet. For now, keep these core columns.
+            rows.append(row)
+    top3_df = pd.DataFrame(rows)
+    return top3_df
+
+# -------------------- RUN (hardcoded paths) --------------------
+if __name__ == '__main__':
+    # EDIT these paths
+    controls_path = r"C:\Documents\Control.xlsx"       # must have columns: 'Control Id', 'Full Description'
+    phrases_path = r"C:\Documents\Phrases.xlsx"        # must have columns: 'Obligation id', 'Phrase'
+    obligations_path = r"C:\Documents\Obligations.xlsx" # must have 'Obligation id', 'Detailed obligation description'
+    output_path = r"C:\Documents\Phrases_to_Controls_Top3_Output.xlsx"
+
+    # load inputs
+    try:
+        df_controls = pd.read_excel(controls_path, engine='openpyxl')
+    except Exception as e:
+        print("Error reading controls file:", e)
+        sys.exit(1)
+    try:
+        df_phrases = pd.read_excel(phrases_path, engine='openpyxl')
+    except Exception as e:
+        print("Error reading phrases file:", e)
+        sys.exit(1)
+    try:
+        df_obligations = pd.read_excel(obligations_path, engine='openpyxl')
+    except Exception as e:
+        print("Warning: obligations file not found or failed to read. Obligation Text column will be empty.")
+        df_obligations = pd.DataFrame(columns=['Obligation id', 'Detailed obligation description'])
+
+    # build mpnet embedder (will raise error if sentence-transformers not installed)
+    print("Loading MPNet model (all-mpnet-base-v2)...")
+    embed_fn = get_mpnet_embedder(MODEL_NAME)
+
+    print("Computing phrase -> control chunk matches...")
+    chunk_matches_df, obligation_map_df, obl_to_ctrl = phrases_to_controls_pipeline(df_controls, df_phrases, embed_fn, top_n_phrases=TOP_N_PHRASES)
+
+    print("Building top-3-controls-per-obligation sheet...")
+    top3_df = build_top3_controls_sheet(obl_to_ctrl, df_controls, df_obligations, top_k=3)
+
+    # save all three sheets
+    try:
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            chunk_matches_df.to_excel(writer, sheet_name='chunk_phrase_matches', index=False)
+            obligation_map_df.to_excel(writer, sheet_name='obligation_to_controls', index=False)
+            top3_df.to_excel(writer, sheet_name='top3_controls_per_obligation', index=False)
+    except Exception as e:
+        print("Failed to write output:", e)
+        sys.exit(1)
+
+    print("Done. Output written to:", output_path)
